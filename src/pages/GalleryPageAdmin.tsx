@@ -493,9 +493,9 @@ export const GalleryPageAdmin: React.FC = () => {
     selectedCategory === 'ALL'
       ? images
       : images.filter((img) => {
-          const catId = typeof img.category === 'object' && img.category ? img.category._id : img.category;
-          return catId === selectedCategory;
-        });
+        const catId = typeof img.category === 'object' && img.category ? img.category._id : img.category;
+        return catId === selectedCategory;
+      });
 
   return (
     <div>
@@ -991,9 +991,8 @@ export const GalleryPageAdmin: React.FC = () => {
                 return (
                   <div
                     key={item._id}
-                    className={`arrange-card ${isDragging ? 'is-dragging' : ''} ${
-                      isDropTarget ? 'is-drop-target' : ''
-                    }`}
+                    className={`arrange-card ${isDragging ? 'is-dragging' : ''} ${isDropTarget ? 'is-drop-target' : ''
+                      }`}
                     draggable
                     onDragStart={(e) => handleDragStart(e, index)}
                     onDragOver={(e) => handleDragOver(e, index)}

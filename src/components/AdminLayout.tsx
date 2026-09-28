@@ -14,10 +14,9 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { UserProfileModal } from './UserProfileModal';
 
 export const AdminLayout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -31,28 +30,43 @@ export const AdminLayout: React.FC = () => {
     }
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
+  const [userPanelOpen, setUserPanelOpen] = useState(false);
+  const userPanelRef = useRef<HTMLDivElement>(null);
 
-  // Close mobile menu on route change
+  // Close mobile menu and user panel on route change
   useEffect(() => {
     setMobileMenuOpen(false);
-    setUserMenuOpen(false);
+    setUserPanelOpen(false);
   }, [location.pathname]);
 
-  // Click outside listener for user dropdown
+  // Click outside listener: close user panel when clicking anywhere else
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setUserMenuOpen(false);
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (userPanelRef.current && !userPanelRef.current.contains(e.target as Node)) {
+        setUserPanelOpen(false);
       }
     };
-    if (userMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+    if (userPanelOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [userMenuOpen]);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [userPanelOpen]);
+
+  const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return 'Never';
+    try {
+      const d = new Date(dateStr);
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(d);
+    } catch {
+      return dateStr;
+    }
+  };
 
   const toggleSidebar = () => {
     if (typeof window !== 'undefined' && window.innerWidth <= 1024) {
@@ -181,64 +195,78 @@ export const AdminLayout: React.FC = () => {
           ))}
         </nav>
 
-        {/* Sidebar Footer with Unified User Profile & Dropdown */}
-        <div className="sidebar-footer" ref={userMenuRef}>
-          {/* User Options Dropdown Popover */}
-          {userMenuOpen && (
-            <div className="sidebar-user-dropdown-menu">
-              <button
-                type="button"
-                className="sidebar-user-dropdown-item"
-                onClick={() => {
-                  setUserMenuOpen(false);
-                  setProfileModalOpen(true);
-                }}
-              >
-                <User size={15} />
-                <span>Profile</span>
-              </button>
-              <div className="sidebar-user-dropdown-divider" />
-              <button
-                type="button"
-                className="sidebar-user-dropdown-item text-danger"
-                onClick={() => {
-                  setUserMenuOpen(false);
-                  handleLogout();
-                }}
-              >
-                <LogOut size={15} />
-                <span>Logout</span>
-              </button>
-            </div>
-          )}
-
-          {/* Interactive User Badge */}
-          <div
-            className={`user-profile-badge ${userMenuOpen ? 'active' : ''}`}
-            onClick={() => setUserMenuOpen((prev) => !prev)}
-            title={sidebarCollapsed ? `${user?.name || 'Admin'} (${user?.role || 'Admin'})` : 'Click to view options'}
-          >
-            <div className="user-avatar">
-              {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
-            </div>
-            {!sidebarCollapsed && (
-              <>
-                <div className="user-info" style={{ flex: 1, minWidth: 0 }}>
-                  <span className="user-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {user?.name || 'Admin'}
-                  </span>
-                  <span className="user-role">{user?.role ? user.role.toUpperCase() : 'ADMIN'}</span>
-                </div>
-                <ChevronUp
-                  size={14}
-                  style={{
-                    color: '#888888',
-                    transition: 'transform 0.2s ease',
-                    transform: userMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+        {/* Sidebar Footer with Upper-Side User Menu */}
+        <div className="sidebar-footer">
+          <div className="sidebar-user-panel-wrapper" ref={userPanelRef}>
+            {/* Popover Menu: Opens on the UPPER SIDE of the user section */}
+            {userPanelOpen && (
+              <div className="sidebar-user-upper-popover">
+                {/* Profile Link Button - renders profile on the page */}
+                <button
+                  type="button"
+                  className={`sidebar-user-popover-item ${location.pathname === '/profile' ? 'active-link' : ''}`}
+                  onClick={() => {
+                    setUserPanelOpen(false);
+                    navigate('/profile');
+                    setMobileMenuOpen(false);
                   }}
-                />
-              </>
+                >
+                  <User size={15} />
+                  <span>Profile</span>
+                </button>
+
+                <div className="sidebar-user-popover-divider" />
+
+                {/* Logout Button */}
+                <button
+                  type="button"
+                  className="sidebar-user-popover-item logout-item"
+                  onClick={() => {
+                    setUserPanelOpen(false);
+                    handleLogout();
+                  }}
+                >
+                  <LogOut size={15} />
+                  <span>Logout</span>
+                </button>
+              </div>
             )}
+
+            {/* Interactive User Name Button */}
+            <div
+              className={`user-profile-badge ${userPanelOpen ? 'active' : ''}`}
+              onClick={() => {
+                if (sidebarCollapsed) {
+                  setSidebarCollapsed(false);
+                  setUserPanelOpen(true);
+                } else {
+                  setUserPanelOpen((prev) => !prev);
+                }
+              }}
+              title={sidebarCollapsed ? `${user?.name || 'Admin'} (${user?.role || 'Admin'})` : 'Click to view options'}
+            >
+              <div className="user-avatar">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
+              </div>
+              {!sidebarCollapsed && (
+                <>
+                  <div className="user-info" style={{ flex: 1, minWidth: 0 }}>
+                    <span className="user-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user?.name || 'Admin'}
+                    </span>
+                    <span className="user-role">{user?.role ? user.role.toUpperCase() : 'ADMIN'}</span>
+                  </div>
+                  <ChevronDown
+                    size={14}
+                    style={{
+                      color: '#888888',
+                      transition: 'transform 0.2s ease',
+                      transform: userPanelOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    }}
+                  />
+                </>
+              )}
+            </div>
           </div>
         </div>
       </aside>
@@ -262,9 +290,9 @@ export const AdminLayout: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div
               className="topbar-user-pill"
-              onClick={() => setProfileModalOpen(true)}
+              onClick={() => navigate('/profile')}
               style={{ cursor: 'pointer' }}
-              title="Click to view profile details"
+              title="View Admin Profile"
             >
               <span className="topbar-user-avatar">
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
@@ -287,14 +315,6 @@ export const AdminLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
-
-      {/* Profile Details Modal */}
-      <UserProfileModal
-        isOpen={profileModalOpen}
-        onClose={() => setProfileModalOpen(false)}
-        user={user}
-        onLogout={handleLogout}
-      />
     </div>
   );
 };

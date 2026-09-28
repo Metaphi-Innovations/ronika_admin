@@ -89,7 +89,7 @@ export const HomePageEditor: React.FC = () => {
   const rawFeaturedList = content.featuredProjects || [];
   const selectedFeaturedIds = rawFeaturedList.map((p: any) => (typeof p === 'object' ? p._id : p));
 
-  const validFeaturedCount = selectedFeaturedIds.length === 7;
+  const validFeaturedCount = selectedFeaturedIds.length <= 7;
   const hasDuplicateFeatured = new Set(selectedFeaturedIds).size !== selectedFeaturedIds.length;
 
   const invalidProjectItems = selectedFeaturedIds.map(id => {
@@ -254,7 +254,7 @@ export const HomePageEditor: React.FC = () => {
       setContent(prev => ({ ...prev, featuredProjects: updated }));
     } else {
       if (selectedFeaturedIds.length >= 7) {
-        alert.warning('Exactly 7 projects must be selected. Remove a project before adding a new one.', 'Limit Reached');
+        alert.warning('Maximum 7 featured projects allowed. Remove a project before adding a new one.', 'Limit Reached');
         return;
       }
       const projObj = availableProjects.find(p => p._id === projectId);
@@ -406,7 +406,7 @@ export const HomePageEditor: React.FC = () => {
     }
 
     if (sectionName === 'B' && !isFeaturedValid) {
-      alert.warning('Featured projects selection is invalid. Exactly 7 unique, published projects are required to save Section B.', 'Incomplete Selection');
+      alert.warning('Featured projects selection is invalid. Maximum 7 unique, published projects can be saved.', 'Incomplete Selection');
       return;
     }
 
@@ -663,7 +663,7 @@ export const HomePageEditor: React.FC = () => {
             <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
             <div>
               <div style={{ fontWeight: 600, marginBottom: '2px' }}>Configuration Warning</div>
-              {!validFeaturedCount && <div>• Exactly 7 featured projects must be selected (currently {selectedFeaturedIds.length} selected).</div>}
+              {!validFeaturedCount && <div>• Maximum 7 featured projects can be selected (currently {selectedFeaturedIds.length} selected).</div>}
               {hasDuplicateFeatured && <div>• Selection contains duplicate project entries.</div>}
               {invalidProjectItems.length > 0 && (
                 <div>
@@ -671,6 +671,12 @@ export const HomePageEditor: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {selectedFeaturedIds.length === 0 && (
+          <div style={{ padding: '0.75rem 1rem', background: 'var(--admin-bg-body)', borderRadius: '6px', marginBottom: '1rem', border: '1px solid var(--admin-border-color)', fontSize: '13px', color: 'var(--admin-text-muted)' }}>
+            ℹ️ No featured projects selected. The featured showcase section will not be displayed on the homepage.
           </div>
         )}
 

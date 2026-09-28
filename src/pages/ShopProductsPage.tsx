@@ -75,6 +75,7 @@ export const ShopProductsPage: React.FC = () => {
   const [newCatName, setNewCatName] = useState('');
 
   const [showProdModal, setShowProdModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<IShopProduct | null>(null);
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
@@ -179,7 +180,56 @@ export const ShopProductsPage: React.FC = () => {
     });
   };
 
-  const handleCreateProduct = async (e: React.FormEvent) => {
+  const handleOpenCreateModal = () => {
+    setEditingProduct(null);
+    setName('');
+    setCategoryId('');
+    setDescription('');
+    setBulletPoints(['', '', '']);
+    setSelectedFile(null);
+    setImagePreview(null);
+    setShowProdModal(true);
+  };
+
+  const handleEditProduct = (prod: IShopProduct) => {
+    setEditingProduct(prod);
+    setName(prod.name);
+    const catId = typeof prod.category === 'object' && prod.category ? (prod.category as any)._id : (prod.category || '');
+    setCategoryId(catId);
+    setDescription(prod.description || prod.shortDescription || '');
+    const bullets = prod.details?.bulletPoints && prod.details.bulletPoints.length > 0
+      ? prod.details.bulletPoints
+      : ['', '', ''];
+    setBulletPoints(bullets);
+
+    const existingImgUrl = prod.mainImage?.url || prod.images?.[0]?.url || '';
+    if (existingImgUrl) {
+      setImagePreview({
+        url: existingImgUrl,
+        width: prod.mainImage?.width || 800,
+        height: prod.mainImage?.height || 800,
+        name: prod.mainImage?.filename || 'Current Artwork Image',
+      });
+    } else {
+      setImagePreview(null);
+    }
+    setSelectedFile(null);
+    setShowProdModal(true);
+  };
+
+  const handleCloseProdModal = () => {
+    setShowProdModal(false);
+    setEditingProduct(null);
+    if (imagePreview?.url && selectedFile) URL.revokeObjectURL(imagePreview.url);
+    setImagePreview(null);
+    setSelectedFile(null);
+    setName('');
+    setCategoryId('');
+    setDescription('');
+    setBulletPoints(['', '', '']);
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       alert.warning('Please enter a product title.', 'Missing Title');
@@ -193,7 +243,7 @@ export const ShopProductsPage: React.FC = () => {
       alert.warning('Please provide a description.', 'Missing Description');
       return;
     }
-    if (!selectedFile) {
+    if (!editingProduct && !selectedFile) {
       alert.warning('Please upload a product artwork image.', 'Missing Image');
       return;
     }
@@ -209,23 +259,27 @@ export const ShopProductsPage: React.FC = () => {
       formData.append('description', description.trim());
       formData.append('stockQuantity', '1');
       formData.append('details', JSON.stringify({ bulletPoints: activeBullets }));
-      formData.append('shop_main', selectedFile);
+      if (selectedFile) {
+        formData.append('shop_main', selectedFile);
+      }
 
-      const res = await createShopProduct(formData);
-      if (res.success) {
-        setShowProdModal(false);
-        setName('');
-        setCategoryId('');
-        setDescription('');
-        setBulletPoints(['', '', '']);
-        if (imagePreview?.url) URL.revokeObjectURL(imagePreview.url);
-        setSelectedFile(null);
-        setImagePreview(null);
-        alert.success(`Product "${res.data?.name || name}" created successfully.`);
-        fetchData();
+      if (editingProduct) {
+        const res = await updateShopProduct(editingProduct._id, formData);
+        if (res.success) {
+          handleCloseProdModal();
+          alert.success(`Product "${res.data?.name || name}" updated successfully.`);
+          fetchData();
+        }
+      } else {
+        const res = await createShopProduct(formData);
+        if (res.success) {
+          handleCloseProdModal();
+          alert.success(`Product "${res.data?.name || name}" created successfully.`);
+          fetchData();
+        }
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to create product');
+      alert.error(err.message || `Failed to ${editingProduct ? 'update' : 'create'} product`);
     } finally {
       setSubmitting(false);
     }
@@ -270,7 +324,7 @@ export const ShopProductsPage: React.FC = () => {
               <Layers size={14} />
               <span>Shop Category</span>
             </button>
-            <button onClick={() => setShowProdModal(true)} className="admin-btn primary">
+            <button onClick={handleOpenCreateModal} className="admin-btn primary">
               <Plus size={14} />
               <span>New Product</span>
             </button>
@@ -373,7 +427,7 @@ export const ShopProductsPage: React.FC = () => {
             <p style={{ color: 'var(--admin-text-muted)', fontSize: '12.5px', margin: '0 0 1rem 0' }}>
               Add items to your public store catalog.
             </p>
-            <button onClick={() => setShowProdModal(true)} className="admin-btn primary">
+            <button onClick={handleOpenCreateModal} className="admin-btn primary">
               <Plus size={14} /> Add Product
             </button>
           </div>
@@ -471,6 +525,13 @@ export const ShopProductsPage: React.FC = () => {
                             justifyContent: 'flex-end',
                           }}
                         >
+                          <button
+                            onClick={() => handleEditProduct(prod)}
+                            className="admin-btn-icon"
+                            title="Edit Product"
+                          >
+                            <Edit2 size={15} />
+                          </button>
                           <button
                             onClick={() => setDeleteProdTarget({ id: prod._id, name: prod.name })}
                             className="admin-btn-icon danger"
@@ -574,9 +635,9 @@ export const ShopProductsPage: React.FC = () => {
             style={{ width: '560px', padding: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}
           >
             <h3 style={{ fontSize: '14.5px', fontWeight: 600, marginBottom: '0.875rem' }}>
-              NEW CATALOG PRODUCT
+              {editingProduct ? 'EDIT CATALOG PRODUCT' : 'NEW CATALOG PRODUCT'}
             </h3>
-            <form onSubmit={handleCreateProduct}>
+            <form onSubmit={handleSaveProduct}>
               <div
                 style={{
                   display: 'grid',
@@ -671,15 +732,14 @@ export const ShopProductsPage: React.FC = () => {
                         onChange={(e) => handleBulletPointChange(idx, e.target.value)}
                         className="admin-input"
                         style={{ margin: 0, fontSize: '12.5px' }}
-                        placeholder={`Point ${idx + 1} (e.g. ${
-                          idx === 0
+                        placeholder={`Point ${idx + 1} (e.g. ${idx === 0
                             ? 'Handcrafted archival quality print'
                             : idx === 1
-                            ? 'Printed on 300gsm cotton rag stock'
-                            : idx === 2
-                            ? 'Signed & numbered limited edition'
-                            : 'Carefully packed and shipped safely'
-                        })`}
+                              ? 'Printed on 300gsm cotton rag stock'
+                              : idx === 2
+                                ? 'Signed & numbered limited edition'
+                                : 'Carefully packed and shipped safely'
+                          })`}
                       />
                       {bulletPoints.length > 1 && (
                         <button
@@ -699,7 +759,9 @@ export const ShopProductsPage: React.FC = () => {
 
               {/* Main Image Upload Dropcard */}
               <div style={{ marginBottom: '1.25rem' }}>
-                <label className="admin-label">Product Artwork Image *</label>
+                <label className="admin-label">
+                  Product Artwork Image {editingProduct ? '(Optional to Change)' : '*'}
+                </label>
                 <div
                   style={{
                     marginBottom: '6px',
@@ -714,7 +776,9 @@ export const ShopProductsPage: React.FC = () => {
                     gap: '5px',
                   }}
                 >
-                  <span style={{ color: '#E65100', fontWeight: 700 }}>REQUIRED:</span>
+                  <span style={{ color: '#E65100', fontWeight: 700 }}>
+                    {editingProduct ? 'OPTIONAL:' : 'REQUIRED:'}
+                  </span>
                   <span>Min: 600 × 600 px (Optimal: 1200 × 1200 px or higher)</span>
                 </div>
 
@@ -821,7 +885,7 @@ export const ShopProductsPage: React.FC = () => {
                       accept="image/jpeg, image/png, image/webp, image/avif"
                       onChange={handleFileSelect}
                       style={{ display: 'none' }}
-                      required
+                      required={!editingProduct}
                     />
                   </label>
                 )}
@@ -830,12 +894,7 @@ export const ShopProductsPage: React.FC = () => {
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowProdModal(false);
-                    if (imagePreview?.url) URL.revokeObjectURL(imagePreview.url);
-                    setImagePreview(null);
-                    setSelectedFile(null);
-                  }}
+                  onClick={handleCloseProdModal}
                   className="admin-btn secondary"
                 >
                   Cancel
@@ -843,9 +902,11 @@ export const ShopProductsPage: React.FC = () => {
                 <button
                   type="submit"
                   className="admin-btn primary"
-                  disabled={submitting || !selectedFile}
+                  disabled={submitting || (!editingProduct && !selectedFile)}
                 >
-                  {submitting ? 'Creating...' : 'Save Product'}
+                  {submitting
+                    ? (editingProduct ? 'Saving...' : 'Creating...')
+                    : (editingProduct ? 'Update Product' : 'Save Product')}
                 </button>
               </div>
             </form>

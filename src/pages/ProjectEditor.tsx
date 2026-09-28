@@ -6,11 +6,14 @@ import {
   Trash2,
   GripVertical,
   CheckCircle2,
+  AlertTriangle,
   Upload,
   X,
   Image as ImageIcon,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, Draggable, DropResult, DragStart } from '@hello-pangea/dnd';
 import {
   getProject,
   createProject,
@@ -22,17 +25,21 @@ import {
   IProject,
 } from '../services/projectApi';
 import { getCategories } from '../services/categoryApi';
-import { calculateRowPattern } from '../utils/imageLayout';
+import {
+  calculateRowPattern,
+  getProjectImageRatio,
+  getProjectImageSlot,
+  validateSlotDimensions,
+  getProjectImageType,
+  canMoveProjectImage,
+  reorderCompatibleImages,
+  ProjectImageSlotRule,
+  ProjectSlotType,
+} from '../utils/imageLayout';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { useAlert } from '../context/AlertContext';
 import { countReadableWords } from '../utils/richText';
-
-const REQUIRED_RATIOS = {
-  1: { name: '16:9', val: 1.77, minW: 1600, recW: 1920 },
-  2: { name: '4:3', val: 1.33, minW: 1200, recW: 1600 },
-  3: { name: '1:1', val: 1.0, minW: 800, recW: 1200 },
-};
 
 interface PendingGalleryItem {
   id: string;
@@ -83,6 +90,9 @@ export const ProjectEditor: React.FC = () => {
   // Pending Gallery Files State
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [pendingGallery, setPendingGallery] = useState<PendingGalleryItem[]>([]);
+
+  // Active Drag State for Visual Compatibility Feedback
+  const [draggedImage, setDraggedImage] = useState<{ id: string; type: ProjectSlotType } | null>(null);
 
   // Dimension validation helper
   const validateImageDimensions = (
@@ -138,6 +148,26 @@ export const ProjectEditor: React.FC = () => {
         });
       };
 
+      img.src = objectUrl;
+    });
+  };
+
+  // Helper to read natural image dimensions
+  const readImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve({
+          width: img.naturalWidth || img.width,
+          height: img.naturalHeight || img.height,
+        });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error(`Could not load image "${file.name}". Please ensure it is a valid JPG, PNG, or WebP file.`));
+      };
       img.src = objectUrl;
     });
   };
@@ -257,38 +287,52 @@ export const ProjectEditor: React.FC = () => {
     alert.info('Cover image selection removed.', 'Removed');
   };
 
-  // Gallery Images Selection
+  // Project Images Selection — STRICT Positional Dimension Validation
   const handleGalleryFilesSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    const currentCount = (formData.images || []).length;
+    let stagedCount = pendingGallery.length;
     const newPending: PendingGalleryItem[] = [];
-    let rejectedCount = 0;
 
     for (const file of files) {
-      const dim = await validateImageDimensions(file, 800, 600, 'any');
-      if (!dim.valid) {
-        alert.error(`"${file.name}": ${dim.error}`, 'Image Rejected');
-        rejectedCount++;
-        continue;
-      }
+      const targetPos = currentCount + stagedCount + 1;
+      const slot = getProjectImageSlot(targetPos);
 
-      const previewUrl = URL.createObjectURL(file);
-      newPending.push({
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
-        file,
-        previewUrl,
-        width: dim.width || 0,
-        height: dim.height || 0,
-      });
+      try {
+        const { width, height } = await readImageDimensions(file);
+        const validation = validateSlotDimensions(width, height, slot);
+
+        if (!validation.valid) {
+          alert.error(
+            `✕ Image not accepted\n\nThis position requires an image that is exactly:\n${slot.expectedText}\n\nYour image ("${file.name}"):\n${width} × ${height} px\n\nPlease upload the correct dimensions.`,
+            `Position ${targetPos} Dimension Rejection`
+          );
+          // Do not upload or stage invalid image
+          continue;
+        }
+
+        const previewUrl = URL.createObjectURL(file);
+        newPending.push({
+          id: `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+          file,
+          previewUrl,
+          width,
+          height,
+        });
+        stagedCount++;
+      } catch (err: any) {
+        alert.error(`Failed to read dimensions for "${file.name}": ${err.message}`, 'File Read Error');
+      }
     }
 
     if (newPending.length > 0) {
       setPendingGallery((prev) => [...prev, ...newPending]);
       setGalleryFiles((prev) => [...prev, ...newPending.map((p) => p.file)]);
       alert.success(
-        `${newPending.length} gallery image(s) verified. Click Save Project to upload.`,
-        'Images Staged'
+        `${newPending.length} project image(s) verified against exact position requirements and staged. Click Save Project to upload.`,
+        'Position Verified'
       );
     }
     e.target.value = '';
@@ -329,6 +373,23 @@ export const ProjectEditor: React.FC = () => {
       return;
     }
 
+    // Final validation of all existing project images before save
+    if (formData.images && formData.images.length > 0) {
+      for (let idx = 0; idx < formData.images.length; idx++) {
+        const img = formData.images[idx];
+        const pos = idx + 1;
+        const slot = getProjectImageSlot(pos);
+        const validation = validateSlotDimensions(img.width || 0, img.height || 0, slot);
+        if (!validation.valid) {
+          alert.error(
+            `Project images cannot be saved.\n\nPosition ${pos} requires:\n${slot.expectedText}\n\nCurrent image:\n${img.width} × ${img.height} px\n\nPlease reorder or replace the image.`,
+            'Image Dimension Error'
+          );
+          return;
+        }
+      }
+    }
+
     try {
       setSaving(true);
       let projectId = id;
@@ -359,13 +420,40 @@ export const ProjectEditor: React.FC = () => {
         await uploadGalleryImages(projectId, galleryFiles);
       }
 
+      // 4. Refetch project to keep state populated with saved URLs and dimensions
+      if (projectId) {
+        const refreshed = await getProject(projectId);
+        if (refreshed?.data) {
+          setFormData(refreshed.data);
+          if (refreshed.data.heroImage?.url) {
+            setHeroPreview({
+              url: refreshed.data.heroImage.url,
+              width: refreshed.data.heroImage.width,
+              height: refreshed.data.heroImage.height,
+              filename: refreshed.data.heroImage.filename,
+            });
+          }
+        }
+      }
+
+      // Clear staged files since they are now in the database
+      setHeroFile(null);
+      setGalleryFiles([]);
+      pendingGallery.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      setPendingGallery([]);
+
+      // Seamlessly transition URL if created new project, staying on Edit Project without leaving
+      if (!isEditing && projectId) {
+        navigate(`/projects/edit/${projectId}`, { replace: true });
+      }
+
+      // Clear, confidence-building save notification (Sections 18-22)
       alert.success(
         isEditing
-          ? `Project "${formData.title}" updated successfully!`
-          : `Project "${formData.title}" created successfully!`,
-        'Saved'
+          ? '✓ Changes saved successfully. You can continue editing this project.'
+          : '✓ Project saved successfully. Please review the images and content before publishing.',
+        'Project Saved'
       );
-      navigate('/projects');
     } catch (err: any) {
       alert.error(err.message || 'Failed to save project', 'Save Failed');
     } finally {
@@ -373,21 +461,110 @@ export const ProjectEditor: React.FC = () => {
     }
   };
 
+  const onDragStart = (start: DragStart) => {
+    if (!formData.images) return;
+    const img = formData.images.find((i) => i._id === start.draggableId);
+    if (img) {
+      const detectedType = getProjectImageType(img);
+      const slotType = detectedType !== 'unknown' ? detectedType : getProjectImageSlot(start.source.index + 1).type;
+      setDraggedImage({ id: img._id, type: slotType });
+    }
+  };
+
   const onDragEnd = async (result: DropResult) => {
+    setDraggedImage(null);
     if (!result.destination || !formData.images || !id) return;
+    if (result.destination.index === result.source.index) return;
 
-    const items = Array.from(formData.images);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+    const sourceIndex = result.source.index;
+    const destIndex = result.destination.index;
+    const sourceImg = formData.images[sourceIndex];
 
-    setFormData((prev) => ({ ...prev, images: items }));
+    const sourceSlot = getProjectImageSlot(sourceIndex + 1);
+    const targetSlot = getProjectImageSlot(destIndex + 1);
+    const detectedType = getProjectImageType(sourceImg);
+    const sourceType = detectedType !== 'unknown' ? detectedType : sourceSlot.type;
 
-    const orderUpdates = items.map((img, index) => ({ imageId: img._id, order: index }));
+    // STRICT COMPATIBILITY VALIDATION: Cross-type drops are strictly prohibited
+    if (sourceType !== targetSlot.type) {
+      alert.error(
+        `Cannot move this image to Position ${destIndex + 1}.\n\nPosition ${destIndex + 1} requires a ${targetSlot.type} slot (${targetSlot.expectedText}), but the dragged image is ${sourceType}.\n\nImages can only be reordered into positions requiring the same ratio.`,
+        'Incompatible Drop Blocked'
+      );
+      return; // ATOMIC: LEAVE ORDER COMPLETELY UNCHANGED
+    }
+
+    // Perform reorder strictly within the compatibility group
+    const newImages = reorderCompatibleImages(formData.images, sourceIndex, destIndex);
+
+    // Validate that every image in the entire resulting array strictly satisfies its target position
+    for (let idx = 0; idx < newImages.length; idx++) {
+      const img = newImages[idx];
+      const targetPosition = idx + 1;
+      const slot = getProjectImageSlot(targetPosition);
+      const width = img.width || 0;
+      const height = img.height || 0;
+
+      const validation = validateSlotDimensions(width, height, slot);
+      if (!validation.valid) {
+        alert.error(
+          `Cannot save this order.\n\nImage occupying Position ${targetPosition} requires:\n${slot.description}\n\nCurrent image: ${width} × ${height} px.\n\nPlease choose a valid order.`,
+          'Reorder Rejected'
+        );
+        return; // REJECT REORDER: DO NOT UPDATE STATE OR BACKEND
+      }
+    }
+
+    setFormData((prev) => ({ ...prev, images: newImages }));
+
+    const orderUpdates = newImages.map((img, index) => ({ imageId: img._id, order: index }));
     try {
       await reorderGalleryImages(id, orderUpdates);
-      alert.info('Gallery images reordered successfully.', 'Reordered');
+      alert.success('Gallery images reordered successfully within compatible positions.', 'Reordered');
     } catch (err: any) {
-      alert.error('Failed to save image order on server.', 'Order Error');
+      // Rollback to server state on error
+      const refreshed = await getProject(id);
+      if (refreshed?.data?.images) {
+        setFormData((prev) => ({ ...prev, images: refreshed.data.images }));
+      }
+      alert.error(err.response?.data?.message || err.message || 'Failed to save image order on server.', 'Order Error');
+    }
+  };
+
+  // Keyboard / Touch Accessible Reorder within Compatibility Group
+  const handleMoveWithinGroup = async (index: number, direction: 'prev' | 'next') => {
+    if (!formData.images || !id) return;
+    const currentSlot = getProjectImageSlot(index + 1);
+    const groupType = currentSlot.type;
+
+    const compatibleIndices: number[] = [];
+    formData.images.forEach((img, idx) => {
+      if (getProjectImageSlot(idx + 1).type === groupType) {
+        compatibleIndices.push(idx);
+      }
+    });
+
+    const currentGroupIdx = compatibleIndices.indexOf(index);
+    if (currentGroupIdx === -1) return;
+
+    const targetGroupIdx = direction === 'prev' ? currentGroupIdx - 1 : currentGroupIdx + 1;
+    if (targetGroupIdx < 0 || targetGroupIdx >= compatibleIndices.length) return;
+
+    const destIndex = compatibleIndices[targetGroupIdx];
+    const newImages = reorderCompatibleImages(formData.images, index, destIndex);
+
+    setFormData((prev) => ({ ...prev, images: newImages }));
+    const orderUpdates = newImages.map((img, idx) => ({ imageId: img._id, order: idx }));
+
+    try {
+      await reorderGalleryImages(id, orderUpdates);
+      alert.success(`Moved image to Position ${destIndex + 1}.`, 'Reordered');
+    } catch (err: any) {
+      const refreshed = await getProject(id);
+      if (refreshed?.data?.images) {
+        setFormData((prev) => ({ ...prev, images: refreshed.data.images }));
+      }
+      alert.error(err.response?.data?.message || err.message || 'Failed to save image order.', 'Order Error');
     }
   };
 
@@ -418,17 +595,6 @@ export const ProjectEditor: React.FC = () => {
   }
 
   const currentImages = formData.images || [];
-  const pattern = calculateRowPattern(currentImages.length + galleryFiles.length);
-
-  let imgIndex = 0;
-  const imageAssignments = pattern.flatMap((rowSize) => {
-    const slots = [];
-    for (let i = 0; i < rowSize; i++) {
-      slots.push({ index: imgIndex++, rowSize });
-    }
-    return slots;
-  });
-
   const descriptionWordCount = countReadableWords(formData.description || '');
 
   return (
@@ -851,94 +1017,113 @@ export const ProjectEditor: React.FC = () => {
 
         {/* 3. PROJECT GALLERY */}
         <AdminSection title="PROJECT GALLERY">
-          {/* Dimension Guidelines Strip */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-              gap: '0.625rem',
-              marginBottom: '0.875rem',
-              padding: '0.75rem',
-              background: '#F9F9F7',
-              borderRadius: '6px',
-              border: '1px solid var(--admin-border-color)',
-            }}
-          >
-            <div style={{ fontSize: '11.5px', lineHeight: 1.35 }}>
-              <div style={{ fontWeight: 600, color: 'var(--admin-text-main)', marginBottom: '1px' }}>
-                Full-Width Row (16:9)
-              </div>
-              <div style={{ color: 'var(--admin-text-muted)' }}>
-                Min: <strong style={{ color: '#111' }}>1600 × 900 px</strong> • Optimal: 1920 × 1080 px
-              </div>
-            </div>
-            <div style={{ fontSize: '11.5px', lineHeight: 1.35 }}>
-              <div style={{ fontWeight: 600, color: 'var(--admin-text-main)', marginBottom: '1px' }}>
-                Two-Column Row (4:3)
-              </div>
-              <div style={{ color: 'var(--admin-text-muted)' }}>
-                Min: <strong style={{ color: '#111' }}>1200 × 900 px</strong> • Optimal: 1600 × 1200 px
-              </div>
-            </div>
-            <div style={{ fontSize: '11.5px', lineHeight: 1.35 }}>
-              <div style={{ fontWeight: 600, color: 'var(--admin-text-main)', marginBottom: '1px' }}>
-                Three-Column Row (1:1)
-              </div>
-              <div style={{ color: 'var(--admin-text-muted)' }}>
-                Min: <strong style={{ color: '#111' }}>800 × 800 px</strong> • Optimal: 1200 × 1200 px
-              </div>
-            </div>
-          </div>
+          <p style={{ margin: '0 0 0.875rem 0', fontSize: '13px', color: 'var(--admin-text-muted)' }}>
+            Images strictly follow a fixed positional dimension rule. Position 1: <strong>1600 × 900 px</strong> • Positions 2 &amp; 3: <strong>400 × 300 px</strong> • Position 4: <strong>1600 × 900 px</strong> • Positions 5, 6, 7: <strong>Square (any size)</strong> • Position 8+ repeats [1600 × 900, 400 × 300, 400 × 300] indefinitely.
+          </p>
 
-          {/* Gallery Upload Dropcard */}
-          <label
-            style={{
-              border: '2px dashed var(--admin-border-color)',
-              borderRadius: '6px',
-              padding: '1rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.75rem',
-              cursor: 'pointer',
-              background: '#FFFFFF',
-              marginBottom: '0.875rem',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'var(--admin-primary)';
-              e.currentTarget.style.background = '#FAFAF8';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--admin-border-color)';
-              e.currentTarget.style.background = '#FFFFFF';
-            }}
-          >
-            <Upload size={17} color="var(--admin-text-main)" />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--admin-text-main)' }}>
-                + Select Gallery Artworks
-              </span>
-              <span
+          {/* Dynamic Next Slot Indicator */}
+          {(() => {
+            const nextPos = (formData.images?.length || 0) + pendingGallery.length + 1;
+            const nextSlot = getProjectImageSlot(nextPos);
+            return (
+              <div
                 style={{
-                  fontSize: '11px',
-                  color: 'var(--admin-text-muted)',
-                  background: '#F0F0EE',
-                  padding: '2px 7px',
-                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  flexWrap: 'wrap',
+                  marginBottom: '1rem',
+                  padding: '0.75rem 1rem',
+                  background: '#F9F9F7',
+                  borderRadius: '6px',
+                  border: '1px solid var(--admin-border-color)',
+                  fontSize: '12px',
                 }}
               >
-                Multi-file • Min width 1200 px recommended
-              </span>
-            </div>
-            <input
-              type="file"
-              multiple
-              accept="image/jpeg, image/png, image/webp, image/avif"
-              onChange={handleGalleryFilesSelect}
-              style={{ display: 'none' }}
-            />
-          </label>
+                <div>
+                  <span style={{ fontWeight: 600, color: 'var(--admin-text-main)' }}>Positional Requirement: </span>
+                  <span style={{ color: 'var(--admin-text-muted)' }}>
+                    {nextSlot.type === '1:1'
+                      ? 'Upload a square image. Any square size is accepted (width === height).'
+                      : `Upload an image exactly ${nextSlot.expectedText}.`}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '3px 9px',
+                    borderRadius: '4px',
+                    background: '#E8F5E9',
+                    color: '#2E7D32',
+                    fontWeight: 600,
+                    fontSize: '11.5px',
+                  }}
+                >
+                  <span>Target Position {nextPos} ({nextSlot.type}): {nextSlot.expectedText}</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Gallery Upload Dropcard */}
+          {(() => {
+            const nextPos = (formData.images?.length || 0) + pendingGallery.length + 1;
+            const nextSlot = getProjectImageSlot(nextPos);
+            return (
+              <label
+                style={{
+                  border: '2px dashed var(--admin-border-color)',
+                  borderRadius: '6px',
+                  padding: '1.1rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.85rem',
+                  cursor: 'pointer',
+                  background: '#FFFFFF',
+                  marginBottom: '0.875rem',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--admin-primary)';
+                  e.currentTarget.style.background = '#FAFAF8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--admin-border-color)';
+                  e.currentTarget.style.background = '#FFFFFF';
+                }}
+              >
+                <Upload size={18} color="var(--admin-text-main)" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--admin-text-main)' }}>
+                    + Select Image for Position {nextPos}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: '#1B5E20',
+                      background: '#E8F5E9',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Required: {nextSlot.expectedText}
+                  </span>
+                </div>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/jpeg, image/png, image/webp, image/avif"
+                  onChange={handleGalleryFilesSelect}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            );
+          })()}
 
           {/* Pending Gallery Uploads Staged List */}
           {pendingGallery.length > 0 && (
@@ -1071,132 +1256,308 @@ export const ProjectEditor: React.FC = () => {
               </p>
             </div>
           ) : (
-            <DragDropContext onDragEnd={onDragEnd}>
+            <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
               <Droppable droppableId="gallery">
                 {(provided) => (
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}
                   >
                     {currentImages.map((img, index) => {
-                      const rowSize = imageAssignments[index]?.rowSize || 1;
-                      const req = REQUIRED_RATIOS[rowSize as keyof typeof REQUIRED_RATIOS];
+                      const position = index + 1;
+                      const slot = getProjectImageSlot(position);
+                      const validation = validateSlotDimensions(img.width || 0, img.height || 0, slot);
+                      const isMatch = validation.valid;
 
-                      const isRatioValid = Math.abs(img.aspectRatio - req.val) < 0.15;
-                      const isSizeValid = img.width >= req.minW;
-                      const isValid = isRatioValid && isSizeValid;
+                      // Check compatibility status during active drag
+                      const isCompatibleTarget = draggedImage ? slot.type === draggedImage.type : true;
+
+                      // Compatibility group helper for Move Up / Move Down buttons
+                      const compatibleIndices: number[] = [];
+                      currentImages.forEach((cImg, cIdx) => {
+                        if (getProjectImageSlot(cIdx + 1).type === slot.type) {
+                          compatibleIndices.push(cIdx);
+                        }
+                      });
+                      const groupPositionIdx = compatibleIndices.indexOf(index);
+                      const canMovePrev = groupPositionIdx > 0;
+                      const canMoveNext = groupPositionIdx !== -1 && groupPositionIdx < compatibleIndices.length - 1;
 
                       return (
                         <Draggable key={img._id} draggableId={img._id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              style={{
-                                ...provided.draggableProps.style,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.875rem',
-                                padding: '0.5rem 0.75rem',
-                                background: snapshot.isDragging ? '#FFFFFF' : '#FAFAF8',
-                                border: `1px solid ${
-                                  snapshot.isDragging ? '#111111' : 'var(--admin-border-color)'
-                                }`,
-                                borderRadius: '6px',
-                                boxShadow: snapshot.isDragging
-                                  ? '0 4px 12px rgba(0,0,0,0.06)'
-                                  : 'none',
-                                transition: 'background 0.2s, box-shadow 0.2s',
-                              }}
-                            >
-                              <div
-                                {...provided.dragHandleProps}
-                                className="admin-drag-handle"
-                                title="Drag to reorder"
-                              >
-                                <GripVertical size={15} />
-                              </div>
+                          {(provided, snapshot) => {
+                            // Compute dynamic card style
+                            let cardBorder = '1px solid var(--admin-border-color)';
+                            let cardBg = snapshot.isDragging ? '#FFFFFF' : '#FAFAF8';
+                            let cardShadow = snapshot.isDragging
+                              ? '0 12px 28px rgba(0,0,0,0.14)'
+                              : 'none';
+                            let cardTransform = snapshot.isDragging ? 'scale(1.02)' : 'none';
+                            let cardOpacity = 1;
 
-                              <div
-                                style={{
-                                  width: '64px',
-                                  height: '42px',
-                                  background: '#FFFFFF',
-                                  borderRadius: '4px',
-                                  overflow: 'hidden',
-                                  flexShrink: 0,
-                                  border: '1px solid var(--admin-border-color)',
-                                }}
-                              >
-                                <img
-                                  src={img.url}
-                                  alt={img.filename}
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
-                              </div>
+                            if (draggedImage) {
+                              if (snapshot.isDragging) {
+                                cardBorder = '2px solid #111111';
+                                cardBg = '#FFFFFF';
+                              } else if (isCompatibleTarget) {
+                                cardBorder = '2px dashed #2E7D32';
+                                cardBg = '#F1F8E9';
+                              } else {
+                                cardBorder = '1px dashed #E0E0E0';
+                                cardBg = '#FAFAF8';
+                                cardOpacity = 0.45;
+                              }
+                            } else if (!isMatch) {
+                              cardBorder = '1px solid #EF5350';
+                            }
 
+                            return (
                               <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
                                 style={{
-                                  flex: 1,
+                                  ...provided.draggableProps.style,
                                   display: 'flex',
                                   alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: '0.75rem',
+                                  gap: '0.875rem',
+                                  padding: '0.75rem 0.875rem',
+                                  background: cardBg,
+                                  border: cardBorder,
+                                  borderRadius: '6px',
+                                  boxShadow: cardShadow,
+                                  opacity: cardOpacity,
+                                  transform: cardTransform,
+                                  transition: 'background 0.2s, border 0.2s, box-shadow 0.2s, opacity 0.2s',
+                                  position: 'relative',
                                 }}
                               >
-                                <div>
-                                  <div
-                                    style={{
-                                      fontWeight: 600,
-                                      fontSize: '12.5px',
-                                      color: 'var(--admin-text-main)',
-                                    }}
-                                  >
-                                    Image {String(index + 1).padStart(2, '0')}
-                                  </div>
-                                  <div
-                                    style={{
-                                      fontSize: '11px',
-                                      color: 'var(--admin-text-muted)',
-                                      marginTop: '1px',
-                                    }}
-                                  >
-                                    {rowSize === 1
-                                      ? 'Full-width row (16:9)'
-                                      : rowSize === 2
-                                      ? 'Two-column row (4:3)'
-                                      : 'Three-column row (1:1)'}{' '}
-                                    · {img.width} × {img.height} px
-                                  </div>
+                                {/* Dedicated Drag Handle - Grab to reorder */}
+                                <div
+                                  {...provided.dragHandleProps}
+                                  className="admin-drag-handle"
+                                  title="Grab drag handle to reorder (moves within same ratio positions)"
+                                  style={{
+                                    cursor: snapshot.isDragging ? 'grabbing' : 'grab',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '6px 4px',
+                                    borderRadius: '4px',
+                                    color: snapshot.isDragging ? '#111111' : 'var(--admin-text-muted)',
+                                    background: snapshot.isDragging ? '#EEEEEE' : 'transparent',
+                                  }}
+                                >
+                                  <GripVertical size={18} />
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                                  {!isValid && (
-                                    <span
+                                {/* Image Preview Thumbnail */}
+                                <div
+                                  style={{
+                                    width: '74px',
+                                    height: '48px',
+                                    background: '#FFFFFF',
+                                    borderRadius: '4px',
+                                    overflow: 'hidden',
+                                    flexShrink: 0,
+                                    border: '1px solid var(--admin-border-color)',
+                                    position: 'relative',
+                                  }}
+                                >
+                                  <img
+                                    src={img.url}
+                                    alt={img.filename}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  />
+                                  <span
+                                    style={{
+                                      position: 'absolute',
+                                      bottom: '2px',
+                                      right: '2px',
+                                      background: 'rgba(0,0,0,0.7)',
+                                      color: '#FFFFFF',
+                                      fontSize: '9px',
+                                      fontWeight: 700,
+                                      padding: '1px 3px',
+                                      borderRadius: '2px',
+                                    }}
+                                  >
+                                    {slot.type}
+                                  </span>
+                                </div>
+
+                                {/* Content & Position Details */}
+                                <div
+                                  style={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '0.75rem',
+                                    flexWrap: 'wrap',
+                                  }}
+                                >
+                                  <div>
+                                    <div
                                       style={{
-                                        fontSize: '10.5px',
-                                        color: '#E65100',
-                                        background: '#FFF3E0',
-                                        padding: '1px 5px',
-                                        borderRadius: '3px',
-                                        fontWeight: 500,
+                                        fontWeight: 600,
+                                        fontSize: '12.5px',
+                                        color: 'var(--admin-text-main)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        flexWrap: 'wrap',
                                       }}
                                     >
-                                      Ratio notice
-                                    </span>
-                                  )}
-                                  <button
-                                    onClick={() => setDeleteImageTarget({ id: img._id })}
-                                    className="admin-btn-icon danger"
-                                    title="Delete Image"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
+                                      <span>POSITION {String(position).padStart(2, '0')}</span>
+                                      <span
+                                        style={{
+                                          fontSize: '11px',
+                                          fontWeight: 600,
+                                          padding: '1px 6px',
+                                          borderRadius: '4px',
+                                          background: '#EAEAE6',
+                                          color: '#333333',
+                                        }}
+                                      >
+                                        {slot.type}
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontSize: '11px',
+                                          fontWeight: 500,
+                                          color: 'var(--admin-text-muted)',
+                                        }}
+                                      >
+                                        Required: {slot.expectedText}
+                                      </span>
+
+                                      {/* Drag Target Status Indicator */}
+                                      {draggedImage && !snapshot.isDragging && (
+                                        isCompatibleTarget ? (
+                                          <span
+                                            style={{
+                                              fontSize: '10.5px',
+                                              fontWeight: 700,
+                                              padding: '1px 7px',
+                                              borderRadius: '3px',
+                                              background: '#2E7D32',
+                                              color: '#FFFFFF',
+                                              letterSpacing: '0.3px',
+                                            }}
+                                          >
+                                            DROP HERE ({slot.type})
+                                          </span>
+                                        ) : (
+                                          <span
+                                            style={{
+                                              fontSize: '10.5px',
+                                              fontWeight: 600,
+                                              padding: '1px 7px',
+                                              borderRadius: '3px',
+                                              background: '#ECEFF1',
+                                              color: '#78909C',
+                                            }}
+                                          >
+                                            NOT AVAILABLE ({slot.type})
+                                          </span>
+                                        )
+                                      )}
+                                    </div>
+
+                                    <div
+                                      style={{
+                                        fontSize: '11px',
+                                        marginTop: '3px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        flexWrap: 'wrap',
+                                      }}
+                                    >
+                                      {isMatch ? (
+                                        <span
+                                          style={{
+                                            color: '#2E7D32',
+                                            fontWeight: 600,
+                                            background: '#E8F5E9',
+                                            padding: '1px 6px',
+                                            borderRadius: '3px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                          }}
+                                        >
+                                          ✓ {img.width} × {img.height} px
+                                        </span>
+                                      ) : (
+                                        <span
+                                          style={{
+                                            color: '#C62828',
+                                            fontWeight: 600,
+                                            background: '#FFEBEE',
+                                            padding: '1px 6px',
+                                            borderRadius: '3px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                          }}
+                                        >
+                                          ✕ {img.width} × {img.height} px (Invalid for Position {position})
+                                        </span>
+                                      )}
+                                      <span style={{ color: 'var(--admin-text-muted)', fontSize: '11px' }}>
+                                        {img.filename}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Action Controls: Accessible Move Up/Down + Delete */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    {/* Keyboard / Touch Accessible Reorder Buttons (strictly obeys compatibility) */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMoveWithinGroup(index, 'prev')}
+                                      disabled={!canMovePrev}
+                                      className="admin-btn-icon secondary"
+                                      title={canMovePrev ? `Move to previous ${slot.type} slot` : `Already at first ${slot.type} slot`}
+                                      style={{
+                                        padding: '4px',
+                                        opacity: canMovePrev ? 1 : 0.3,
+                                        cursor: canMovePrev ? 'pointer' : 'not-allowed',
+                                      }}
+                                    >
+                                      <ChevronUp size={15} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMoveWithinGroup(index, 'next')}
+                                      disabled={!canMoveNext}
+                                      className="admin-btn-icon secondary"
+                                      title={canMoveNext ? `Move to next ${slot.type} slot` : `Already at last ${slot.type} slot`}
+                                      style={{
+                                        padding: '4px',
+                                        opacity: canMoveNext ? 1 : 0.3,
+                                        cursor: canMoveNext ? 'pointer' : 'not-allowed',
+                                      }}
+                                    >
+                                      <ChevronDown size={15} />
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteImageTarget({ id: img._id })}
+                                      className="admin-btn-icon danger"
+                                      title="Delete Image"
+                                      style={{ marginLeft: '4px' }}
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
+                            );
+                          }}
                         </Draggable>
                       );
                     })}

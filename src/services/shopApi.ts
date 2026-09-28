@@ -94,8 +94,11 @@ export const createShopProduct = async (formData: FormData) => {
   return res.data;
 };
 
-export const updateShopProduct = async (id: string, data: Partial<IShopProduct>) => {
-  const res = await api.put(`/admin/shop/products/${id}`, data);
+export const updateShopProduct = async (id: string, data: FormData | Partial<IShopProduct>) => {
+  const isFormData = data instanceof FormData;
+  const res = await api.put(`/admin/shop/products/${id}`, data, {
+    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+  });
   return res.data;
 };
 
