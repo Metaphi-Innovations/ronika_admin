@@ -20,6 +20,7 @@ import { ContactPageEditor } from './pages/ContactPageEditor';
 import { SettingsPageEditor } from './pages/SettingsPageEditor';
 import { MessagesPage } from './pages/MessagesPage';
 import { UserManagementPage } from './pages/UserManagementPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 export const App: React.FC = () => {
   return (
@@ -49,6 +50,7 @@ export const App: React.FC = () => {
               <Route path="/contact" element={<ContactPageEditor />} />
               <Route path="/messages" element={<MessagesPage />} />
               <Route path="/settings" element={<SettingsPageEditor />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Route>
 

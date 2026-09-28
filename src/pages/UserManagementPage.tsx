@@ -51,7 +51,7 @@ export const UserManagementPage: React.FC = () => {
   const [editFormData, setEditFormData] = useState<{
     name: string;
     email: string;
-    role: 'admin' | 'editor' | 'superadmin';
+    role: 'admin' | 'editor';
     isActive: boolean;
     changePassword: boolean;
     newPassword: string;
@@ -87,7 +87,7 @@ export const UserManagementPage: React.FC = () => {
   // Compute number of active full admins to know if final admin protection applies
   const activeAdminsCount = useMemo(() => {
     return users.filter(
-      (u) => (u.role === 'admin' || u.role === 'superadmin') && u.isActive
+      (u) => u.role === 'admin' && u.isActive
     ).length;
   }, [users]);
 
@@ -344,7 +344,7 @@ export const UserManagementPage: React.FC = () => {
               <tbody>
                 {users.map((target) => {
                   const isSelf = currentUser?.id === target.id;
-                  const isFullAdmin = target.role === 'admin' || target.role === 'superadmin';
+                  const isFullAdmin = target.role === 'admin';
                   const isFinalAdmin = isFullAdmin && target.isActive && activeAdminsCount <= 1;
 
                   return (
@@ -400,27 +400,13 @@ export const UserManagementPage: React.FC = () => {
                             fontWeight: 600,
                             padding: '3px 8px',
                             borderRadius: '4px',
-                            background:
-                              target.role === 'superadmin'
-                                ? '#EDE7F6'
-                                : target.role === 'admin'
-                                ? '#E8EAF6'
-                                : '#F5F5F5',
-                            color:
-                              target.role === 'superadmin'
-                                ? '#512DA8'
-                                : target.role === 'admin'
-                                ? '#283593'
-                                : '#616161',
+                            background: target.role === 'admin' ? '#E8EAF6' : '#F5F5F5',
+                            color: target.role === 'admin' ? '#283593' : '#616161',
                             textTransform: 'capitalize',
                           }}
                         >
                           <Shield size={12} />
-                          {target.role === 'superadmin'
-                            ? 'Super Admin'
-                            : target.role === 'admin'
-                            ? 'Admin'
-                            : 'Editor'}
+                          {target.role === 'admin' ? 'Admin' : 'Editor'}
                         </span>
                       </td>
 
@@ -832,7 +818,7 @@ export const UserManagementPage: React.FC = () => {
                     onChange={(e) =>
                       setEditFormData((prev) => ({
                         ...prev,
-                        role: e.target.value as 'admin' | 'editor' | 'superadmin',
+                        role: e.target.value as 'admin' | 'editor',
                       }))
                     }
                     className="admin-form-input"
@@ -840,9 +826,6 @@ export const UserManagementPage: React.FC = () => {
                       cursor: currentUser?.id === editingUser.id ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    {editingUser.role === 'superadmin' && (
-                      <option value="superadmin">Super Admin (Master)</option>
-                    )}
                     <option value="admin">Administrator (Full Access & User Management)</option>
                     <option value="editor">Editor (Content & Media Management Only)</option>
                   </select>
@@ -857,7 +840,7 @@ export const UserManagementPage: React.FC = () => {
                       disabled={
                         currentUser?.id === editingUser.id ||
                         (editingUser.isActive &&
-                          (editingUser.role === 'admin' || editingUser.role === 'superadmin') &&
+                          editingUser.role === 'admin' &&
                           activeAdminsCount <= 1)
                       }
                       checked={editFormData.isActive}
@@ -880,7 +863,7 @@ export const UserManagementPage: React.FC = () => {
                   )}
                   {currentUser?.id !== editingUser.id &&
                     editingUser.isActive &&
-                    (editingUser.role === 'admin' || editingUser.role === 'superadmin') &&
+                    editingUser.role === 'admin' &&
                     activeAdminsCount <= 1 && (
                       <span style={{ fontSize: '11px', color: '#E65100', marginLeft: '1.625rem' }}>
                         Final Admin protection: Cannot deactivate the only active administrator.

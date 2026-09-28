@@ -5,7 +5,7 @@ export interface CreateUserData {
   name: string;
   email: string;
   password: string;
-  role: 'admin' | 'editor' | 'superadmin';
+  role: 'admin' | 'editor';
   isActive: boolean;
 }
 
@@ -13,7 +13,7 @@ export interface UpdateUserData {
   name?: string;
   email?: string;
   password?: string;
-  role?: 'admin' | 'editor' | 'superadmin';
+  role?: 'admin' | 'editor';
   isActive?: boolean;
 }
 

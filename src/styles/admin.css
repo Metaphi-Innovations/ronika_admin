@@ -638,6 +638,7 @@ body {
 }
 
 .sidebar-footer {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -654,6 +655,81 @@ body {
   background-color: rgba(255, 255, 255, 0.05);
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.user-profile-badge:hover,
+.user-profile-badge.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.sidebar-user-dropdown-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background-color: #1F1F1F;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 100;
+  animation: adminDropdownFade 0.15s ease-out;
+}
+
+@keyframes adminDropdownFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sidebar-user-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #E0E0E0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  font-family: var(--admin-font-display);
+}
+
+.sidebar-user-dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+}
+
+.sidebar-user-dropdown-item.text-danger {
+  color: #EF5350;
+}
+
+.sidebar-user-dropdown-item.text-danger:hover {
+  background-color: rgba(239, 83, 80, 0.15);
+  color: #FF7043;
+}
+
+.sidebar-user-dropdown-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
 }
 
 .user-avatar {

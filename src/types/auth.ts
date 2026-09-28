@@ -2,7 +2,7 @@ export interface AdminUser {
   id: string;
   email: string;
   name: string;
-  role: 'superadmin' | 'admin' | 'editor';
+  role: 'admin' | 'editor';
   isActive: boolean;
   lastLogin?: string | null;
   createdAt?: string;
