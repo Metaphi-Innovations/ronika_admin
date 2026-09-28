@@ -82,7 +82,6 @@ export const AdminLayout: React.FC = () => {
       title: 'OVERVIEW',
       items: [
         { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { label: 'Profile', path: '/profile', icon: User },
         ...(isFullAdmin
           ? [{ label: 'User Management', path: '/users', icon: Users }]
           : []),

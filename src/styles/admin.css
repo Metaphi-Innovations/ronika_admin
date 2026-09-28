@@ -683,6 +683,13 @@ body {
   animation: adminDropdownFade 0.15s ease-out;
 }
 
+.admin-sidebar.collapsed .sidebar-user-dropdown-menu {
+  bottom: 0;
+  left: calc(100% + 8px);
+  right: auto;
+  width: 170px;
+}
+
 @keyframes adminDropdownFade {
   from {
     opacity: 0;
