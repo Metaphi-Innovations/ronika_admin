@@ -39,7 +39,7 @@ export const LoginPage: React.FC = () => {
       <div className="auth-sidebar">
         <div className="auth-sidebar-top">
           <span className="auth-sidebar-title">Ronika Bhatia</span>
-          <span className="auth-sidebar-subtitle">Admin CMS Control Panel</span>
+          <span className="auth-sidebar-subtitle">Admin Panel</span>
         </div>
 
         <div className="auth-sidebar-center">

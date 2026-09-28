@@ -1,66 +1,77 @@
 import React from 'react';
-import { FolderKanban, Layers, Wrench, User, MessageSquare, Settings } from 'lucide-react';
+import { Layers, Wrench, User, MessageSquare, Settings } from 'lucide-react';
+import { AdminSection, PageHeader } from '../components/AdminSection';
 
-const PageWrapper: React.FC<{ title: string; description: string; icon: React.ElementType }> = ({
+const PageWrapper: React.FC<{ title: string; subtitle: string; icon: React.ElementType; emptyTitle: string; emptyDesc: string }> = ({
   title,
-  description,
+  subtitle,
   icon: Icon,
+  emptyTitle,
+  emptyDesc,
 }) => (
-  <div style={{ padding: '1rem' }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-      <Icon size={24} />
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0 }}>{title}</h1>
-    </div>
-    <p style={{ color: 'var(--admin-text-muted)', marginBottom: '2rem' }}>{description}</p>
+  <div>
+    <PageHeader title={title} subtitle={subtitle} />
 
-    <div className="admin-card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
-      <div style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-        {title} Management Ready for Phase 03 & 04
+    <AdminSection>
+      <div style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
+        <Icon size={36} color="var(--admin-border-color)" style={{ marginBottom: '0.75rem' }} />
+        <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--admin-text-main)', marginBottom: '0.25rem' }}>
+          {emptyTitle}
+        </h3>
+        <p style={{ color: 'var(--admin-text-muted)', fontSize: '13px', maxWidth: '440px', margin: '0 auto' }}>
+          {emptyDesc}
+        </p>
       </div>
-      <p style={{ color: 'var(--admin-text-muted)', fontSize: '0.85rem', maxWidth: '480px', margin: '0 auto' }}>
-        This content management section will be connected to the MongoDB Atlas CRUD APIs and Cloudinary upload manager in the upcoming implementation phases.
-      </p>
-    </div>
+    </AdminSection>
   </div>
 );
 
-
 export const CategoriesPage: React.FC = () => (
   <PageWrapper
-    title="Categories Management"
-    description="Manage project classification tags and filter criteria."
+    title="Categories"
+    subtitle="Project classification tags"
     icon={Layers}
+    emptyTitle="No categories yet"
+    emptyDesc="Add categories to organize portfolio projects."
   />
 );
 
 export const ServicesPage: React.FC = () => (
   <PageWrapper
-    title="Services Management"
-    description="Update offered design disciplines, consulting services, and expertise listings."
+    title="Services"
+    subtitle="Design disciplines and services"
     icon={Wrench}
+    emptyTitle="No services yet"
+    emptyDesc="Add services to showcase your offerings."
   />
 );
 
 export const ProfilePage: React.FC = () => (
   <PageWrapper
-    title="Profile & Bio Management"
-    description="Edit main biography, headshot photo URL, resume download link, and social channels."
+    title="Profile"
+    subtitle="Biography and credentials"
     icon={User}
+    emptyTitle="Profile Information"
+    emptyDesc="Manage your bio and details in About & Bio."
   />
 );
 
 export const MessagesPage: React.FC = () => (
   <PageWrapper
-    title="Client Messages & Inquiries"
-    description="View and respond to incoming contact submissions from the public portfolio site."
+    title="Messages"
+    subtitle="Client inquiries and contact form submissions"
     icon={MessageSquare}
+    emptyTitle="No messages yet"
+    emptyDesc="Inquiries submitted through your portfolio contact form will appear here."
   />
 );
 
 export const SettingsPage: React.FC = () => (
   <PageWrapper
-    title="CMS Site Settings"
-    description="Configure global metadata, SEO defaults, contact email alerts, and security settings."
+    title="Settings"
+    subtitle="Site preferences and SEO defaults"
     icon={Settings}
+    emptyTitle="Site Configuration"
+    emptyDesc="Configure global metadata and preferences."
   />
 );

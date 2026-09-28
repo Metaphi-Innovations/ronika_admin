@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -11,6 +11,31 @@ export const ResetPasswordPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState<boolean>(true);
+  const [tokenValid, setTokenValid] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!token) {
+      setTokenValid(false);
+      setVerifying(false);
+      return;
+    }
+
+    api.get(`/auth/reset-password/${token}`)
+      .then((res) => {
+        if (res.data.success) {
+          setTokenValid(true);
+        } else {
+          setTokenValid(false);
+        }
+      })
+      .catch(() => {
+        setTokenValid(false);
+      })
+      .finally(() => {
+        setVerifying(false);
+      });
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +58,7 @@ export const ResetPasswordPage: React.FC = () => {
       const res = await api.post(`/auth/reset-password/${token}`, { password });
       setStatus('success');
       setMessage(res.data.message || 'Password successfully reset.');
-      setTimeout(() => navigate('/login'), 3000);
+      setTimeout(() => navigate('/login'), 2500);
     } catch (err: any) {
       setStatus('error');
       setMessage(
@@ -48,7 +73,7 @@ export const ResetPasswordPage: React.FC = () => {
       <div className="auth-sidebar">
         <div className="auth-sidebar-top">
           <span className="auth-sidebar-title">Ronika Bhatia</span>
-          <span className="auth-sidebar-subtitle">Admin CMS Control Panel</span>
+          <span className="auth-sidebar-subtitle">Admin Panel</span>
         </div>
 
         <div className="auth-sidebar-center">
@@ -72,7 +97,23 @@ export const ResetPasswordPage: React.FC = () => {
           <div className="auth-form-wrapper">
             <span className="auth-label-small">Admin Panel</span>
             
-            {status === 'success' ? (
+            {verifying ? (
+              <div style={{ padding: '3rem 0', color: 'var(--admin-text-muted)', fontSize: '14px' }}>
+                Verifying password reset link...
+              </div>
+            ) : !tokenValid ? (
+              <>
+                <h1 className="auth-heading">Link Expired</h1>
+                <p className="auth-subheading">This password reset link is invalid or has already been used.</p>
+                <div className="alert-error" style={{ marginBottom: '24px' }}>
+                  <AlertCircle size={16} />
+                  <span>Password reset links can only be used once within 30 minutes. Please request a new link.</span>
+                </div>
+                <Link to="/forgot-password" className="auth-btn-primary" style={{ display: 'inline-flex', textDecoration: 'none', justifyContent: 'center', width: 'auto', padding: '0.75rem 1.5rem' }}>
+                  Request New Reset Link
+                </Link>
+              </>
+            ) : status === 'success' ? (
               <>
                 <h1 className="auth-heading">Password updated.</h1>
                 <p className="auth-subheading">Your account is secure.</p>
