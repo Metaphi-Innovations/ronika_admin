@@ -183,6 +183,7 @@ export const AdminLayout: React.FC = () => {
                   <NavLink
                     key={item.path}
                     to={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
                     className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                     title={sidebarCollapsed ? item.label : undefined}
                   >

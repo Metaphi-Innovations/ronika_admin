@@ -20,6 +20,7 @@ import {
   updateProject,
   uploadHeroImage,
   uploadGalleryImages,
+  replaceGalleryImage,
   deleteGalleryImage,
   reorderGalleryImages,
   IProject,
@@ -58,8 +59,7 @@ export const ProjectEditor: React.FC = () => {
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
-  const [deleteImageTarget, setDeleteImageTarget] = useState<{ id: string } | null>(null);
-  const [deletingImage, setDeletingImage] = useState(false);
+  const [replacingImageId, setReplacingImageId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<IProject>>({
     title: '',
@@ -568,21 +568,73 @@ export const ProjectEditor: React.FC = () => {
     }
   };
 
-  const confirmDeleteImage = async () => {
-    if (!id || !deleteImageTarget) return;
+  // Handle in-place gallery image replacement to preserve fixed positional ratios
+  const handleReplaceGalleryImage = async (
+    imageId: string,
+    index: number,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // Reset input so user can pick the same file again if desired
+    if (!file) return;
+
+    const position = index + 1;
+    const slot = getProjectImageSlot(position);
+
     try {
-      setDeletingImage(true);
-      await deleteGalleryImage(id, deleteImageTarget.id);
-      setFormData((prev) => ({
-        ...prev,
-        images: prev.images?.filter((img) => img._id !== deleteImageTarget.id),
-      }));
-      setDeleteImageTarget(null);
-      alert.success('Gallery image removed successfully.', 'Removed');
+      // 1. Client-side dimension and ratio verification against this exact slot
+      const { width, height } = await readImageDimensions(file);
+      const validation = validateSlotDimensions(width, height, slot);
+
+      if (!validation.valid) {
+        alert.error(
+          `✕ Replacement image rejected\n\nPosition ${position} requires an image that is:\n${slot.expectedText}\n\nYour selected image ("${file.name}") is:\n${width} × ${height} px.\n\nPlease upload an image with the exact required ratio.`,
+          `Position ${position} Dimension Mismatch`
+        );
+        return;
+      }
+
+      // 2. Upload replacement image to server if project already exists
+      if (id) {
+        setReplacingImageId(imageId);
+        const res = await replaceGalleryImage(id, imageId, file);
+        if (res.data?.images) {
+          setFormData((prev) => ({ ...prev, images: res.data.images }));
+        }
+        alert.success(
+          `✓ Position ${position} image replaced successfully with "${file.name}" (${width} × ${height} px).`,
+          'Image Replaced'
+        );
+      } else {
+        // If creating a brand new unsaved project
+        const previewUrl = URL.createObjectURL(file);
+        setFormData((prev) => {
+          const updated = [...(prev.images || [])];
+          if (updated[index]) {
+            updated[index] = {
+              ...updated[index],
+              url: previewUrl,
+              filename: file.name,
+              originalName: file.name,
+              width,
+              height,
+              aspectRatio: height > 0 ? parseFloat((width / height).toFixed(4)) : 0,
+            };
+          }
+          return { ...prev, images: updated };
+        });
+        alert.success(
+          `✓ Position ${position} image replaced. Click Save Project to upload.`,
+          'Image Staged'
+        );
+      }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to remove gallery image', 'Error');
+      alert.error(
+        err.response?.data?.message || err.message || 'Failed to replace image',
+        'Replacement Error'
+      );
     } finally {
-      setDeletingImage(false);
+      setReplacingImageId(null);
     }
   };
 
@@ -1316,6 +1368,7 @@ export const ProjectEditor: React.FC = () => {
                               <div
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
+                                className="project-gallery-item-card"
                                 style={{
                                   ...provided.draggableProps.style,
                                   display: 'flex',
@@ -1388,6 +1441,7 @@ export const ProjectEditor: React.FC = () => {
 
                                 {/* Content & Position Details */}
                                 <div
+                                  className="project-gallery-item-content"
                                   style={{
                                     flex: 1,
                                     display: 'flex',
@@ -1512,8 +1566,11 @@ export const ProjectEditor: React.FC = () => {
                                     </div>
                                   </div>
 
-                                  {/* Action Controls: Accessible Move Up/Down + Delete */}
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  {/* Action Controls: Accessible Move Up/Down + Replace */}
+                                  <div
+                                    className="project-gallery-item-actions"
+                                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                  >
                                     {/* Keyboard / Touch Accessible Reorder Buttons (strictly obeys compatibility) */}
                                     <button
                                       type="button"
@@ -1544,15 +1601,42 @@ export const ProjectEditor: React.FC = () => {
                                       <ChevronDown size={15} />
                                     </button>
 
-                                    <button
-                                      type="button"
-                                      onClick={() => setDeleteImageTarget({ id: img._id })}
-                                      className="admin-btn-icon danger"
-                                      title="Delete Image"
-                                      style={{ marginLeft: '4px' }}
+                                    {/* Upload Image for Replacement Button (preserves exact position and ratio) */}
+                                    <label
+                                      className="admin-btn secondary"
+                                      style={{
+                                        fontSize: '11.5px',
+                                        padding: '4px 10px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '5px',
+                                        cursor: replacingImageId === img._id ? 'wait' : 'pointer',
+                                        opacity: replacingImageId === img._id ? 0.7 : 1,
+                                        borderRadius: '4px',
+                                        border: '1px solid var(--admin-border-color)',
+                                        background: '#FFFFFF',
+                                        whiteSpace: 'nowrap',
+                                        userSelect: 'none',
+                                        marginLeft: '4px',
+                                      }}
+                                      title={`Upload an image to replace Position ${position} (Required: ${slot.expectedText})`}
                                     >
-                                      <Trash2 size={14} />
-                                    </button>
+                                      {replacingImageId === img._id ? (
+                                        <span>Replacing...</span>
+                                      ) : (
+                                        <>
+                                          <Upload size={13} />
+                                          <span>Replace</span>
+                                        </>
+                                      )}
+                                      <input
+                                        type="file"
+                                        accept="image/jpeg, image/png, image/webp, image/avif"
+                                        disabled={replacingImageId === img._id}
+                                        onChange={(e) => handleReplaceGalleryImage(img._id, index, e)}
+                                        style={{ display: 'none' }}
+                                      />
+                                    </label>
                                   </div>
                                 </div>
                               </div>
@@ -1569,16 +1653,6 @@ export const ProjectEditor: React.FC = () => {
           )}
         </AdminSection>
       </div>
-
-      <ConfirmModal
-        isOpen={Boolean(deleteImageTarget)}
-        title="Delete Gallery Artwork?"
-        message="Are you sure you want to permanently remove this image from the project gallery? This action cannot be undone."
-        confirmLabel="Delete Artwork"
-        isLoading={deletingImage}
-        onConfirm={confirmDeleteImage}
-        onClose={() => setDeleteImageTarget(null)}
-      />
     </div>
   );
 };

@@ -13,10 +13,12 @@ export const ResetPasswordPage: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [verifying, setVerifying] = useState<boolean>(true);
   const [tokenValid, setTokenValid] = useState<boolean>(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
       setTokenValid(false);
+      setVerificationError('No reset token provided.');
       setVerifying(false);
       return;
     }
@@ -29,8 +31,9 @@ export const ResetPasswordPage: React.FC = () => {
           setTokenValid(false);
         }
       })
-      .catch(() => {
+      .catch((err) => {
         setTokenValid(false);
+        setVerificationError(err.response?.data?.message || 'This password reset link is invalid, has expired (5-minute limit), or has already been used.');
       })
       .finally(() => {
         setVerifying(false);
@@ -103,11 +106,11 @@ export const ResetPasswordPage: React.FC = () => {
               </div>
             ) : !tokenValid ? (
               <>
-                <h1 className="auth-heading">Link Expired</h1>
-                <p className="auth-subheading">This password reset link is invalid or has already been used.</p>
+                <h1 className="auth-heading">Link Expired or Used</h1>
+                <p className="auth-subheading">This password reset link is invalid, has expired, or has already been used.</p>
                 <div className="alert-error" style={{ marginBottom: '24px' }}>
                   <AlertCircle size={16} />
-                  <span>Password reset links can only be used once within 30 minutes. Please request a new link.</span>
+                  <span>{verificationError || 'Password reset links are valid for 5 minutes and can only be used once. Please request a new link.'}</span>
                 </div>
                 <Link to="/forgot-password" className="auth-btn-primary" style={{ display: 'inline-flex', textDecoration: 'none', justifyContent: 'center', width: 'auto', padding: '0.75rem 1.5rem' }}>
                   Request New Reset Link

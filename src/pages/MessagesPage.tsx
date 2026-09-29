@@ -394,7 +394,7 @@ export const MessagesPage: React.FC = () => {
         >
           <div
             className="admin-card"
-            style={{ width: '520px', padding: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}
+            style={{ width: 'min(94vw, 520px)', padding: '1.25rem', maxHeight: '90dvh', overflowY: 'auto' }}
           >
             <div
               style={{
@@ -440,7 +440,7 @@ export const MessagesPage: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem' }}>
+              <div className="admin-two-col-grid" style={{ gap: '0.875rem' }}>
                 <div>
                   <label className="admin-label" style={{ fontSize: '11px' }}>
                     Client Name
@@ -469,7 +469,7 @@ export const MessagesPage: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem' }}>
+              <div className="admin-two-col-grid" style={{ gap: '0.875rem' }}>
                 <div>
                   <label className="admin-label" style={{ fontSize: '11px' }}>
                     Email Address

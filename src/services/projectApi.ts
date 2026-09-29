@@ -112,6 +112,18 @@ export const reorderGalleryImages = async (projectId: string, orderUpdates: { im
   return response.data;
 };
 
+export const replaceGalleryImage = async (projectId: string, imageId: string, file: File) => {
+  const formData = new FormData();
+  formData.append('gallery', file);
+
+  const response = await api.put(`/admin/projects/${projectId}/images/${imageId}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
 export const deleteGalleryImage = async (projectId: string, imageId: string) => {
   const response = await api.delete(`/admin/projects/${projectId}/images/${imageId}`);
   return response.data;

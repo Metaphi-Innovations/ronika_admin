@@ -151,8 +151,9 @@ export const AboutPageEditor: React.FC = () => {
     try {
       setSaving(true);
       setErrorMsg('');
+      const { _id, __v, createdAt, updatedAt, ...cleanContent } = content as any;
       const res = await updateAboutContent({
-        ...content,
+        ...cleanContent,
         heading: content.heading || 'About Ronika Bhatia',
         bioParagraphs: (content.bioParagraphs || []).filter((p) => p.trim() !== ''),
       });
@@ -160,8 +161,9 @@ export const AboutPageEditor: React.FC = () => {
         alert.success('About page content saved successfully!', 'Saved');
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to save about page content', 'Save Error');
-      setErrorMsg(err.message || 'Failed to save about page content');
+      const msg = err.response?.data?.message || err.message || 'Failed to save about page content';
+      alert.error(msg, 'Save Error');
+      setErrorMsg(msg);
     } finally {
       setSaving(false);
     }

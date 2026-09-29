@@ -546,7 +546,11 @@ export const UserManagementPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser}>
+            <form onSubmit={handleCreateUser} autoComplete="off">
+              {/* Dummy hidden inputs to intercept aggressive browser credential autofill */}
+              <input type="text" name="fake_username_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+              <input type="password" name="fake_password_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="new-password" />
+
               <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {modalError && (
                   <div
@@ -568,6 +572,8 @@ export const UserManagementPage: React.FC = () => {
                   <label className="admin-form-label">Full Name *</label>
                   <input
                     type="text"
+                    name="new_admin_full_name"
+                    autoComplete="off"
                     value={newUserData.name}
                     onChange={(e) =>
                       setNewUserData((prev) => ({ ...prev, name: e.target.value }))
@@ -583,6 +589,8 @@ export const UserManagementPage: React.FC = () => {
                   <label className="admin-form-label">Email Address *</label>
                   <input
                     type="email"
+                    name="new_admin_account_email"
+                    autoComplete="new-password"
                     value={newUserData.email}
                     onChange={(e) =>
                       setNewUserData((prev) => ({ ...prev, email: e.target.value }))
@@ -618,6 +626,8 @@ export const UserManagementPage: React.FC = () => {
                   <div style={{ position: 'relative' }}>
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      name="new_admin_account_password"
+                      autoComplete="new-password"
                       value={newUserData.password}
                       onChange={(e) =>
                         setNewUserData((prev) => ({ ...prev, password: e.target.value }))
@@ -653,6 +663,8 @@ export const UserManagementPage: React.FC = () => {
                   <label className="admin-form-label">Confirm Password *</label>
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    name="new_admin_account_confirm_password"
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
@@ -741,7 +753,11 @@ export const UserManagementPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleUpdateUser}>
+            <form onSubmit={handleUpdateUser} autoComplete="off">
+              {/* Dummy hidden inputs to intercept aggressive browser credential autofill */}
+              <input type="text" name="fake_edit_username_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+              <input type="password" name="fake_edit_password_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="new-password" />
+
               <div
                 className="modal-body"
                 style={{
@@ -773,6 +789,8 @@ export const UserManagementPage: React.FC = () => {
                   <label className="admin-form-label">Full Name *</label>
                   <input
                     type="text"
+                    name="edit_admin_full_name"
+                    autoComplete="off"
                     value={editFormData.name}
                     onChange={(e) =>
                       setEditFormData((prev) => ({ ...prev, name: e.target.value }))
@@ -787,6 +805,8 @@ export const UserManagementPage: React.FC = () => {
                   <label className="admin-form-label">Email Address *</label>
                   <input
                     type="email"
+                    name="edit_admin_email_field"
+                    autoComplete="off"
                     value={editFormData.email}
                     onChange={(e) =>
                       setEditFormData((prev) => ({ ...prev, email: e.target.value }))
@@ -919,6 +939,8 @@ export const UserManagementPage: React.FC = () => {
                         <div style={{ position: 'relative' }}>
                           <input
                             type={showEditPassword ? 'text' : 'password'}
+                            name="edit_admin_new_password"
+                            autoComplete="new-password"
                             value={editFormData.newPassword}
                             onChange={(e) =>
                               setEditFormData((prev) => ({
@@ -956,6 +978,8 @@ export const UserManagementPage: React.FC = () => {
                         <label className="admin-form-label">Confirm New Password</label>
                         <input
                           type={showEditPassword ? 'text' : 'password'}
+                          name="edit_admin_confirm_password"
+                          autoComplete="new-password"
                           value={editFormData.confirmNewPassword}
                           onChange={(e) =>
                             setEditFormData((prev) => ({

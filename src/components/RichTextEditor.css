@@ -132,6 +132,12 @@
   padding-left: 1.5em;
 }
 
+.rte-content ul li::marker {
+  font-size: 1.35em;
+  font-weight: 800;
+  color: #111111;
+}
+
 .rte-content a {
   color: #111111;
   text-decoration: underline;

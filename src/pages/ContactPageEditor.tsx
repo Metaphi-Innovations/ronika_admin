@@ -48,12 +48,13 @@ export const ContactPageEditor: React.FC = () => {
 
     try {
       setSaving(true);
-      const res = await updateContactContent(content);
+      const { _id, __v, createdAt, updatedAt, ...cleanContent } = content as any;
+      const res = await updateContactContent(cleanContent);
       if (res.success) {
         alert.success('Contact details saved successfully!', 'Saved');
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to save contact settings', 'Save Error');
+      alert.error(err.response?.data?.message || err.message || 'Failed to save contact settings', 'Save Error');
     } finally {
       setSaving(false);
     }

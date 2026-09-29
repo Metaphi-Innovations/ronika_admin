@@ -95,7 +95,7 @@ export const ForgotPasswordPage: React.FC = () => {
             ) : (
               <>
                 <h1 className="auth-heading">Forgot password?</h1>
-                <p className="auth-subheading">Enter your admin email and we'll send you a secure password reset link.</p>
+                <p className="auth-subheading">Enter your admin email and we'll send you a single-use password reset link (valid for 5 minutes).</p>
 
                 {status === 'error' && message && (
                   <div className="alert-error" style={{ marginBottom: '24px' }}>

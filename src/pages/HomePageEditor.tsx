@@ -415,14 +415,16 @@ export const HomePageEditor: React.FC = () => {
       const featuredIds = selectedFeaturedIds;
 
       if (sectionName === 'E') {
-        const settingsRes = await updateSiteSettings({ ...settings });
+        const { _id, __v, createdAt, updatedAt, ...cleanSettings } = settings as any;
+        const settingsRes = await updateSiteSettings(cleanSettings);
         if (settingsRes.success) {
           alert.success('Global Footer Social Links updated successfully!', 'Saved');
         }
       } else if (sectionName === 'D') {
         // Save Home Content Services Title
+        const { _id, __v, createdAt, updatedAt, ...cleanContent } = content as any;
         await updateHomeContent({
-          ...content,
+          ...cleanContent,
           featuredProjects: featuredIds,
         });
 
@@ -445,8 +447,9 @@ export const HomePageEditor: React.FC = () => {
         await fetchData();
         alert.success('Services Section updated successfully!', 'Saved');
       } else {
+        const { _id, __v, createdAt, updatedAt, ...cleanContent } = content as any;
         const homeRes = await updateHomeContent({
-          ...content,
+          ...cleanContent,
           featuredProjects: featuredIds,
         });
         if (homeRes.success) {
@@ -459,8 +462,9 @@ export const HomePageEditor: React.FC = () => {
         }
       }
     } catch (err: any) {
-      alert.error(err.message || `Failed to save Section ${sectionName}.`, 'Save Error');
-      setErrorMsg(err.message || `Failed to save Section ${sectionName}.`);
+      const msg = err.response?.data?.message || err.message || `Failed to save Section ${sectionName}.`;
+      alert.error(msg, 'Save Error');
+      setErrorMsg(msg);
     } finally {
       setSavingSection(null);
     }
@@ -513,7 +517,7 @@ export const HomePageEditor: React.FC = () => {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 320px) 1fr', gap: '1.25rem', alignItems: 'start' }}>
+        <div className="admin-split-grid">
           {/* Traditional Hero Artwork Image Upload Card */}
           <div
             style={{
@@ -747,14 +751,6 @@ export const HomePageEditor: React.FC = () => {
                   >
                     <ArrowDown size={14} />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => removeFeatured(idx)}
-                    className="admin-btn-icon danger"
-                    title="Remove"
-                  >
-                    <Trash2 size={14} />
-                  </button>
                 </div>
               </div>
             );
@@ -815,7 +811,7 @@ export const HomePageEditor: React.FC = () => {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(240px, 280px)', gap: '1.25rem', alignItems: 'start' }}>
+        <div className="admin-split-grid-reverse">
           <div>
             <RichTextEditor
               value={content.introText || ''}
@@ -959,7 +955,7 @@ export const HomePageEditor: React.FC = () => {
         </div>
 
         {/* 3 Service Cards Arranged Horizontally */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+        <div className="admin-auto-grid">
           {services.slice(0, 3).map((srv, idx) => (
             <div
               key={srv._id || idx}
@@ -1050,16 +1046,7 @@ export const HomePageEditor: React.FC = () => {
           {(settings.socialButtons || []).map((btn, idx) => (
             <div
               key={btn._id || idx}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '140px 1fr 100px 110px',
-                gap: '0.75rem',
-                alignItems: 'center',
-                background: 'var(--admin-bg-body)',
-                padding: '0.75rem',
-                borderRadius: '8px',
-                border: '1px solid var(--admin-border-color)',
-              }}
+              className="admin-social-row"
             >
               <input
                 type="text"

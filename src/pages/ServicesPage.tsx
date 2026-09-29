@@ -133,7 +133,7 @@ export const ServicesPage: React.FC = () => {
           }
         >
           <form onSubmit={handleSave}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+            <div className="admin-two-col-grid">
               <div className="admin-form-group">
                 <label className="admin-form-label">Title *</label>
                 <input type="text" name="title" value={formData.title} onChange={handleChange} className="admin-form-input" required />

@@ -37,12 +37,13 @@ export const SettingsPageEditor: React.FC = () => {
     e.preventDefault();
     try {
       setSaving(true);
-      const res = await updateSiteSettings(settings);
+      const { _id, __v, createdAt, updatedAt, ...cleanSettings } = settings as any;
+      const res = await updateSiteSettings(cleanSettings);
       if (res.success) {
         alert.success('Global site settings saved successfully!', 'Saved');
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to save site settings', 'Save Error');
+      alert.error(err.response?.data?.message || err.message || 'Failed to save site settings', 'Save Error');
     } finally {
       setSaving(false);
     }

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Edit2,
   X,
+  Image as ImageIcon,
 } from 'lucide-react';
 import {
   getShopCategories,
@@ -17,6 +18,8 @@ import {
   createShopProduct,
   updateShopProduct,
   deleteShopProduct,
+  uploadShopProductImages,
+  deleteShopProductImage,
   IShopCategory,
   IShopProduct,
 } from '../services/shopApi';
@@ -81,6 +84,9 @@ export const ShopProductsPage: React.FC = () => {
   const [description, setDescription] = useState('');
   const [bulletPoints, setBulletPoints] = useState<string[]>(['', '', '']);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedGalleryFiles, setSelectedGalleryFiles] = useState<File[]>([]);
+  const [galleryModalProduct, setGalleryModalProduct] = useState<IShopProduct | null>(null);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
   const [imagePreview, setImagePreview] = useState<{
     url: string;
     width: number;
@@ -187,6 +193,7 @@ export const ShopProductsPage: React.FC = () => {
     setDescription('');
     setBulletPoints(['', '', '']);
     setSelectedFile(null);
+    setSelectedGalleryFiles([]);
     setImagePreview(null);
     setShowProdModal(true);
   };
@@ -214,6 +221,7 @@ export const ShopProductsPage: React.FC = () => {
       setImagePreview(null);
     }
     setSelectedFile(null);
+    setSelectedGalleryFiles([]);
     setShowProdModal(true);
   };
 
@@ -223,10 +231,86 @@ export const ShopProductsPage: React.FC = () => {
     if (imagePreview?.url && selectedFile) URL.revokeObjectURL(imagePreview.url);
     setImagePreview(null);
     setSelectedFile(null);
+    setSelectedGalleryFiles([]);
     setName('');
     setCategoryId('');
     setDescription('');
     setBulletPoints(['', '', '']);
+  };
+
+  const handleOpenGalleryModal = (prod: IShopProduct) => {
+    setGalleryModalProduct(prod);
+  };
+
+  const handleGalleryFilesUpload = async (productId: string, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    try {
+      setUploadingGallery(true);
+      const validFiles: File[] = [];
+      for (const file of Array.from(files)) {
+        const val = await validateShopImage(file, 600, 600);
+        if (!val.valid) {
+          alert.error(val.error || `File "${file.name}" resolution is too low.`, 'Image Rejected');
+          return;
+        }
+        validFiles.push(file);
+      }
+
+      const formData = new FormData();
+      validFiles.forEach((file) => {
+        formData.append('shop_gallery', file);
+      });
+
+      const res = await uploadShopProductImages(productId, formData);
+      if (res.success) {
+        alert.success(`${validFiles.length} image(s) added to gallery.`);
+        setProducts((prev) => prev.map((p) => (p._id === productId ? res.data : p)));
+        if (galleryModalProduct && galleryModalProduct._id === productId) {
+          setGalleryModalProduct(res.data);
+        }
+        if (editingProduct && editingProduct._id === productId) {
+          setEditingProduct(res.data);
+        }
+      }
+    } catch (err: any) {
+      alert.error(err.message || 'Failed to upload gallery images.');
+    } finally {
+      setUploadingGallery(false);
+    }
+  };
+
+  const handleDeleteGalleryImage = async (productId: string, imageId: string) => {
+    try {
+      const res = await deleteShopProductImage(productId, imageId);
+      if (res.success) {
+        alert.info('Image removed from gallery.');
+        setProducts((prev) => prev.map((p) => (p._id === productId ? res.data : p)));
+        if (galleryModalProduct && galleryModalProduct._id === productId) {
+          setGalleryModalProduct(res.data);
+        }
+        if (editingProduct && editingProduct._id === productId) {
+          setEditingProduct(res.data);
+        }
+      }
+    } catch (err: any) {
+      alert.error(err.message || 'Failed to remove image.');
+    }
+  };
+
+  const handleCreateGallerySelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const validFiles: File[] = [];
+    for (const file of Array.from(files)) {
+      const val = await validateShopImage(file, 600, 600);
+      if (!val.valid) {
+        alert.error(val.error || `File "${file.name}" resolution is too low.`, 'Image Rejected');
+        e.target.value = '';
+        return;
+      }
+      validFiles.push(file);
+    }
+    setSelectedGalleryFiles(validFiles);
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -261,6 +345,11 @@ export const ShopProductsPage: React.FC = () => {
       formData.append('details', JSON.stringify({ bulletPoints: activeBullets }));
       if (selectedFile) {
         formData.append('shop_main', selectedFile);
+      }
+      if (!editingProduct && selectedGalleryFiles.length > 0) {
+        selectedGalleryFiles.forEach((file) => {
+          formData.append('shop_gallery', file);
+        });
       }
 
       if (editingProduct) {
@@ -439,6 +528,7 @@ export const ShopProductsPage: React.FC = () => {
                   <th style={{ width: '60px' }}>S.No.</th>
                   <th>Product</th>
                   <th>Category</th>
+                  <th>Gallery</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -462,8 +552,8 @@ export const ShopProductsPage: React.FC = () => {
                           {String(index + 1).padStart(2, '0')}
                         </span>
                       </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                      <td style={{ minWidth: '180px', maxWidth: '300px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', minWidth: 0 }}>
                           <div
                             style={{
                               width: '44px',
@@ -481,18 +571,32 @@ export const ShopProductsPage: React.FC = () => {
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
                           </div>
-                          <div>
+                          <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
                             <div
                               style={{
                                 fontWeight: 600,
                                 fontSize: '13.5px',
                                 color: 'var(--admin-text-main)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
                               }}
+                              title={prod.name}
                             >
                               {prod.name}
                             </div>
-                            <div style={{ fontSize: '11.5px', color: 'var(--admin-text-muted)' }}>
-                              {prod.description || prod.shortDescription}
+                            <div
+                              style={{
+                                fontSize: '11.5px',
+                                color: 'var(--admin-text-muted)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                wordBreak: 'break-all',
+                              }}
+                              title={prod.shortDescription || prod.description || `/${prod.slug}`}
+                            >
+                              {prod.shortDescription || prod.description || `/${prod.slug}`}
                             </div>
                           </div>
                         </div>
@@ -511,6 +615,18 @@ export const ShopProductsPage: React.FC = () => {
                       </td>
                       <td>
                         <button
+                          type="button"
+                          onClick={() => handleOpenGalleryModal(prod)}
+                          className="admin-btn secondary"
+                          style={{ padding: '3px 8px', fontSize: '11.5px', gap: '4px' }}
+                          title="Manage images shown on product view more page"
+                        >
+                          <ImageIcon size={12} />
+                          <span>{prod.images?.length || 1} Photo{(prod.images?.length || 1) !== 1 ? 's' : ''}</span>
+                        </button>
+                      </td>
+                      <td>
+                        <button
                           onClick={() => handleTogglePublish(prod)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                         >
@@ -525,6 +641,13 @@ export const ShopProductsPage: React.FC = () => {
                             justifyContent: 'flex-end',
                           }}
                         >
+                          <button
+                            onClick={() => handleOpenGalleryModal(prod)}
+                            className="admin-btn-icon"
+                            title="Manage Gallery Images"
+                          >
+                            <ImageIcon size={15} />
+                          </button>
                           <button
                             onClick={() => handleEditProduct(prod)}
                             className="admin-btn-icon"
@@ -632,16 +755,15 @@ export const ShopProductsPage: React.FC = () => {
         >
           <div
             className="admin-card"
-            style={{ width: '560px', padding: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}
+            style={{ width: 'min(94vw, 560px)', padding: '1.25rem', maxHeight: '90dvh', overflowY: 'auto' }}
           >
             <h3 style={{ fontSize: '14.5px', fontWeight: 600, marginBottom: '0.875rem' }}>
               {editingProduct ? 'EDIT CATALOG PRODUCT' : 'NEW CATALOG PRODUCT'}
             </h3>
             <form onSubmit={handleSaveProduct}>
               <div
+                className="admin-two-col-grid"
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
                   gap: '0.875rem',
                   marginBottom: '0.875rem',
                 }}
@@ -717,11 +839,13 @@ export const ShopProductsPage: React.FC = () => {
                     <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <span
                         style={{
-                          fontSize: '12px',
-                          color: 'var(--admin-text-muted)',
+                          fontSize: '18px',
+                          fontWeight: 900,
+                          color: 'var(--admin-text-main)',
                           width: '16px',
                           textAlign: 'center',
                           flexShrink: 0,
+                          lineHeight: 1,
                         }}
                       >
                         •
@@ -891,6 +1015,139 @@ export const ShopProductsPage: React.FC = () => {
                 )}
               </div>
 
+              {/* Additional Gallery Images Section */}
+              <div style={{ marginBottom: '1.25rem', paddingTop: '0.875rem', borderTop: '1px solid var(--admin-border-color)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label className="admin-label" style={{ margin: 0, fontWeight: 600 }}>
+                    Additional Gallery Images (View More Left-Side Thumbnails)
+                  </label>
+                  {editingProduct && (
+                    <label
+                      className="admin-btn secondary"
+                      style={{ cursor: 'pointer', fontSize: '11.5px', padding: '3px 8px', gap: '4px' }}
+                    >
+                      <Plus size={12} />
+                      {uploadingGallery ? 'Uploading...' : 'Add Photos'}
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/jpeg, image/png, image/webp, image/avif"
+                        onChange={(e) => handleGalleryFilesUpload(editingProduct._id, e.target.files)}
+                        disabled={uploadingGallery}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  )}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--admin-text-muted)', marginBottom: '8px' }}>
+                  Photos added here will display in the left-side thumbnail column on the product's "View More" detail page.
+                </div>
+
+                {editingProduct ? (
+                  editingProduct.images && editingProduct.images.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(75px, 1fr))', gap: '8px' }}>
+                      {editingProduct.images.map((img: any, idx: number) => (
+                        <div
+                          key={img._id || idx}
+                          style={{
+                            position: 'relative',
+                            aspectRatio: '1/1',
+                            borderRadius: '5px',
+                            overflow: 'hidden',
+                            border: '1px solid var(--admin-border-color)',
+                            background: '#fafaf8'
+                          }}
+                        >
+                          <img
+                            src={img.url}
+                            alt={img.alt || 'Gallery photo'}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                          {editingProduct.images.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteGalleryImage(editingProduct._id, img._id)}
+                              style={{
+                                position: 'absolute',
+                                top: '3px',
+                                right: '3px',
+                                background: 'rgba(255, 0, 0, 0.85)',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '18px',
+                                height: '18px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                              title="Delete photo"
+                            >
+                              <X size={10} />
+                            </button>
+                          )}
+                          {img.url === editingProduct.mainImage?.url && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                background: 'rgba(0,0,0,0.7)',
+                                color: '#fff',
+                                fontSize: '8.5px',
+                                textAlign: 'center',
+                                padding: '1px 0'
+                              }}
+                            >
+                              Main
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '12px', color: 'var(--admin-text-muted)', fontStyle: 'italic', padding: '6px 0' }}>
+                      No additional images yet. Click "Add Photos" above to add more images.
+                    </div>
+                  )
+                ) : (
+                  <div>
+                    <label
+                      style={{
+                        border: '1px dashed var(--admin-border-color)',
+                        borderRadius: '6px',
+                        padding: '10px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        background: '#FAFAF8',
+                        fontSize: '12px',
+                        color: 'var(--admin-text-main)'
+                      }}
+                    >
+                      <Plus size={14} />
+                      <span>
+                        {selectedGalleryFiles.length > 0
+                          ? `${selectedGalleryFiles.length} additional image(s) selected`
+                          : 'Choose additional gallery images (Optional)'}
+                      </span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/jpeg, image/png, image/webp, image/avif"
+                        onChange={handleCreateGallerySelect}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
@@ -910,6 +1167,188 @@ export const ShopProductsPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Dedicated Gallery Modal */}
+      {galleryModalProduct && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            className="admin-card"
+            style={{ width: 'min(94vw, 620px)', padding: '1.25rem', maxHeight: '90dvh', overflowY: 'auto' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 4px 0' }}>
+                  PRODUCT GALLERY: {galleryModalProduct.name}
+                </h3>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--admin-text-muted)' }}>
+                  Manage photos displayed in the "View More" left-side thumbnail strip &amp; image carousel.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGalleryModalProduct(null)}
+                className="admin-btn-icon"
+                title="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Current Images Grid */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label className="admin-label" style={{ marginBottom: '8px' }}>
+                Current Gallery Photos ({galleryModalProduct.images?.length || 0})
+              </label>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+                  gap: '12px',
+                  maxHeight: '320px',
+                  overflowY: 'auto',
+                  padding: '4px',
+                }}
+              >
+                {(galleryModalProduct.images || []).map((img, idx) => (
+                  <div
+                    key={img._id || idx}
+                    style={{
+                      position: 'relative',
+                      aspectRatio: '1/1',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                      border: '1px solid var(--admin-border-color)',
+                      background: '#FAFAF8',
+                    }}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.alt || 'Product image'}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '4px',
+                        left: '4px',
+                        background: 'rgba(0,0,0,0.65)',
+                        color: '#fff',
+                        fontSize: '9.5px',
+                        fontWeight: 600,
+                        padding: '1px 5px',
+                        borderRadius: '3px',
+                      }}
+                    >
+                      #{idx + 1}
+                    </div>
+
+                    {img.url === galleryModalProduct.mainImage?.url ? (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: '4px',
+                          left: '4px',
+                          background: '#2E7D32',
+                          color: '#fff',
+                          fontSize: '9px',
+                          fontWeight: 600,
+                          padding: '1px 5px',
+                          borderRadius: '3px',
+                        }}
+                      >
+                        Main
+                      </div>
+                    ) : null}
+
+                    {galleryModalProduct.images.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteGalleryImage(galleryModalProduct._id, img._id || '')}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          background: 'rgba(211, 47, 47, 0.9)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '22px',
+                          height: '22px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          padding: 0,
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                        }}
+                        title="Delete photo"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Upload Zone */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label className="admin-label">Upload Additional Photos</label>
+              <label
+                style={{
+                  border: '2px dashed var(--admin-border-color)',
+                  borderRadius: '6px',
+                  padding: '1.25rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: uploadingGallery ? 'wait' : 'pointer',
+                  background: '#FAFAF8',
+                  textAlign: 'center',
+                }}
+              >
+                <Upload size={20} color="var(--admin-text-main)" />
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--admin-text-main)' }}>
+                  {uploadingGallery ? 'Uploading Photos...' : 'Click to select additional images (Multi-select)'}
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)' }}>
+                  Min: 600 × 600 px (Supports JPG, PNG, WebP)
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/jpeg, image/png, image/webp, image/avif"
+                  onChange={(e) => handleGalleryFilesUpload(galleryModalProduct._id, e.target.files)}
+                  disabled={uploadingGallery}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setGalleryModalProduct(null)}
+                className="admin-btn primary"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}
