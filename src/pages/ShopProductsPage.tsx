@@ -27,6 +27,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { useAlert } from '../context/AlertContext';
+import { getImageUrl } from '../utils/imageUrl';
 
 const validateShopImage = (
   file: File,
@@ -566,7 +567,7 @@ export const ShopProductsPage: React.FC = () => {
                             }}
                           >
                             <img
-                              src={prod.images?.[0]?.url || '/placeholder.png'}
+                              src={getImageUrl(prod.images?.[0]?.url) || '/placeholder.png'}
                               alt={prod.name}
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
@@ -929,7 +930,7 @@ export const ShopProductsPage: React.FC = () => {
                       }}
                     >
                       <img
-                        src={imagePreview.url}
+                        src={getImageUrl(imagePreview.url)}
                         alt="Preview"
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
@@ -1059,7 +1060,7 @@ export const ShopProductsPage: React.FC = () => {
                           }}
                         >
                           <img
-                            src={img.url}
+                            src={getImageUrl(img.url)}
                             alt={img.alt || 'Gallery photo'}
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />
@@ -1235,7 +1236,7 @@ export const ShopProductsPage: React.FC = () => {
                     }}
                   >
                     <img
-                      src={img.url}
+                      src={getImageUrl(img.url)}
                       alt={img.alt || 'Product image'}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />

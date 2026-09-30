@@ -41,6 +41,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { useAlert } from '../context/AlertContext';
 import { countReadableWords } from '../utils/richText';
+import { getImageUrl } from '../utils/imageUrl';
 
 interface PendingGalleryItem {
   id: string;
@@ -906,7 +907,7 @@ export const ProjectEditor: React.FC = () => {
                 }}
               >
                 <img
-                  src={heroPreview.url}
+                  src={getImageUrl(heroPreview.url)}
                   alt="Cover Preview"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
@@ -1418,7 +1419,7 @@ export const ProjectEditor: React.FC = () => {
                                   }}
                                 >
                                   <img
-                                    src={img.url}
+                                    src={getImageUrl(img.url)}
                                     alt={img.filename}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                   />

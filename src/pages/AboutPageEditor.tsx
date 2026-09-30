@@ -4,6 +4,7 @@ import { getAboutContent, updateAboutContent, uploadAboutHeadshot, IAboutContent
 import { RichTextEditor } from '../components/RichTextEditor';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { useAlert } from '../context/AlertContext';
+import { getImageUrl } from '../utils/imageUrl';
 
 const validatePortraitDimensions = (
   file: File,
@@ -328,7 +329,7 @@ export const AboutPageEditor: React.FC = () => {
                   }}
                 >
                   <img
-                    src={content.headshotImage.url}
+                    src={getImageUrl(content.headshotImage.url)}
                     alt="About Headshot"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />

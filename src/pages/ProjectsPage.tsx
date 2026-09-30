@@ -6,6 +6,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { useAlert } from '../context/AlertContext';
+import { getImageUrl } from '../utils/imageUrl';
 
 export const ProjectsPage: React.FC = () => {
   const alert = useAlert();
@@ -111,7 +112,7 @@ export const ProjectsPage: React.FC = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         {project.heroImage?.url ? (
                           <div style={{ width: '48px', height: '48px', borderRadius: '6px', overflow: 'hidden', background: '#FAFAF8', border: '1px solid var(--admin-border-color)' }}>
-                            <img src={project.heroImage.url} alt={project.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={getImageUrl(project.heroImage.url)} alt={project.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
                         ) : (
                           <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: '#FAFAF8', border: '1px solid var(--admin-border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

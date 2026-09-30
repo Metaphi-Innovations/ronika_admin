@@ -38,6 +38,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { PageHeader } from '../components/AdminSection';
 import { useAlert } from '../context/AlertContext';
+import { getImageUrl } from '../utils/imageUrl';
 import './GalleryAdmin.css';
 
 export const GalleryPageAdmin: React.FC = () => {
@@ -759,7 +760,7 @@ export const GalleryPageAdmin: React.FC = () => {
                       }}
                     >
                       <img
-                        src={item.image?.url}
+                        src={getImageUrl(item.image?.url)}
                         alt={item.title}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
@@ -1002,7 +1003,7 @@ export const GalleryPageAdmin: React.FC = () => {
                   >
                     {/* Visual Card Image — Uniform frame for stable dragging */}
                     <div className="arrange-card-visual">
-                      <img src={item.image?.url} alt={item.title} className="arrange-card-img" />
+                      <img src={getImageUrl(item.image?.url)} alt={item.title} className="arrange-card-img" />
                       <div className="position-badge">Position {positionNumber}</div>
                       <div className="arrange-drag-handle" title="Drag to reorder">
                         <GripVertical size={14} />
@@ -1261,7 +1262,7 @@ export const GalleryPageAdmin: React.FC = () => {
                             <div key={img._id} className="preview-wall-card">
                               <div className="preview-card-frame">
                                 <img
-                                  src={img.image?.url}
+                                  src={getImageUrl(img.image?.url)}
                                   alt={img.title}
                                   className="preview-card-img"
                                 />
@@ -1358,7 +1359,7 @@ export const GalleryPageAdmin: React.FC = () => {
                       }}
                     >
                       <img
-                        src={filePreview.url}
+                        src={getImageUrl(filePreview.url)}
                         alt="Preview"
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
@@ -1496,7 +1497,7 @@ export const GalleryPageAdmin: React.FC = () => {
                     }}
                   >
                     <img
-                      src={replacePreview.url}
+                      src={getImageUrl(replacePreview.url)}
                       alt="New Preview"
                       style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px' }}
                     />

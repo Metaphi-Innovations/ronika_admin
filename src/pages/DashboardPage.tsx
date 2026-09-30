@@ -18,6 +18,7 @@ import { getShopProducts } from '../services/shopApi';
 import { getEnquiries, IEnquiry } from '../services/enquiryApi';
 import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { getImageUrl } from '../utils/imageUrl';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -269,7 +270,7 @@ export const DashboardPage: React.FC = () => {
                             }}
                           >
                             <img
-                              src={project.heroImage.url}
+                              src={getImageUrl(project.heroImage.url)}
                               alt={project.title}
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />

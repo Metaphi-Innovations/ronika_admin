@@ -18,6 +18,7 @@ import { RichTextEditor } from '../components/RichTextEditor';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { countReadableWords, MAX_HERO_QUOTE_WORDS, MAX_CLIENT_BIO_WORDS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
+import { getImageUrl } from '../utils/imageUrl';
 
 export const HomePageEditor: React.FC = () => {
   const alert = useAlert();
@@ -551,7 +552,7 @@ export const HomePageEditor: React.FC = () => {
                   }}
                 >
                   <img
-                    src={content.heroImage.url}
+                    src={getImageUrl(content.heroImage.url)}
                     alt="Hero Artwork"
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
@@ -854,7 +855,7 @@ export const HomePageEditor: React.FC = () => {
                   }}
                 >
                   <img
-                    src={content.introImage.url}
+                    src={getImageUrl(content.introImage.url)}
                     alt="Client Portrait"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
