@@ -100,28 +100,65 @@ export const CategoriesPage: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name?.trim()) {
-      alert.warning('Please enter a category name.', 'Validation Error');
+    const trimmedName = formData.name?.trim() || '';
+    const trimmedSlug = formData.slug?.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '') || '';
+
+    if (!trimmedName) {
+      alert.warning('Please enter a category name.', 'Missing Category Name');
       return;
     }
-    if (!formData.slug?.trim()) {
-      alert.warning('Please enter a category URL slug.', 'Validation Error');
+    if (!trimmedSlug) {
+      alert.warning('Please enter a URL slug for the category.', 'Missing URL Slug');
       return;
     }
+
+    // Client-side duplicate name check (case-insensitive)
+    const duplicateName = categories.find(
+      (c) => c.name.trim().toLowerCase() === trimmedName.toLowerCase() && c._id !== editingId
+    );
+    if (duplicateName) {
+      alert.warning(
+        `A category named "${trimmedName}" already exists. Please choose a different category name.`,
+        'Duplicate Category Name'
+      );
+      return;
+    }
+
+    // Client-side duplicate slug check
+    const duplicateSlug = categories.find(
+      (c) => c.slug.trim().toLowerCase() === trimmedSlug && c._id !== editingId
+    );
+    if (duplicateSlug) {
+      alert.warning(
+        `The URL slug "${trimmedSlug}" is already in use by category "${duplicateSlug.name}". Please enter a unique slug.`,
+        'Duplicate Slug'
+      );
+      return;
+    }
+
+    const payload = {
+      ...formData,
+      name: trimmedName,
+      slug: trimmedSlug,
+    };
 
     try {
       setSaving(true);
       if (isCreating) {
-        await createCategory(formData);
-        alert.success(`Category "${formData.name}" created successfully!`, 'Created');
+        await createCategory(payload);
+        alert.success(`Category "${trimmedName}" created successfully!`, 'Category Created');
       } else if (editingId) {
-        await updateCategory(editingId, formData);
-        alert.success(`Category "${formData.name}" updated successfully!`, 'Updated');
+        await updateCategory(editingId, payload);
+        alert.success(`Category "${trimmedName}" updated successfully!`, 'Category Updated');
       }
       await fetchCategories();
       handleCancel();
     } catch (err: any) {
-      alert.error(err.message || 'Failed to save category', 'Save Failed');
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to save category. Please check your inputs and try again.';
+      alert.error(msg, 'Save Failed');
     } finally {
       setSaving(false);
     }
@@ -133,10 +170,14 @@ export const CategoriesPage: React.FC = () => {
       setDeleting(true);
       await deleteCategory(deleteTarget.id);
       await fetchCategories();
-      alert.info(`Category "${deleteTarget.name}" deleted.`, 'Deleted');
+      alert.info(`Category "${deleteTarget.name}" deleted successfully.`, 'Category Deleted');
       setDeleteTarget(null);
     } catch (err: any) {
-      alert.error(err.message || 'Failed to delete category', 'Delete Failed');
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to delete category. Please try again.';
+      alert.error(msg, 'Delete Failed');
     } finally {
       setDeleting(false);
     }

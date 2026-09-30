@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Bold,
   Italic,
@@ -13,7 +13,7 @@ import {
   Link as LinkIcon,
   Eraser,
 } from 'lucide-react';
-import { countReadableWords, sanitizeRichText, MAX_HERO_QUOTE_WORDS } from '../utils/richText';
+import { countReadableChars, sanitizeRichText } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import './RichTextEditor.css';
 
@@ -22,45 +22,91 @@ export interface RichTextEditorProps {
   onChange: (value: string) => void;
   label?: string;
   disabled?: boolean;
-  maxWords?: number;
+  maxChars?: number;
 }
 
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
-  label = 'Hero Quote',
+  label = 'Content',
   disabled = false,
-  maxWords = MAX_HERO_QUOTE_WORDS,
+  maxChars,
 }) => {
   const alert = useAlert();
   const editorRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
   const lastValidHtmlRef = useRef<string>(value || '');
+  const savedRangeRef = useRef<Range | null>(null);
 
-  const wordCount = countReadableWords(value);
-  const isOverLimit = wordCount > maxWords;
-  const isLimitReached = wordCount >= maxWords;
+  const [activeFormats, setActiveFormats] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    strikeThrough: false,
+    justifyLeft: false,
+    justifyCenter: false,
+    justifyRight: false,
+    justifyFull: false,
+    insertUnorderedList: false,
+    insertOrderedList: false,
+  });
 
-  // Sync incoming value to contentEditable div if changed externally
-  useEffect(() => {
-    if (editorRef.current) {
-      const currentHTML = editorRef.current.innerHTML;
-      if (currentHTML !== value) {
-        editorRef.current.innerHTML = value || '';
+  const charCount = countReadableChars(value);
+  const isOverLimit = maxChars !== undefined && charCount > maxChars;
+  const isLimitReached = maxChars !== undefined && charCount >= maxChars;
+
+  // Track active formats and save current selection range
+  const updateActiveFormats = useCallback(() => {
+    if (!editorRef.current) return;
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editorRef.current.contains(sel.anchorNode)) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+
+      try {
+        setActiveFormats({
+          bold: document.queryCommandState('bold'),
+          italic: document.queryCommandState('italic'),
+          underline: document.queryCommandState('underline'),
+          strikeThrough: document.queryCommandState('strikeThrough'),
+          justifyLeft: document.queryCommandState('justifyLeft'),
+          justifyCenter: document.queryCommandState('justifyCenter'),
+          justifyRight: document.queryCommandState('justifyRight'),
+          justifyFull: document.queryCommandState('justifyFull'),
+          insertUnorderedList: document.queryCommandState('insertUnorderedList'),
+          insertOrderedList: document.queryCommandState('insertOrderedList'),
+        });
+      } catch {
+        // Query state not supported in some older environments
       }
     }
-    if (countReadableWords(value) <= maxWords) {
+  }, []);
+
+  // Sync incoming value to contentEditable div only when NOT actively being focused/edited by the user
+  useEffect(() => {
+    if (editorRef.current) {
+      const isEditorActive =
+        document.activeElement === editorRef.current ||
+        editorRef.current.contains(document.activeElement);
+
+      if (!isEditorActive) {
+        const currentHTML = editorRef.current.innerHTML;
+        if (currentHTML !== value) {
+          editorRef.current.innerHTML = value || '';
+        }
+      }
+    }
+    if (maxChars === undefined || countReadableChars(value) <= maxChars) {
       lastValidHtmlRef.current = value || '';
     }
-  }, [value, maxWords]);
+  }, [value, maxChars]);
 
   const handleInput = () => {
     if (editorRef.current) {
       const rawHTML = editorRef.current.innerHTML;
-      const currentWords = countReadableWords(rawHTML);
+      const currentChars = countReadableChars(rawHTML);
 
-      // Strict enforcement: if user somehow added words exceeding maxWords, revert to last valid state
-      if (currentWords > maxWords) {
+      // Strict enforcement: if user added characters exceeding maxChars, revert to last valid state
+      if (maxChars !== undefined && currentChars > maxChars) {
         editorRef.current.innerHTML = lastValidHtmlRef.current;
 
         // Move cursor to end of text
@@ -82,14 +128,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       const sanitized = sanitizeRichText(rawHTML);
       lastValidHtmlRef.current = sanitized;
       onChange(sanitized);
+      updateActiveFormats();
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (disabled) return;
 
-    // Keys that do not add words: navigation, deletion, shortcuts
-    const nonWordKeys = [
+    // Keys that do not add characters: navigation, deletion, shortcuts
+    const nonCharKeys = [
       'Backspace',
       'Delete',
       'ArrowLeft',
@@ -104,24 +151,38 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       'Escape',
     ];
 
-    if (nonWordKeys.includes(e.key) || e.ctrlKey || e.metaKey || e.altKey) {
+    if (nonCharKeys.includes(e.key) || e.ctrlKey || e.metaKey || e.altKey) {
       return;
     }
 
-    // If text is currently selected, typing will replace that selected text, so allow it initially
-    const selection = window.getSelection();
-    if (selection && selection.toString().trim().length > 0) {
-      return;
-    }
+    if (maxChars !== undefined) {
+      // If text is currently selected, typing will replace that selected text
+      const selection = window.getSelection();
+      const selectedLength = selection ? selection.toString().length : 0;
+      const currentChars = countReadableChars(editorRef.current?.innerHTML || '');
+      const effectiveChars = currentChars - selectedLength;
 
-    const currentWords = countReadableWords(editorRef.current?.innerHTML || '');
-    if (currentWords >= maxWords) {
-      // User is already at or above word limit:
-      // Block Space or Enter to strictly prevent starting a next word
-      if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
-        e.preventDefault();
-        return;
+      if (effectiveChars >= maxChars) {
+        // Strict enforcement: block any additional character or newline
+        if (e.key.length === 1 || e.key === 'Enter') {
+          e.preventDefault();
+          return;
+        }
       }
+    }
+  };
+
+  const handleBeforeInput = (e: any) => {
+    if (disabled || maxChars === undefined) return;
+    if (e.inputType?.startsWith('delete')) return;
+
+    const selection = window.getSelection();
+    const selectedLength = selection ? selection.toString().length : 0;
+    const currentChars = countReadableChars(editorRef.current?.innerHTML || '');
+    const incomingLength = e.data ? e.data.length : 1;
+
+    if (currentChars - selectedLength + incomingLength > maxChars) {
+      e.preventDefault();
     }
   };
 
@@ -131,39 +192,53 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const pasteText = e.clipboardData.getData('text/plain');
     if (!pasteText) return;
 
-    // Calculate remaining allowed word slots
-    const selection = window.getSelection();
-    const selectedText = selection ? selection.toString() : '';
-    const selectedWordCount = countReadableWords(selectedText);
-    const currentWords = countReadableWords(editorRef.current?.innerHTML || '');
-    const effectiveWords = Math.max(0, currentWords - selectedWordCount);
-    const remainingSlots = maxWords - effectiveWords;
+    if (maxChars !== undefined) {
+      const selection = window.getSelection();
+      const selectedText = selection ? selection.toString() : '';
+      const selectedLength = selectedText.length;
+      const currentChars = countReadableChars(editorRef.current?.innerHTML || '');
+      const effectiveChars = Math.max(0, currentChars - selectedLength);
+      const remainingSlots = maxChars - effectiveChars;
 
-    if (remainingSlots <= 0) {
-      return; // Word limit reached; block pasting more words
-    }
+      if (remainingSlots <= 0) {
+        return; // Character limit reached; strictly block pasting more characters
+      }
 
-    const pasteWords = pasteText.trim().split(/\s+/).filter(Boolean);
-    const textToInsert = pasteWords.slice(0, remainingSlots).join(' ');
-
-    document.execCommand('insertText', false, textToInsert);
-    handleInput();
-  };
-
-  const execCmd = (command: string, arg: string | undefined = undefined) => {
-    if (disabled) return;
-    document.execCommand(command, false, arg);
-    if (editorRef.current) {
-      editorRef.current.focus();
+      const textToInsert = pasteText.slice(0, remainingSlots);
+      document.execCommand('insertText', false, textToInsert);
+      handleInput();
+    } else {
+      document.execCommand('insertText', false, pasteText);
       handleInput();
     }
   };
 
-  const handleBlockFormat = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
-    if (val === 'p' || val === 'h3') {
-      execCmd('formatBlock', `<${val}>`);
+  const execCmd = (command: string, arg: string | undefined = undefined) => {
+    if (disabled || !editorRef.current) return;
+
+    // 1. Maintain focus in editor
+    editorRef.current.focus();
+
+    // 2. Restore saved range if selection was lost
+    const sel = window.getSelection();
+    if (savedRangeRef.current) {
+      if (!sel || sel.rangeCount === 0 || !editorRef.current.contains(sel.anchorNode)) {
+        sel?.removeAllRanges();
+        sel?.addRange(savedRangeRef.current);
+      }
     }
+
+    // 3. Execute formatting command cleanly on current active selection
+    document.execCommand(command, false, arg);
+
+    // 4. Update the saved range after formatting
+    if (sel && sel.rangeCount > 0 && editorRef.current.contains(sel.anchorNode)) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+
+    // 5. Update state and trigger input handler
+    updateActiveFormats();
+    handleInput();
   };
 
   const handleAddLink = () => {
@@ -181,7 +256,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   const handleClearFormat = () => {
     execCmd('removeFormat');
-    execCmd('formatBlock', '<p>');
   };
 
   return (
@@ -191,58 +265,72 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <label className="admin-form-label" style={{ marginBottom: 0 }}>
           {label}
         </label>
-        <div className={`rte-word-counter ${isOverLimit ? 'over-limit' : ''} ${isLimitReached ? 'limit-reached' : ''}`} style={isLimitReached ? { borderColor: '#E65100', color: '#E65100', background: '#FFF3E0' } : undefined}>
-          <span className="font-mono">{wordCount}</span> / {maxWords} words {isLimitReached ? '• Limit reached' : ''}
-        </div>
+        {maxChars !== undefined ? (
+          <div
+            className={`rte-word-counter ${isOverLimit ? 'over-limit' : ''} ${
+              isLimitReached ? 'limit-reached' : ''
+            }`}
+            style={
+              isLimitReached
+                ? { borderColor: '#E65100', color: '#E65100', background: '#FFF3E0' }
+                : undefined
+            }
+          >
+            <span className="font-mono">{charCount}</span> / {maxChars} characters{' '}
+            {isLimitReached ? '• Limit reached' : ''}
+          </div>
+        ) : (
+          <div className="rte-word-counter">
+            <span className="font-mono">{charCount}</span> characters
+          </div>
+        )}
       </div>
 
       {/* Editor Box */}
       <div className={`rte-box ${isFocused ? 'focused' : ''} ${isOverLimit ? 'error' : ''}`}>
         {/* Toolbar */}
         <div className="rte-toolbar">
-          <select
-            className="rte-select"
-            onChange={handleBlockFormat}
-            defaultValue="p"
-            disabled={disabled}
-            title="Paragraph / Heading Style"
-          >
-            <option value="p">Paragraph</option>
-            <option value="h3">Heading</option>
-          </select>
-
-          <div className="rte-divider" />
-
+          {/* Bold */}
           <button
             type="button"
-            className="rte-btn"
+            className={`rte-btn ${activeFormats.bold ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => execCmd('bold')}
             disabled={disabled}
             title="Bold"
           >
             <Bold size={15} />
           </button>
+
+          {/* Italic */}
           <button
             type="button"
-            className="rte-btn"
+            className={`rte-btn ${activeFormats.italic ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => execCmd('italic')}
             disabled={disabled}
             title="Italic"
           >
             <Italic size={15} />
           </button>
+
+          {/* Underline */}
           <button
             type="button"
-            className="rte-btn"
+            className={`rte-btn ${activeFormats.underline ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => execCmd('underline')}
             disabled={disabled}
             title="Underline"
           >
             <Underline size={15} />
           </button>
+
+          {/* Strikethrough */}
           <button
             type="button"
-            className="rte-btn"
+            className={`rte-btn ${activeFormats.strikeThrough ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => execCmd('strikeThrough')}
             disabled={disabled}
             title="Strikethrough"
@@ -252,18 +340,23 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
           <div className="rte-divider" />
 
+          {/* Bulleted List */}
           <button
             type="button"
-            className="rte-btn"
+            className={`rte-btn ${activeFormats.insertUnorderedList ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => execCmd('insertUnorderedList')}
             disabled={disabled}
             title="Bulleted List"
           >
             <List size={15} />
           </button>
+
+          {/* Numbered List */}
           <button
             type="button"
-            className="rte-btn"
+            className={`rte-btn ${activeFormats.insertOrderedList ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => execCmd('insertOrderedList')}
             disabled={disabled}
             title="Numbered List"
@@ -273,36 +366,47 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
           <div className="rte-divider" />
 
+          {/* Align Left */}
           <button
             type="button"
-            className="rte-btn"
+            className={`rte-btn ${activeFormats.justifyLeft ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => execCmd('justifyLeft')}
             disabled={disabled}
             title="Align Left"
           >
             <AlignLeft size={15} />
           </button>
+
+          {/* Align Center */}
           <button
             type="button"
-            className="rte-btn"
+            className={`rte-btn ${activeFormats.justifyCenter ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => execCmd('justifyCenter')}
             disabled={disabled}
             title="Align Center"
           >
             <AlignCenter size={15} />
           </button>
+
+          {/* Align Right */}
           <button
             type="button"
-            className="rte-btn"
+            className={`rte-btn ${activeFormats.justifyRight ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => execCmd('justifyRight')}
             disabled={disabled}
             title="Align Right"
           >
             <AlignRight size={15} />
           </button>
+
+          {/* Justify */}
           <button
             type="button"
-            className="rte-btn"
+            className={`rte-btn ${activeFormats.justifyFull ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => execCmd('justifyFull')}
             disabled={disabled}
             title="Justify"
@@ -312,18 +416,23 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
           <div className="rte-divider" />
 
+          {/* Link */}
           <button
             type="button"
             className="rte-btn"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={handleAddLink}
             disabled={disabled}
             title="Add Link"
           >
             <LinkIcon size={15} />
           </button>
+
+          {/* Clear Formatting */}
           <button
             type="button"
             className="rte-btn"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={handleClearFormat}
             disabled={disabled}
             title="Clear Formatting"
@@ -338,17 +447,33 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           className="rte-content"
           contentEditable={!disabled}
           onInput={handleInput}
+          onBeforeInput={handleBeforeInput}
           onKeyDown={handleKeyDown}
+          onKeyUp={updateActiveFormats}
+          onMouseUp={updateActiveFormats}
+          onSelect={updateActiveFormats}
           onPaste={handlePaste}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={() => {
+            setIsFocused(true);
+            updateActiveFormats();
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+            if (editorRef.current) {
+              const sanitized = sanitizeRichText(editorRef.current.innerHTML);
+              if (editorRef.current.innerHTML !== sanitized) {
+                editorRef.current.innerHTML = sanitized;
+              }
+            }
+          }}
           suppressContentEditableWarning
         />
       </div>
 
-      {isOverLimit && (
+      {isOverLimit && maxChars !== undefined && (
         <p className="rte-error-msg">
-          ⚠️ {label} exceeds maximum limit of {maxWords} words ({wordCount} words entered). Please shorten it before saving.
+          ⚠️ {label} exceeds maximum limit of {maxChars} characters ({charCount} characters entered). Please
+          shorten it before saving.
         </p>
       )}
     </div>

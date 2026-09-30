@@ -16,7 +16,7 @@ import { getServices, createService, updateService, deleteService, IService } fr
 import { StatusBadge } from '../components/StatusBadge';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { AdminSection, PageHeader } from '../components/AdminSection';
-import { countReadableWords, MAX_HERO_QUOTE_WORDS, MAX_CLIENT_BIO_WORDS } from '../utils/richText';
+import { countReadableChars, MAX_HERO_QUOTE_CHARS, MAX_CLIENT_BIO_CHARS, MAX_SERVICE_DESC_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
 
@@ -81,20 +81,28 @@ export const HomePageEditor: React.FC = () => {
   }, []);
 
   // Validation helpers
-  const quoteWordCount = countReadableWords(content.heroQuote);
-  const isQuoteOverLimit = quoteWordCount > MAX_HERO_QUOTE_WORDS;
+  const quoteCharCount = countReadableChars(content.heroQuote);
+  const isQuoteOverLimit = quoteCharCount > MAX_HERO_QUOTE_CHARS;
 
-  const bioWordCount = countReadableWords(content.introText);
-  const isBioOverLimit = bioWordCount > MAX_CLIENT_BIO_WORDS;
+  const bioCharCount = countReadableChars(content.introText);
+  const isBioOverLimit = bioCharCount > MAX_CLIENT_BIO_CHARS;
+
+  const getProjectId = (p: any): string => {
+    if (!p) return '';
+    if (typeof p === 'object' && p !== null) {
+      return String(p._id || '');
+    }
+    return String(p);
+  };
 
   const rawFeaturedList = content.featuredProjects || [];
-  const selectedFeaturedIds = rawFeaturedList.map((p: any) => (typeof p === 'object' ? p._id : p));
+  const selectedFeaturedIds = rawFeaturedList.map(getProjectId).filter(Boolean);
 
   const validFeaturedCount = selectedFeaturedIds.length <= 7;
   const hasDuplicateFeatured = new Set(selectedFeaturedIds).size !== selectedFeaturedIds.length;
 
   const invalidProjectItems = selectedFeaturedIds.map(id => {
-    const proj = availableProjects.find(p => p._id === id);
+    const proj = availableProjects.find(p => String(p._id) === id);
     if (!proj) return { id, reason: 'Deleted or non-existent project' };
     if (!proj.published) return { id, title: proj.title, reason: 'Unpublished draft project' };
     return null;
@@ -250,21 +258,28 @@ export const HomePageEditor: React.FC = () => {
 
   // Featured Project Handlers
   const toggleFeaturedProject = (projectId: string) => {
-    if (selectedFeaturedIds.includes(projectId)) {
-      const updated = rawFeaturedList.filter((p: any) => (typeof p === 'object' ? p._id : p) !== projectId);
+    const targetId = String(projectId);
+    const currentList = content.featuredProjects || [];
+    const isCurrentlySelected = selectedFeaturedIds.includes(targetId);
+
+    if (isCurrentlySelected) {
+      const updated = currentList.filter(p => getProjectId(p) !== targetId);
       setContent(prev => ({ ...prev, featuredProjects: updated }));
     } else {
       if (selectedFeaturedIds.length >= 7) {
         alert.warning('Maximum 7 featured projects allowed. Remove a project before adding a new one.', 'Limit Reached');
         return;
       }
-      const projObj = availableProjects.find(p => p._id === projectId);
-      setContent(prev => ({ ...prev, featuredProjects: [...(prev.featuredProjects || []), projObj || projectId] }));
+      const projObj = availableProjects.find(p => String(p._id) === targetId);
+      setContent(prev => ({
+        ...prev,
+        featuredProjects: [...(prev.featuredProjects || []), projObj || targetId]
+      }));
     }
   };
 
   const moveFeatured = (index: number, direction: 'up' | 'down') => {
-    const list = [...rawFeaturedList];
+    const list = [...(content.featuredProjects || [])];
     const targetIdx = direction === 'up' ? index - 1 : index + 1;
     if (targetIdx < 0 || targetIdx >= list.length) return;
     const temp = list[index];
@@ -274,9 +289,11 @@ export const HomePageEditor: React.FC = () => {
   };
 
   const removeFeatured = async (index: number) => {
-    const list = [...rawFeaturedList];
-    const projObj = availableProjects.find(p => p._id === list[index]) || list[index];
-    const title = projObj?.title || 'this project';
+    const list = [...(content.featuredProjects || [])];
+    const item = list[index];
+    const targetId = getProjectId(item);
+    const projObj = availableProjects.find(p => String(p._id) === targetId);
+    const title = projObj?.title || (typeof item === 'object' && item?.title ? item.title : 'this project');
 
     const confirmed = await alert.confirm({
       title: 'Remove Featured Project?',
@@ -397,13 +414,21 @@ export const HomePageEditor: React.FC = () => {
     setSuccessMsg('');
 
     if (sectionName === 'A' && isQuoteOverLimit) {
-      alert.error(`Hero quote exceeds maximum ${MAX_HERO_QUOTE_WORDS} words limit. Please shorten the quote before saving Hero Section.`, 'Limit Exceeded');
+      alert.error(`Hero quote exceeds maximum ${MAX_HERO_QUOTE_CHARS} characters limit. Please shorten the quote before saving Hero Section.`, 'Limit Exceeded');
       return;
     }
 
     if (sectionName === 'C' && isBioOverLimit) {
-      alert.error(`Client bio exceeds maximum ${MAX_CLIENT_BIO_WORDS} words limit. Please shorten the bio before saving Section C.`, 'Limit Exceeded');
+      alert.error(`Client bio exceeds maximum ${MAX_CLIENT_BIO_CHARS} characters limit. Please shorten the bio before saving Section C.`, 'Limit Exceeded');
       return;
+    }
+
+    if (sectionName === 'D') {
+      const overLimitService = services.find((s) => (s.description || '').length > MAX_SERVICE_DESC_CHARS);
+      if (overLimitService) {
+        alert.error(`Service description for "${overLimitService.title || 'Service'}" exceeds maximum ${MAX_SERVICE_DESC_CHARS} characters limit.`, 'Limit Exceeded');
+        return;
+      }
     }
 
     if (sectionName === 'B' && !isFeaturedValid) {
@@ -423,10 +448,8 @@ export const HomePageEditor: React.FC = () => {
         }
       } else if (sectionName === 'D') {
         // Save Home Content Services Title
-        const { _id, __v, createdAt, updatedAt, ...cleanContent } = content as any;
         await updateHomeContent({
-          ...cleanContent,
-          featuredProjects: featuredIds,
+          servicesSectionTitle: content.servicesSectionTitle,
         });
 
         // Save / Update Service Cards
@@ -447,19 +470,43 @@ export const HomePageEditor: React.FC = () => {
         await Promise.all(servicePromises);
         await fetchData();
         alert.success('Services Section updated successfully!', 'Saved');
-      } else {
-        const { _id, __v, createdAt, updatedAt, ...cleanContent } = content as any;
+      } else if (sectionName === 'B') {
+        // Section B: Save Featured Projects & Section Title
         const homeRes = await updateHomeContent({
-          ...cleanContent,
+          introTitle: content.introTitle,
           featuredProjects: featuredIds,
         });
         if (homeRes.success) {
-          const names: Record<string, string> = {
-            A: 'Hero Section updated successfully!',
-            B: 'Featured Projects updated successfully!',
-            C: 'Biography & Portrait updated successfully!',
-          };
-          alert.success(names[sectionName] || `Section ${sectionName} updated successfully!`, 'Saved');
+          await fetchData();
+          alert.success(
+            `Featured Projects updated successfully! (${featuredIds.length} projects are now active in the homepage showcase).`,
+            'Saved'
+          );
+        }
+      } else if (sectionName === 'A') {
+        // Section A: Save Hero Quote & Artwork
+        const homeRes = await updateHomeContent({
+          heroTitle: content.heroTitle,
+          heroSubtitle: content.heroSubtitle,
+          heroQuote: content.heroQuote,
+          heroQuoteAuthor: content.heroQuoteAuthor,
+          heroImage: content.heroImage,
+        });
+        if (homeRes.success) {
+          await fetchData();
+          alert.success('Hero Section updated successfully!', 'Saved');
+        }
+      } else if (sectionName === 'C') {
+        // Section C: Save Biography & Portrait
+        const homeRes = await updateHomeContent({
+          introText: content.introText,
+          introImage: content.introImage,
+          ctaText: content.ctaText,
+          ctaLink: content.ctaLink,
+        });
+        if (homeRes.success) {
+          await fetchData();
+          alert.success('Biography & Portrait updated successfully!', 'Saved');
         }
       }
     } catch (err: any) {
@@ -514,7 +561,7 @@ export const HomePageEditor: React.FC = () => {
       >
         {isQuoteOverLimit && (
           <div style={{ padding: '0.75rem 1rem', background: '#FFEBEE', color: 'var(--admin-danger)', borderRadius: '6px', marginBottom: '1rem', border: '1px solid #FFCDD2', fontSize: '13px', fontWeight: 500 }}>
-            ⚠️ Hero Quote exceeds the maximum limit of {MAX_HERO_QUOTE_WORDS} words (Current: {quoteWordCount} words). Please shorten your quote to save Hero Section.
+            ⚠️ Hero Quote exceeds the maximum limit of {MAX_HERO_QUOTE_CHARS} characters (Current: {quoteCharCount} characters). Please shorten your quote to save Hero Section.
           </div>
         )}
 
@@ -629,7 +676,7 @@ export const HomePageEditor: React.FC = () => {
               value={content.heroQuote || ''}
               onChange={(val) => setContent({ ...content, heroQuote: val })}
               label="Hero Editorial Quote (Rich Text)"
-              maxWords={MAX_HERO_QUOTE_WORDS}
+              maxChars={MAX_HERO_QUOTE_CHARS}
             />
 
             <div style={{ maxWidth: '380px' }}>
@@ -700,7 +747,7 @@ export const HomePageEditor: React.FC = () => {
         {/* Current 7 Featured Projects Order List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
           {selectedFeaturedIds.map((projId, idx) => {
-            const projObj = availableProjects.find(p => p._id === projId);
+            const projObj = availableProjects.find(p => String(p._id) === String(projId));
             const isInvalid = !projObj || !projObj.published;
             const title = projObj ? projObj.title : `Missing/Deleted Project (${projId})`;
 
@@ -752,6 +799,14 @@ export const HomePageEditor: React.FC = () => {
                   >
                     <ArrowDown size={14} />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => removeFeatured(idx)}
+                    className="admin-btn-icon danger"
+                    title="Remove from Featured"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             );
@@ -761,14 +816,14 @@ export const HomePageEditor: React.FC = () => {
         <label className="admin-form-label">Available Published Projects (Click to toggle selection)</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
           {availableProjects.map((p) => {
-            const isSelected = selectedFeaturedIds.includes(p._id);
+            const isSelected = selectedFeaturedIds.includes(String(p._id));
             const isPub = p.published;
 
             return (
               <button
                 key={p._id}
                 type="button"
-                onClick={() => toggleFeaturedProject(p._id)}
+                onClick={() => toggleFeaturedProject(String(p._id))}
                 style={{
                   padding: '0.4rem 0.75rem',
                   borderRadius: '20px',
@@ -808,7 +863,7 @@ export const HomePageEditor: React.FC = () => {
       >
         {isBioOverLimit && (
           <div style={{ padding: '0.75rem 1rem', background: '#FFEBEE', color: 'var(--admin-danger)', borderRadius: '6px', marginBottom: '1rem', border: '1px solid #FFCDD2', fontSize: '13px', fontWeight: 500 }}>
-            ⚠️ Client Bio exceeds the maximum limit of {MAX_CLIENT_BIO_WORDS} words (Current: {bioWordCount} words). Please shorten your bio text to save Section C.
+            ⚠️ Client Bio exceeds the maximum limit of {MAX_CLIENT_BIO_CHARS} characters (Current: {bioCharCount} characters). Please shorten your bio text to save Section C.
           </div>
         )}
 
@@ -818,7 +873,7 @@ export const HomePageEditor: React.FC = () => {
               value={content.introText || ''}
               onChange={(val) => setContent({ ...content, introText: val })}
               label="Biography / Intro Text (Rich Text)"
-              maxWords={MAX_CLIENT_BIO_WORDS}
+              maxChars={MAX_CLIENT_BIO_CHARS}
             />
           </div>
 
@@ -1000,10 +1055,19 @@ export const HomePageEditor: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                <label className="admin-form-label" style={{ fontSize: '12px', marginBottom: '4px' }}>Description *</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label className="admin-form-label" style={{ fontSize: '12px', margin: 0 }}>Description *</label>
+                  <span style={{ fontSize: '11px', color: (srv.description || '').length >= MAX_SERVICE_DESC_CHARS ? '#E65100' : 'var(--admin-text-muted)' }}>
+                    {(srv.description || '').length} / {MAX_SERVICE_DESC_CHARS} characters
+                  </span>
+                </div>
                 <textarea
                   value={srv.description || ''}
-                  onChange={(e) => handleUpdateServiceLocal(idx, { description: e.target.value })}
+                  maxLength={MAX_SERVICE_DESC_CHARS}
+                  onChange={(e) => {
+                    const truncated = e.target.value.slice(0, MAX_SERVICE_DESC_CHARS);
+                    handleUpdateServiceLocal(idx, { description: truncated });
+                  }}
                   className="admin-form-textarea"
                   style={{ marginBottom: 0, resize: 'vertical', minHeight: '80px', flex: 1 }}
                   rows={3}

@@ -10,18 +10,22 @@ export const ForgotPasswordPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email.trim()) return;
 
     try {
       setStatus('loading');
       setMessage(null);
-      const res = await api.post('/auth/forgot-password', { email });
+      const res = await api.post('/auth/forgot-password', { email: email.trim() });
       setStatus('success');
-      setMessage(res.data.message || "If an account exists for this email, we've sent instructions to reset your password.");
+      setMessage(
+        res.data.message ||
+        "If an account exists for this email, we've sent instructions to reset your password."
+      );
     } catch (err: any) {
       setStatus('error');
       setMessage(
-        err.response?.data?.message || 'Something went wrong. Please try again.'
+        err.response?.data?.message ||
+        'Password reset could not be completed. Please verify your email or contact support.'
       );
     }
   };
@@ -43,11 +47,6 @@ export const ForgotPasswordPage: React.FC = () => {
             Secure access to your workspace.
           </div>
         </div>
-
-        <div className="auth-sidebar-bottom">
-          <span>Ronika Bhatia Digital Portfolio</span>
-          <span style={{ color: '#555' }}>&copy; 2026</span>
-        </div>
       </div>
 
       {/* Right Authentication Section */}
@@ -62,22 +61,24 @@ export const ForgotPasswordPage: React.FC = () => {
         <div className="auth-form-container">
           <div className="auth-form-wrapper">
             <span className="auth-label-small">Admin Panel</span>
-            
+
             {status === 'success' ? (
               <>
                 <h1 className="auth-heading">Reset link sent.</h1>
                 <p className="auth-subheading">Check your email.</p>
 
-                <div style={{
-                  padding: '1.25rem',
-                  backgroundColor: '#f6fdf9',
-                  border: '1px solid #c5e838',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '12px',
-                  marginBottom: '2rem'
-                }}>
+                <div
+                  style={{
+                    padding: '1.25rem',
+                    backgroundColor: '#f6fdf9',
+                    border: '1px solid #c5e838',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    marginBottom: '2rem',
+                  }}
+                >
                   <CheckCircle size={20} color="#65a30d" style={{ flexShrink: 0, marginTop: '2px' }} />
                   <span style={{ color: '#3f6212', fontSize: '14px', lineHeight: 1.5 }}>
                     {message}
@@ -87,7 +88,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 <Link
                   to="/login"
                   className="auth-btn-primary"
-                  style={{ justifyContent: 'center' }}
+                  style={{ justifyContent: 'center', textDecoration: 'none' }}
                 >
                   Return to Sign In
                 </Link>
@@ -95,7 +96,9 @@ export const ForgotPasswordPage: React.FC = () => {
             ) : (
               <>
                 <h1 className="auth-heading">Forgot password?</h1>
-                <p className="auth-subheading">Enter your admin email and we'll send you a single-use password reset link (valid for 5 minutes).</p>
+                <p className="auth-subheading">
+                  Enter your admin email and we'll send you a single-use password reset link (valid for 5 minutes).
+                </p>
 
                 {status === 'error' && message && (
                   <div className="alert-error" style={{ marginBottom: '24px' }}>
@@ -118,6 +121,7 @@ export const ForgotPasswordPage: React.FC = () => {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       disabled={status === 'loading'}
+                      autoComplete="email"
                     />
                   </div>
 
@@ -140,10 +144,6 @@ export const ForgotPasswordPage: React.FC = () => {
                 </form>
               </>
             )}
-
-            <div style={{ marginTop: '3rem', fontSize: '11px', color: 'var(--admin-text-light)', fontFamily: 'var(--admin-font-accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Ronika Bhatia Admin Panel
-            </div>
           </div>
         </div>
       </div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FolderKanban, Plus, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
-import { getProjects, deleteProject, IProject } from '../services/projectApi';
+import { FolderKanban, Plus, Edit, Trash2, Image as ImageIcon, Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
+import { getProjects, updateProject, deleteProject, IProject } from '../services/projectApi';
+import { getHomeContent } from '../services/contentApi';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
@@ -15,14 +16,24 @@ export const ProjectsPage: React.FC = () => {
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const res = await getProjects();
+      const [res, homeRes] = await Promise.all([getProjects(), getHomeContent()]);
       if (res.success) {
-        setProjects(res.data);
+        const homeFeaturedIds = new Set(
+          (homeRes?.data?.featuredProjects || []).map((p: any) =>
+            typeof p === 'object' && p ? String(p._id) : String(p)
+          ).filter(Boolean)
+        );
+        const syncedProjects = (res.data || []).map((proj: IProject) => ({
+          ...proj,
+          featured: homeFeaturedIds.has(String(proj._id)),
+        }));
+        setProjects(syncedProjects);
       } else {
         setError('Failed to load projects');
       }
@@ -36,6 +47,40 @@ export const ProjectsPage: React.FC = () => {
   useEffect(() => {
     fetchProjects();
   }, []);
+
+  const handleTogglePublish = async (project: IProject) => {
+    if (!project._id || togglingId) return;
+    const newStatus = !project.published;
+    try {
+      setTogglingId(project._id);
+      const res = await updateProject(project._id, { published: newStatus });
+      if (res.success) {
+        setProjects((prev) =>
+          prev.map((p) => {
+            if (p._id === project._id) {
+              return {
+                ...p,
+                published: newStatus,
+                // If unpublished, project is removed from featured showcase
+                featured: newStatus ? p.featured : false,
+              };
+            }
+            return p;
+          })
+        );
+        alert.success(
+          newStatus
+            ? `✓ Project "${project.title}" is now published and live on the portfolio.`
+            : `Project "${project.title}" is now set to Draft (hidden from portfolio).`,
+          newStatus ? 'Project Published' : 'Project Unpublished'
+        );
+      }
+    } catch (err: any) {
+      alert.error(err.message || 'Failed to update publication status.', 'Status Update Failed');
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const confirmDeleteProject = async () => {
     if (!deleteTarget) return;
@@ -101,7 +146,7 @@ export const ProjectsPage: React.FC = () => {
                   <th>Project</th>
                   <th>Category</th>
                   <th>Media</th>
-                  <th>Status</th>
+                  <th>Publication Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -112,7 +157,13 @@ export const ProjectsPage: React.FC = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         {project.heroImage?.url ? (
                           <div style={{ width: '48px', height: '48px', borderRadius: '6px', overflow: 'hidden', background: '#FAFAF8', border: '1px solid var(--admin-border-color)' }}>
-                            <img src={getImageUrl(project.heroImage.url)} alt={project.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img
+                              src={getImageUrl(project.heroImage.url)}
+                              alt={project.title}
+                              loading="lazy"
+                              decoding="async"
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
                           </div>
                         ) : (
                           <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: '#FAFAF8', border: '1px solid var(--admin-border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -142,9 +193,65 @@ export const ProjectsPage: React.FC = () => {
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                        <StatusBadge status={project.published ? 'published' : 'draft'} />
-                        {project.featured && <StatusBadge status="featured" />}
+                      <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {/* Interactive Clickable Publish Toggle Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePublish(project)}
+                          disabled={togglingId === project._id}
+                          title={
+                            project.published
+                              ? 'Live on portfolio. Click to set to Draft (unpublish).'
+                              : 'Draft (hidden). Click to publish live on portfolio.'
+                          }
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 10px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: togglingId === project._id ? 'wait' : 'pointer',
+                            transition: 'all 0.18s ease',
+                            border: project.published ? '1px solid #A5D6A7' : '1px solid #E0E0E0',
+                            background: project.published ? '#E8F5E9' : '#F5F5F5',
+                            color: project.published ? '#2E7D32' : '#616161',
+                            opacity: togglingId === project._id ? 0.6 : 1,
+                            userSelect: 'none',
+                          }}
+                        >
+                          {togglingId === project._id ? (
+                            <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                          ) : project.published ? (
+                            <Eye size={13} color="#2E7D32" />
+                          ) : (
+                            <EyeOff size={13} color="#757575" />
+                          )}
+                          <span>{project.published ? 'Published' : 'Draft'}</span>
+                        </button>
+
+                        {/* Automatic Featured Indicator based on Home Page Selection */}
+                        {project.featured && (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '3px 9px',
+                              borderRadius: '14px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              background: '#FFF8E1',
+                              color: '#B78103',
+                              border: '1px solid #FFE082',
+                            }}
+                            title="Active in Home Page Featured Showcase (managed in Home Page editor)"
+                          >
+                            <Sparkles size={11} />
+                            Featured
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td style={{ textAlign: 'right' }}>

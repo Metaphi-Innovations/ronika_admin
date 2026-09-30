@@ -40,7 +40,6 @@ import {
 import { ConfirmModal } from '../components/ConfirmModal';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { useAlert } from '../context/AlertContext';
-import { countReadableWords } from '../utils/richText';
 import { getImageUrl } from '../utils/imageUrl';
 
 interface PendingGalleryItem {
@@ -183,7 +182,9 @@ export const ProjectEditor: React.FC = () => {
           const projRes = await getProject(id);
           if (projRes.success && projRes.data) {
             setFormData(projRes.data);
-            setSlugManuallyEdited(true);
+            if (projRes.data.slug) {
+              setSlugManuallyEdited(true);
+            }
 
             if (projRes.data.heroImage && projRes.data.heroImage.url) {
               setHeroPreview({
@@ -196,7 +197,8 @@ export const ProjectEditor: React.FC = () => {
           }
         }
       } catch (err: any) {
-        alert.error(err.message || 'Failed to load project details.', 'Error');
+        const msg = err.response?.data?.message || err.message || 'Failed to load project details.';
+        alert.error(msg, 'Load Failed');
       } finally {
         setLoading(false);
       }
@@ -206,23 +208,15 @@ export const ProjectEditor: React.FC = () => {
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;
-    setFormData((prev) => {
-      const updated: Partial<IProject> = { ...prev, title: newTitle };
-      if (!slugManuallyEdited && !isEditing) {
-        updated.slug = newTitle
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '');
-      }
-      return updated;
-    });
+    setFormData((prev) => ({ ...prev, title: newTitle }));
   };
 
   const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSlugManuallyEdited(true);
+    const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '');
+    setSlugManuallyEdited(val.length > 0);
     setFormData((prev) => ({
       ...prev,
-      slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, ''),
+      slug: val,
     }));
   };
 
@@ -352,16 +346,21 @@ export const ProjectEditor: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title?.trim()) {
-      alert.warning('Please enter a project title.', 'Validation Error');
+    const trimmedTitle = formData.title?.trim() || '';
+    let trimmedSlug = formData.slug?.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '') || '';
+
+    if (!trimmedTitle) {
+      alert.warning('Please enter a project title before saving.', 'Missing Project Title');
       return;
     }
-    if (!formData.slug?.trim()) {
-      alert.warning('Please enter a URL slug for the project.', 'Validation Error');
+
+    if (!trimmedSlug) {
+      alert.warning('Please enter a URL slug for the project (e.g. "my-project").', 'Missing URL Slug');
       return;
     }
+
     if (!formData.category) {
-      alert.warning('Please select a project category.', 'Validation Error');
+      alert.warning('Please select a project category from the dropdown.', 'Category Required');
       return;
     }
 
@@ -398,6 +397,8 @@ export const ProjectEditor: React.FC = () => {
       // 1. Save Basic Data
       const projectPayload = {
         ...formData,
+        title: trimmedTitle,
+        slug: trimmedSlug,
         category:
           formData.category && typeof formData.category === 'object'
             ? (formData.category as any)._id
@@ -456,7 +457,11 @@ export const ProjectEditor: React.FC = () => {
         'Project Saved'
       );
     } catch (err: any) {
-      alert.error(err.message || 'Failed to save project', 'Save Failed');
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to save project. Please check your inputs and try again.';
+      alert.error(msg, 'Save Failed');
     } finally {
       setSaving(false);
     }
@@ -648,7 +653,6 @@ export const ProjectEditor: React.FC = () => {
   }
 
   const currentImages = formData.images || [];
-  const descriptionWordCount = countReadableWords(formData.description || '');
 
   return (
     <div>
@@ -726,7 +730,7 @@ export const ProjectEditor: React.FC = () => {
                 name="slug"
                 value={formData.slug || ''}
                 onChange={handleSlugChange}
-                placeholder="project-slug"
+                placeholder="e.g. brand-identity-2026"
                 className="admin-form-input"
                 required
               />
@@ -810,7 +814,7 @@ export const ProjectEditor: React.FC = () => {
                 Project Description
               </label>
               <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)' }}>
-                {descriptionWordCount} words
+                {(formData.description || '').length} characters
               </span>
             </div>
             <textarea
@@ -823,59 +827,47 @@ export const ProjectEditor: React.FC = () => {
             />
           </div>
 
-          {/* Toggles */}
+          {/* Publication & Feature Guidance Note */}
           <div
             style={{
+              marginTop: '1rem',
+              padding: '0.625rem 0.875rem',
+              borderRadius: '6px',
+              background: '#F9F9F8',
+              border: '1px solid var(--admin-border-color)',
+              fontSize: '12px',
+              color: 'var(--admin-text-muted)',
               display: 'flex',
-              gap: '2rem',
-              marginTop: '0.875rem',
-              paddingTop: '0.75rem',
-              borderTop: '1px solid var(--admin-border-color)',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
             }}
           >
-            <label
-              className="admin-switch-row"
+            <span>
+              <strong>Publication & Featured:</strong> Projects can be published live directly from the{' '}
+              <Link to="/projects" style={{ color: 'var(--admin-primary, #111)', fontWeight: 600, textDecoration: 'underline' }}>
+                Portfolio Projects
+              </Link>{' '}
+              list. Homepage featured projects are selected from the{' '}
+              <Link to="/home" style={{ color: 'var(--admin-primary, #111)', fontWeight: 600, textDecoration: 'underline' }}>
+                Home Page
+              </Link>{' '}
+              editor.
+            </span>
+            <span
               style={{
-                margin: 0,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: '10px',
+                background: formData.published ? '#E8F5E9' : '#F5F5F5',
+                color: formData.published ? '#2E7D32' : '#616161',
+                border: formData.published ? '1px solid #A5D6A7' : '1px solid #E0E0E0',
               }}
             >
-              <input
-                type="checkbox"
-                name="published"
-                checked={formData.published || false}
-                onChange={handleChange}
-                style={{ width: '16px', height: '16px', accentColor: '#111' }}
-              />
-              <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--admin-text-main)' }}>
-                Published
-              </span>
-            </label>
-
-            <label
-              className="admin-switch-row"
-              style={{
-                margin: 0,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <input
-                type="checkbox"
-                name="featured"
-                checked={formData.featured || false}
-                onChange={handleChange}
-                style={{ width: '16px', height: '16px', accentColor: '#111' }}
-              />
-              <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--admin-text-main)' }}>
-                Featured on Homepage
-              </span>
-            </label>
+              {formData.published ? 'Live on Portfolio' : 'Draft'}
+            </span>
           </div>
         </AdminSection>
 
@@ -994,14 +986,6 @@ export const ProjectEditor: React.FC = () => {
                       style={{ display: 'none' }}
                     />
                   </label>
-                  <button
-                    type="button"
-                    onClick={removeHeroImage}
-                    className="admin-btn-icon danger"
-                    title="Remove Cover Image"
-                  >
-                    <Trash2 size={15} />
-                  </button>
                 </div>
               </div>
             </div>

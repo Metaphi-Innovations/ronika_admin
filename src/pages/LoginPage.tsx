@@ -1,20 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ArrowRight, AlertCircle, ExternalLink } from 'lucide-react';
+import {
+  ArrowRight,
+  AlertCircle,
+  ExternalLink,
+} from 'lucide-react';
+import { PasswordInput } from '../components/PasswordInput';
+
+/**
+ * Resolves the public frontend portfolio URL.
+ * Defaults directly to the live production portfolio https://ronika-website.vercel.app.
+ */
+const getLivePortfolioUrl = (): string => {
+  return import.meta.env.VITE_CLIENT_URL || 'https://ronika-website.vercel.app';
+};
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('admin_remember_me') === 'true';
+  });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // Prefill remembered email if saved
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('admin_saved_email');
+    if (savedEmail) {
+      setEmail(savedEmail);
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       setError('Please provide both email and password.');
       return;
     }
@@ -22,16 +46,30 @@ export const LoginPage: React.FC = () => {
     try {
       setError(null);
       setLoading(true);
-      await login(email, password);
+
+      await login(email.trim(), password);
+
+      if (rememberMe) {
+        localStorage.setItem('admin_saved_email', email.trim());
+        localStorage.setItem('admin_remember_me', 'true');
+      } else {
+        localStorage.removeItem('admin_saved_email');
+        localStorage.removeItem('admin_remember_me');
+      }
+
       navigate('/dashboard');
     } catch (err: any) {
       setError(
-        err.response?.data?.message || err.message || 'Invalid login credentials. Please try again.'
+        err.response?.data?.message ||
+        err.message ||
+        'Invalid login credentials. Please try again.'
       );
     } finally {
       setLoading(false);
     }
   };
+
+  const livePortfolioUrl = getLivePortfolioUrl();
 
   return (
     <div className="auth-split-layout">
@@ -53,8 +91,7 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <div className="auth-sidebar-bottom">
-          <span>Ronika Bhatia Digital Portfolio</span>
-          <span style={{ color: '#555' }}>&copy; 2026</span>
+          <span style={{ color: '#555' }}>Ronika Bhatia Portfolio &copy; 2026</span>
         </div>
       </div>
 
@@ -62,9 +99,9 @@ export const LoginPage: React.FC = () => {
       <div className="auth-main">
         <header className="auth-main-header">
           <a
-            href="http://localhost:3000"
+            href={livePortfolioUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="auth-link"
           >
             <ExternalLink size={14} />
@@ -74,7 +111,6 @@ export const LoginPage: React.FC = () => {
 
         <div className="auth-form-container">
           <div className="auth-form-wrapper">
-            <span className="auth-label-small">Admin Panel</span>
             <h1 className="auth-heading">Welcome back.</h1>
             <p className="auth-subheading">Sign in to manage your portfolio.</p>
 
@@ -99,34 +135,41 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={loading}
+                  autoComplete="email"
                 />
               </div>
 
               <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label className="form-label" htmlFor="password">
-                    Password
-                  </label>
-                </div>
-                <input
+                <label className="form-label" htmlFor="password">
+                  Password
+                </label>
+                <PasswordInput
                   id="password"
-                  type="password"
                   className="form-input"
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={loading}
+                  autoComplete="current-password"
                 />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--admin-text-muted)' }}>
-                  <input type="checkbox" style={{ accentColor: '#111' }} />
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{ accentColor: '#111' }}
+                  />
                   Remember me
                 </label>
-                
-                <Link to="/forgot-password" style={{ fontSize: '13px', color: 'var(--admin-text-main)', textDecoration: 'none', fontWeight: 500 }}>
+
+                <Link
+                  to="/forgot-password"
+                  style={{ fontSize: '13px', color: 'var(--admin-text-main)', textDecoration: 'none', fontWeight: 500 }}
+                >
                   Forgot Password?
                 </Link>
               </div>
@@ -148,13 +191,10 @@ export const LoginPage: React.FC = () => {
                 </button>
               </div>
             </form>
-
-            <div style={{ marginTop: '3rem', fontSize: '11px', color: 'var(--admin-text-light)', fontFamily: 'var(--admin-font-accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Ronika Bhatia Admin Panel
-            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
+

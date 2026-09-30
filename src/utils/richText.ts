@@ -2,11 +2,18 @@
  * Utility functions for Rich Text handling, sanitization, and word count calculation.
  */
 
+export const MAX_HERO_QUOTE_CHARS = 80;
+export const MAX_CLIENT_BIO_CHARS = 250;
+export const MAX_SERVICE_DESC_CHARS = 250;
+export const MAX_ABOUT_HEADING_CHARS = 80;
+export const MAX_GALLERY_INTRO_CHARS = 80;
+
+// Deprecated word constants (kept for backward compatibility)
 export const MAX_HERO_QUOTE_WORDS = 20;
 export const MAX_CLIENT_BIO_WORDS = 70;
 
 /**
- * Strips HTML tags and converts HTML entity codes into plain text for accurate word count.
+ * Strips HTML tags and converts HTML entity codes into plain text for accurate character and word count.
  */
 export function stripHtmlToText(html?: string): string {
   if (!html) return '';
@@ -25,6 +32,15 @@ export function stripHtmlToText(html?: string): string {
     .replace(/&#39;/gi, "'")
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Calculates readable character count from raw text or rich text HTML string.
+ * Strips HTML tags and entities to accurately count only visible characters.
+ */
+export function countReadableChars(content?: string): number {
+  if (!content) return 0;
+  return stripHtmlToText(content).length;
 }
 
 /**
@@ -59,10 +75,13 @@ export function sanitizeRichText(html?: string): string {
   // 3. Prevent javascript: URLs
   clean = clean.replace(/href\s*=\s*["']?\s*javascript:[^"'>\s]*/gi, 'href="#"');
 
-  // 4. Filter allowed tags and attributes
+  // 4. Normalize any heading tags to paragraphs to avoid large line gaps
+  clean = clean.replace(/<\/?h[1-6]\b[^>]*>/gi, (tag) => (tag.startsWith('</') ? '</p>' : '<p>'));
+
+  // 5. Filter allowed tags and attributes
   const allowedTags = [
     'p', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'del',
-    'ol', 'ul', 'li', 'a', 'h3', 'div', 'span'
+    'ol', 'ul', 'li', 'a', 'div', 'span'
   ];
 
   clean = clean.replace(/<\/?([a-z0-9]+)\b[^>]*>/gi, (match, tagName) => {

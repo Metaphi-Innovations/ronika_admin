@@ -36,7 +36,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Auth Split Layout */
+/* ==========================================================================
+   Auth Split Layout & Authentication UI
+   ========================================================================== */
+
+/* Fix Chrome / Edge autofill yellow and light-blue background discoloration */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 40px #FFFFFF inset !important;
+  -webkit-text-fill-color: #111111 !important;
+  caret-color: #111111 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 .auth-split-layout {
   display: flex;
   min-height: 100vh;
@@ -73,8 +87,9 @@ body {
   font-family: var(--admin-font-accent);
   font-size: 11px;
   letter-spacing: 0.08em;
-  color: var(--admin-text-light);
+  color: #D4D4CE;
   text-transform: uppercase;
+  font-weight: 500;
 }
 
 .auth-sidebar-center {
@@ -110,18 +125,23 @@ body {
 
 .auth-sidebar-desc {
   font-size: 14px;
-  color: var(--admin-text-light);
+  color: #E2E2DC;
   line-height: 1.6;
 }
 
 .auth-sidebar-bottom {
   font-family: var(--admin-font-accent);
   font-size: 11px;
-  color: var(--admin-text-light);
+  color: #BDBDB7;
   text-transform: uppercase;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  letter-spacing: 0.04em;
+}
+
+.auth-sidebar-bottom span:last-child {
+  color: #9C9C96;
 }
 
 .auth-main {
@@ -220,7 +240,7 @@ body {
   align-items: center;
   justify-content: space-between;
   border-radius: 4px;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .auth-btn-primary .arrow {
@@ -564,10 +584,11 @@ body {
   font-family: var(--admin-font-accent);
   font-size: 9.5px;
   letter-spacing: 0.08em;
-  color: var(--admin-text-light);
+  color: #D4D4CE;
   text-transform: uppercase;
   display: block;
   margin-top: 1px;
+  font-weight: 500;
 }
 
 .sidebar-nav {
@@ -608,7 +629,7 @@ body {
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #666666;
+  color: #B8B8B2;
   padding: 6px 8px 2px 8px;
   text-transform: uppercase;
 }
@@ -618,7 +639,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  color: #888888;
+  color: #D6D6D0;
   text-decoration: none;
   border-radius: 6px;
   font-size: 12.5px;
@@ -628,130 +649,13 @@ body {
 
 .sidebar-link:hover {
   color: #FFFFFF;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .sidebar-link.active {
-  color: var(--admin-bg-sidebar);
+  color: #111111;
   background-color: var(--admin-accent-lime);
   font-weight: 600;
-}
-
-.sidebar-footer {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 0.6rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  flex-shrink: 0;
-}
-
-.sidebar-user-panel-wrapper {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-.user-profile-badge {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  cursor: pointer;
-  transition: all 0.18s ease;
-  user-select: none;
-}
-
-.user-profile-badge:hover,
-.user-profile-badge.active {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-/* Upper-Side Floating User Popover */
-.sidebar-user-upper-popover {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  background-color: #1A1A1D;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  z-index: 1000;
-  animation: userUpperMenuPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  backdrop-filter: blur(14px);
-}
-
-.admin-sidebar.collapsed .sidebar-user-upper-popover {
-  bottom: 0;
-  left: calc(100% + 10px);
-  right: auto;
-  width: 170px;
-}
-
-@keyframes userUpperMenuPop {
-  0% {
-    opacity: 0;
-    transform: translateY(6px) scale(0.97);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.sidebar-user-popover-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 12px;
-  background: none;
-  border: none;
-  border-radius: 6px;
-  color: #D1D5DB;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-family: var(--admin-font-display);
-  text-align: left;
-}
-
-.sidebar-user-popover-item:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: #FFFFFF;
-}
-
-.sidebar-user-popover-item.active-link {
-  color: var(--admin-bg-sidebar, #141414);
-  background-color: var(--admin-accent-lime, #D4FF00);
-  font-weight: 600;
-}
-
-.sidebar-user-popover-item.logout-item {
-  color: #EF5350;
-}
-
-.sidebar-user-popover-item.logout-item:hover {
-  background-color: rgba(239, 83, 80, 0.15);
-  color: #FF7043;
-}
-
-.sidebar-user-popover-divider {
-  height: 1px;
-  background-color: rgba(255, 255, 255, 0.08);
-  margin: 3px 0;
 }
 
 .user-avatar {
@@ -781,9 +685,10 @@ body {
 
 .user-role {
   font-size: 11px;
-  color: #888888;
+  color: #BDBDB7;
   text-transform: uppercase;
   font-family: var(--admin-font-accent);
+  font-weight: 500;
 }
 
 .btn-logout {
@@ -792,7 +697,7 @@ body {
   gap: 10px;
   background: none;
   border: none;
-  color: #888888;
+  color: #D6D6D0;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -831,10 +736,12 @@ body {
 
 .topbar-page-title {
   font-family: var(--admin-font-display);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 700;
   color: var(--admin-text-main);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .topbar-user-pill {
@@ -1761,6 +1668,15 @@ body {
   to {
     opacity: 1;
     transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 

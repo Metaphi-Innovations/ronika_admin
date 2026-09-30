@@ -56,24 +56,31 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
 };
 
 export interface PageHeaderProps {
-  title: string;
+  title?: string;
   subtitle?: string;
   actions?: React.ReactNode;
   style?: React.CSSProperties;
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({
-  title,
   subtitle,
   actions,
   style,
 }) => {
+  // If no subtitle and no actions are provided, avoid rendering an empty redundant header block
+  if (!subtitle && !actions) {
+    return null;
+  }
+
   return (
     <header className="page-header" style={style}>
-      <div>
-        <h1 className="page-title">{title}</h1>
-        {subtitle && <p className="page-subtitle">{subtitle}</p>}
-      </div>
+      {subtitle ? (
+        <div>
+          <p className="page-subtitle" style={{ margin: 0, fontSize: '13px', color: 'var(--admin-text-muted)' }}>
+            {subtitle}
+          </p>
+        </div>
+      ) : <div />}
       {actions && (
         <div className="page-header-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {actions}

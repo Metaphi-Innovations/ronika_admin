@@ -18,7 +18,10 @@ import { useAuth } from '../context/AuthContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { PasswordInput } from '../components/PasswordInput';
 import { useAlert } from '../context/AlertContext';
+
+export const SUPERADMIN_EMAIL = 'admin@ronikabhatia.com';
 
 export const UserManagementPage: React.FC = () => {
   const alert = useAlert();
@@ -42,10 +45,9 @@ export const UserManagementPage: React.FC = () => {
     email: '',
     password: '',
     role: 'admin',
-    isActive: true,
+    isActive: false,
   });
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
   // Edit User Form State
   const [editFormData, setEditFormData] = useState<{
@@ -65,7 +67,6 @@ export const UserManagementPage: React.FC = () => {
     newPassword: '',
     confirmNewPassword: '',
   });
-  const [showEditPassword, setShowEditPassword] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -115,10 +116,9 @@ export const UserManagementPage: React.FC = () => {
       email: '',
       password: '',
       role: 'admin',
-      isActive: true,
+      isActive: false,
     });
     setConfirmPassword('');
-    setShowPassword(false);
     setIsAddModalOpen(true);
   };
 
@@ -163,6 +163,13 @@ export const UserManagementPage: React.FC = () => {
 
   // --- EDIT USER HANDLERS ---
   const handleOpenEditModal = (target: AdminUser) => {
+    const isTargetRonika = target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+    const isCurrentRonika = currentUser?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+    if (isTargetRonika && !isCurrentRonika) {
+      alert.error('Protected account: Only Ronika can edit her administrator account.');
+      return;
+    }
+
     setModalError(null);
     setEditingUser(target);
     setEditFormData({
@@ -174,7 +181,6 @@ export const UserManagementPage: React.FC = () => {
       newPassword: '',
       confirmNewPassword: '',
     });
-    setShowEditPassword(false);
   };
 
   const handleUpdateUser = async (e: React.FormEvent) => {
@@ -231,6 +237,14 @@ export const UserManagementPage: React.FC = () => {
   // --- TOGGLE STATUS HANDLER ---
   const handleConfirmToggleStatus = async () => {
     if (!statusToggleTarget) return;
+    const isTargetRonika = statusToggleTarget.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+    const isCurrentRonika = currentUser?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+    if (isTargetRonika && !isCurrentRonika) {
+      alert.error('Protected account: The primary administrator account cannot be deactivated.');
+      setStatusToggleTarget(null);
+      return;
+    }
+
     try {
       setSubmitting(true);
       const newStatus = !statusToggleTarget.isActive;
@@ -250,6 +264,13 @@ export const UserManagementPage: React.FC = () => {
   // --- DELETE HANDLER ---
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+    const isTargetRonika = deleteTarget.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+    if (isTargetRonika) {
+      alert.error('Protected account: The primary administrator account cannot be deleted.');
+      setDeleteTarget(null);
+      return;
+    }
+
     try {
       setSubmitting(true);
       await userApi.deleteUser(deleteTarget.id);
@@ -346,6 +367,9 @@ export const UserManagementPage: React.FC = () => {
                   const isSelf = currentUser?.id === target.id;
                   const isFullAdmin = target.role === 'admin';
                   const isFinalAdmin = isFullAdmin && target.isActive && activeAdminsCount <= 1;
+                  const isTargetRonika = target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+                  const isCurrentRonika = currentUser?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+                  const isProtectedRonika = isTargetRonika && !isCurrentRonika;
 
                   return (
                     <tr key={target.id}>
@@ -389,7 +413,7 @@ export const UserManagementPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Role Badge */}
+                      {/* Role Badge - Seamlessly displayed as Admin on frontend */}
                       <td>
                         <span
                           style={{
@@ -444,9 +468,18 @@ export const UserManagementPage: React.FC = () => {
                         >
                           {/* Edit User Button */}
                           <button
-                            onClick={() => handleOpenEditModal(target)}
+                            onClick={() => !isProtectedRonika && handleOpenEditModal(target)}
+                            disabled={isProtectedRonika}
                             className="admin-btn-icon"
-                            title="Edit Administrator"
+                            title={
+                              isProtectedRonika
+                                ? 'Protected account: Only Ronika can edit her administrator account'
+                                : 'Edit Administrator'
+                            }
+                            style={{
+                              opacity: isProtectedRonika ? 0.35 : 1,
+                              cursor: isProtectedRonika ? 'not-allowed' : 'pointer',
+                            }}
                             aria-label={`Edit ${target.name}`}
                           >
                             <Edit2 size={16} />
@@ -454,13 +487,15 @@ export const UserManagementPage: React.FC = () => {
 
                           {/* Toggle Active/Inactive Button */}
                           <button
-                            onClick={() => setStatusToggleTarget(target)}
-                            disabled={isSelf || (target.isActive && isFinalAdmin)}
+                            onClick={() => !isProtectedRonika && setStatusToggleTarget(target)}
+                            disabled={isSelf || isProtectedRonika || (target.isActive && isFinalAdmin)}
                             className={`admin-btn-icon ${
                               target.isActive ? 'warning' : 'success'
                             }`}
                             title={
-                              isSelf
+                              isProtectedRonika
+                                ? 'Protected account: The primary administrator account cannot be deactivated'
+                                : isSelf
                                 ? 'Self-protection: You cannot deactivate your own account'
                                 : target.isActive && isFinalAdmin
                                 ? 'Final admin protection: Cannot deactivate the only active administrator'
@@ -469,9 +504,9 @@ export const UserManagementPage: React.FC = () => {
                                 : 'Activate account'
                             }
                             style={{
-                              opacity: isSelf || (target.isActive && isFinalAdmin) ? 0.4 : 1,
+                              opacity: isSelf || isProtectedRonika || (target.isActive && isFinalAdmin) ? 0.35 : 1,
                               cursor:
-                                isSelf || (target.isActive && isFinalAdmin)
+                                isSelf || isProtectedRonika || (target.isActive && isFinalAdmin)
                                   ? 'not-allowed'
                                   : 'pointer',
                               color: target.isActive ? '#E65100' : '#2E7D32',
@@ -483,20 +518,22 @@ export const UserManagementPage: React.FC = () => {
 
                           {/* Delete User Button */}
                           <button
-                            onClick={() => setDeleteTarget(target)}
-                            disabled={isSelf || isFinalAdmin}
+                            onClick={() => !isProtectedRonika && setDeleteTarget(target)}
+                            disabled={isSelf || isProtectedRonika || isFinalAdmin}
                             className="admin-btn-icon danger"
                             title={
-                              isSelf
+                              isProtectedRonika
+                                ? 'Protected account: The primary administrator account cannot be deleted'
+                                : isSelf
                                 ? 'Self-protection: You cannot delete your own account'
                                 : isFinalAdmin
                                 ? 'Final admin protection: Cannot delete the only active administrator'
                                 : 'Delete Administrator'
                             }
                             style={{
-                              opacity: isSelf || isFinalAdmin ? 0.4 : 1,
+                              opacity: isSelf || isProtectedRonika || isFinalAdmin ? 0.35 : 1,
                               cursor:
-                                isSelf || isFinalAdmin ? 'not-allowed' : 'pointer',
+                                isSelf || isProtectedRonika || isFinalAdmin ? 'not-allowed' : 'pointer',
                             }}
                             aria-label={`Delete ${target.name}`}
                           >
@@ -623,52 +660,27 @@ export const UserManagementPage: React.FC = () => {
                 {/* Password */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
                   <label className="admin-form-label">Password * (Min. 6 characters)</label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="new_admin_account_password"
-                      autoComplete="new-password"
-                      value={newUserData.password}
-                      onChange={(e) =>
-                        setNewUserData((prev) => ({ ...prev, password: e.target.value }))
-                      }
-                      placeholder="••••••••"
-                      className="admin-form-input"
-                      style={{ paddingRight: '2.5rem' }}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      tabIndex={-1}
-                      style={{
-                        position: 'absolute',
-                        right: '8px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--admin-text-muted)',
-                        cursor: 'pointer',
-                        padding: '4px',
-                      }}
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
+                  <PasswordInput
+                    name="new_admin_account_password"
+                    autoComplete="new-password"
+                    value={newUserData.password}
+                    onChange={(e) =>
+                      setNewUserData((prev) => ({ ...prev, password: e.target.value }))
+                    }
+                    placeholder="••••••••"
+                    required
+                  />
                 </div>
 
                 {/* Confirm Password */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
                   <label className="admin-form-label">Confirm Password *</label>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
+                  <PasswordInput
                     name="new_admin_account_confirm_password"
                     autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="admin-form-input"
                     required
                   />
                 </div>
@@ -820,7 +832,17 @@ export const UserManagementPage: React.FC = () => {
                 <div className="admin-form-group" style={{ margin: 0 }}>
                   <label className="admin-form-label">
                     Role *
-                    {currentUser?.id === editingUser.id && (
+                    {editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase() ? (
+                      <span
+                        style={{
+                          marginLeft: '0.5rem',
+                          fontSize: '11px',
+                          color: 'var(--admin-text-muted)',
+                        }}
+                      >
+                        (Primary Administrator role cannot be changed)
+                      </span>
+                    ) : currentUser?.id === editingUser.id ? (
                       <span
                         style={{
                           marginLeft: '0.5rem',
@@ -830,11 +852,14 @@ export const UserManagementPage: React.FC = () => {
                       >
                         (Cannot demote own role)
                       </span>
-                    )}
+                    ) : null}
                   </label>
                   <select
                     value={editFormData.role}
-                    disabled={currentUser?.id === editingUser.id}
+                    disabled={
+                      currentUser?.id === editingUser.id ||
+                      editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()
+                    }
                     onChange={(e) =>
                       setEditFormData((prev) => ({
                         ...prev,
@@ -843,7 +868,11 @@ export const UserManagementPage: React.FC = () => {
                     }
                     className="admin-form-input"
                     style={{
-                      cursor: currentUser?.id === editingUser.id ? 'not-allowed' : 'pointer',
+                      cursor:
+                        currentUser?.id === editingUser.id ||
+                        editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()
+                          ? 'not-allowed'
+                          : 'pointer',
                     }}
                   >
                     <option value="admin">Administrator (Full Access & User Management)</option>
@@ -859,6 +888,7 @@ export const UserManagementPage: React.FC = () => {
                       id="edit-user-active"
                       disabled={
                         currentUser?.id === editingUser.id ||
+                        editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase() ||
                         (editingUser.isActive &&
                           editingUser.role === 'admin' &&
                           activeAdminsCount <= 1)
@@ -876,19 +906,19 @@ export const UserManagementPage: React.FC = () => {
                       Active Account
                     </label>
                   </div>
-                  {currentUser?.id === editingUser.id && (
+                  {editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase() ? (
+                    <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)', marginLeft: '1.625rem' }}>
+                      Security protection: The primary administrator account cannot be deactivated.
+                    </span>
+                  ) : currentUser?.id === editingUser.id ? (
                     <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)', marginLeft: '1.625rem' }}>
                       Self-protection: You cannot deactivate yourself.
                     </span>
-                  )}
-                  {currentUser?.id !== editingUser.id &&
-                    editingUser.isActive &&
-                    editingUser.role === 'admin' &&
-                    activeAdminsCount <= 1 && (
-                      <span style={{ fontSize: '11px', color: '#E65100', marginLeft: '1.625rem' }}>
-                        Final Admin protection: Cannot deactivate the only active administrator.
-                      </span>
-                    )}
+                  ) : editingUser.isActive && editingUser.role === 'admin' && activeAdminsCount <= 1 ? (
+                    <span style={{ fontSize: '11px', color: '#E65100', marginLeft: '1.625rem' }}>
+                      Final Admin protection: Cannot deactivate the only active administrator.
+                    </span>
+                  ) : null}
                 </div>
 
                 {/* Change Password Section */}
@@ -936,48 +966,24 @@ export const UserManagementPage: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                       <div className="admin-form-group" style={{ margin: 0 }}>
                         <label className="admin-form-label">New Password (Min. 6 chars)</label>
-                        <div style={{ position: 'relative' }}>
-                          <input
-                            type={showEditPassword ? 'text' : 'password'}
-                            name="edit_admin_new_password"
-                            autoComplete="new-password"
-                            value={editFormData.newPassword}
-                            onChange={(e) =>
-                              setEditFormData((prev) => ({
-                                ...prev,
-                                newPassword: e.target.value,
-                              }))
-                            }
-                            placeholder="Enter new password"
-                            className="admin-form-input"
-                            style={{ paddingRight: '2.5rem' }}
-                            required={editFormData.changePassword}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowEditPassword(!showEditPassword)}
-                            tabIndex={-1}
-                            style={{
-                              position: 'absolute',
-                              right: '8px',
-                              top: '50%',
-                              transform: 'translateY(-50%)',
-                              background: 'none',
-                              border: 'none',
-                              color: 'var(--admin-text-muted)',
-                              cursor: 'pointer',
-                              padding: '4px',
-                            }}
-                          >
-                            {showEditPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
-                        </div>
+                        <PasswordInput
+                          name="edit_admin_new_password"
+                          autoComplete="new-password"
+                          value={editFormData.newPassword}
+                          onChange={(e) =>
+                            setEditFormData((prev) => ({
+                              ...prev,
+                              newPassword: e.target.value,
+                            }))
+                          }
+                          placeholder="Enter new password"
+                          required={editFormData.changePassword}
+                        />
                       </div>
 
                       <div className="admin-form-group" style={{ margin: 0 }}>
                         <label className="admin-form-label">Confirm New Password</label>
-                        <input
-                          type={showEditPassword ? 'text' : 'password'}
+                        <PasswordInput
                           name="edit_admin_confirm_password"
                           autoComplete="new-password"
                           value={editFormData.confirmNewPassword}
@@ -988,7 +994,6 @@ export const UserManagementPage: React.FC = () => {
                             }))
                           }
                           placeholder="Repeat new password"
-                          className="admin-form-input"
                           required={editFormData.changePassword}
                         />
                       </div>

@@ -272,6 +272,8 @@ export const DashboardPage: React.FC = () => {
                             <img
                               src={getImageUrl(project.heroImage.url)}
                               alt={project.title}
+                              loading="lazy"
+                              decoding="async"
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
                           </div>

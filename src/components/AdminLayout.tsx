@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -14,7 +14,6 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -30,29 +29,11 @@ export const AdminLayout: React.FC = () => {
     }
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userPanelOpen, setUserPanelOpen] = useState(false);
-  const userPanelRef = useRef<HTMLDivElement>(null);
 
-  // Close mobile menu and user panel on route change
+  // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
-    setUserPanelOpen(false);
   }, [location.pathname]);
-
-  // Click outside listener: close user panel when clicking anywhere else
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (userPanelRef.current && !userPanelRef.current.contains(e.target as Node)) {
-        setUserPanelOpen(false);
-      }
-    };
-    if (userPanelOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-    };
-  }, [userPanelOpen]);
 
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return 'Never';
@@ -195,81 +176,6 @@ export const AdminLayout: React.FC = () => {
             </div>
           ))}
         </nav>
-
-        {/* Sidebar Footer with Upper-Side User Menu */}
-        <div className="sidebar-footer">
-          <div className="sidebar-user-panel-wrapper" ref={userPanelRef}>
-            {/* Popover Menu: Opens on the UPPER SIDE of the user section */}
-            {userPanelOpen && (
-              <div className="sidebar-user-upper-popover">
-                {/* Profile Link Button - renders profile on the page */}
-                <button
-                  type="button"
-                  className={`sidebar-user-popover-item ${location.pathname === '/profile' ? 'active-link' : ''}`}
-                  onClick={() => {
-                    setUserPanelOpen(false);
-                    navigate('/profile');
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  <User size={15} />
-                  <span>Profile</span>
-                </button>
-
-                <div className="sidebar-user-popover-divider" />
-
-                {/* Logout Button */}
-                <button
-                  type="button"
-                  className="sidebar-user-popover-item logout-item"
-                  onClick={() => {
-                    setUserPanelOpen(false);
-                    handleLogout();
-                  }}
-                >
-                  <LogOut size={15} />
-                  <span>Logout</span>
-                </button>
-              </div>
-            )}
-
-            {/* Interactive User Name Button */}
-            <div
-              className={`user-profile-badge ${userPanelOpen ? 'active' : ''}`}
-              onClick={() => {
-                if (sidebarCollapsed) {
-                  setSidebarCollapsed(false);
-                  setUserPanelOpen(true);
-                } else {
-                  setUserPanelOpen((prev) => !prev);
-                }
-              }}
-              title={sidebarCollapsed ? `${user?.name || 'Admin'} (${user?.role || 'Admin'})` : 'Click to view options'}
-            >
-              <div className="user-avatar">
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
-              </div>
-              {!sidebarCollapsed && (
-                <>
-                  <div className="user-info" style={{ flex: 1, minWidth: 0 }}>
-                    <span className="user-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {user?.name || 'Admin'}
-                    </span>
-                    <span className="user-role">{user?.role ? user.role.toUpperCase() : 'ADMIN'}</span>
-                  </div>
-                  <ChevronDown
-                    size={14}
-                    style={{
-                      color: '#888888',
-                      transition: 'transform 0.2s ease',
-                      transform: userPanelOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    }}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -285,7 +191,7 @@ export const AdminLayout: React.FC = () => {
             >
               <Menu size={16} />
             </button>
-            <h2 className="topbar-page-title">{getPageTitle()}</h2>
+            <h1 className="topbar-page-title">{getPageTitle()}</h1>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

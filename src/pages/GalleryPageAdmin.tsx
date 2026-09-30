@@ -37,6 +37,7 @@ import { RichTextEditor } from '../components/RichTextEditor';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { PageHeader } from '../components/AdminSection';
+import { countReadableChars, MAX_GALLERY_INTRO_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
 import './GalleryAdmin.css';
@@ -475,6 +476,10 @@ export const GalleryPageAdmin: React.FC = () => {
 
   // Save Editorial Intro
   const handleSaveHeader = async () => {
+    if (countReadableChars(galleryHeader) > MAX_GALLERY_INTRO_CHARS) {
+      alert.error(`Gallery editorial introduction exceeds maximum ${MAX_GALLERY_INTRO_CHARS} characters limit.`, 'Limit Exceeded');
+      return;
+    }
     try {
       setSavingHeader(true);
       const res = await updateSiteSettings({ galleryHeader });
@@ -634,6 +639,7 @@ export const GalleryPageAdmin: React.FC = () => {
                   label="Editorial Introduction"
                   value={galleryHeader}
                   onChange={setGalleryHeader}
+                  maxChars={MAX_GALLERY_INTRO_CHARS}
                 />
                 <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
                   <button
@@ -762,6 +768,8 @@ export const GalleryPageAdmin: React.FC = () => {
                       <img
                         src={getImageUrl(item.image?.url)}
                         alt={item.title}
+                        loading="lazy"
+                        decoding="async"
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
                       <span
@@ -1003,7 +1011,13 @@ export const GalleryPageAdmin: React.FC = () => {
                   >
                     {/* Visual Card Image — Uniform frame for stable dragging */}
                     <div className="arrange-card-visual">
-                      <img src={getImageUrl(item.image?.url)} alt={item.title} className="arrange-card-img" />
+                      <img
+                        src={getImageUrl(item.image?.url)}
+                        alt={item.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="arrange-card-img"
+                      />
                       <div className="position-badge">Position {positionNumber}</div>
                       <div className="arrange-drag-handle" title="Drag to reorder">
                         <GripVertical size={14} />

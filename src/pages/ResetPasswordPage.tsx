@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowRight, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { api } from '../services/api';
+import { PasswordInput } from '../components/PasswordInput';
 
 export const ResetPasswordPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -33,7 +34,10 @@ export const ResetPasswordPage: React.FC = () => {
       })
       .catch((err) => {
         setTokenValid(false);
-        setVerificationError(err.response?.data?.message || 'This password reset link is invalid, has expired (5-minute limit), or has already been used.');
+        setVerificationError(
+          err.response?.data?.message ||
+          'This password reset link is invalid, has expired (5-minute limit), or has already been used.'
+        );
       })
       .finally(() => {
         setVerifying(false);
@@ -42,7 +46,7 @@ export const ResetPasswordPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       setStatus('error');
       setMessage('Passwords do not match.');
@@ -61,7 +65,7 @@ export const ResetPasswordPage: React.FC = () => {
       const res = await api.post(`/auth/reset-password/${token}`, { password });
       setStatus('success');
       setMessage(res.data.message || 'Password successfully reset.');
-      setTimeout(() => navigate('/login'), 2500);
+      setTimeout(() => navigate('/login'), 2200);
     } catch (err: any) {
       setStatus('error');
       setMessage(
@@ -87,19 +91,19 @@ export const ResetPasswordPage: React.FC = () => {
             Set your new credentials.
           </div>
         </div>
-
-        <div className="auth-sidebar-bottom">
-          <span>Ronika Bhatia Digital Portfolio</span>
-          <span style={{ color: '#555' }}>&copy; 2026</span>
-        </div>
       </div>
 
       {/* Right Authentication Section */}
       <div className="auth-main">
+        <header className="auth-main-header">
+          <Link to="/login" className="auth-link">
+            <ArrowLeft size={14} />
+            <span>Back to Login</span>
+          </Link>
+        </header>
+
         <div className="auth-form-container">
           <div className="auth-form-wrapper">
-            <span className="auth-label-small">Admin Panel</span>
-            
             {verifying ? (
               <div style={{ padding: '3rem 0', color: 'var(--admin-text-muted)', fontSize: '14px' }}>
                 Verifying password reset link...
@@ -107,12 +111,18 @@ export const ResetPasswordPage: React.FC = () => {
             ) : !tokenValid ? (
               <>
                 <h1 className="auth-heading">Link Expired or Used</h1>
-                <p className="auth-subheading">This password reset link is invalid, has expired, or has already been used.</p>
+                <p className="auth-subheading">
+                  This password reset link is invalid, has expired, or has already been used.
+                </p>
                 <div className="alert-error" style={{ marginBottom: '24px' }}>
                   <AlertCircle size={16} />
                   <span>{verificationError || 'Password reset links are valid for 5 minutes and can only be used once. Please request a new link.'}</span>
                 </div>
-                <Link to="/forgot-password" className="auth-btn-primary" style={{ display: 'inline-flex', textDecoration: 'none', justifyContent: 'center', width: 'auto', padding: '0.75rem 1.5rem' }}>
+                <Link
+                  to="/forgot-password"
+                  className="auth-btn-primary"
+                  style={{ display: 'inline-flex', textDecoration: 'none', justifyContent: 'center', width: 'auto', padding: '0.75rem 1.5rem' }}
+                >
                   Request New Reset Link
                 </Link>
               </>
@@ -121,16 +131,18 @@ export const ResetPasswordPage: React.FC = () => {
                 <h1 className="auth-heading">Password updated.</h1>
                 <p className="auth-subheading">Your account is secure.</p>
 
-                <div style={{
-                  padding: '1.25rem',
-                  backgroundColor: '#f6fdf9',
-                  border: '1px solid #c5e838',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '12px',
-                  marginBottom: '2rem'
-                }}>
+                <div
+                  style={{
+                    padding: '1.25rem',
+                    backgroundColor: '#f6fdf9',
+                    border: '1px solid #c5e838',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    marginBottom: '2rem',
+                  }}
+                >
                   <CheckCircle size={20} color="#65a30d" style={{ flexShrink: 0, marginTop: '2px' }} />
                   <div>
                     <div style={{ color: '#3f6212', fontSize: '14px', lineHeight: 1.5, fontWeight: 500, marginBottom: '4px' }}>
@@ -159,15 +171,15 @@ export const ResetPasswordPage: React.FC = () => {
                     <label className="form-label" htmlFor="password">
                       New Password
                     </label>
-                    <input
+                    <PasswordInput
                       id="password"
-                      type="password"
                       className="form-input"
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       disabled={status === 'loading'}
+                      autoComplete="new-password"
                     />
                   </div>
 
@@ -175,15 +187,15 @@ export const ResetPasswordPage: React.FC = () => {
                     <label className="form-label" htmlFor="confirmPassword">
                       Confirm New Password
                     </label>
-                    <input
+                    <PasswordInput
                       id="confirmPassword"
-                      type="password"
                       className="form-input"
                       placeholder="••••••••"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                       disabled={status === 'loading'}
+                      autoComplete="new-password"
                     />
                   </div>
 
@@ -206,10 +218,6 @@ export const ResetPasswordPage: React.FC = () => {
                 </form>
               </>
             )}
-
-            <div style={{ marginTop: '3rem', fontSize: '11px', color: 'var(--admin-text-light)', fontFamily: 'var(--admin-font-accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Ronika Bhatia Admin Panel
-            </div>
           </div>
         </div>
       </div>

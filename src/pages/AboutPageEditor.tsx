@@ -3,6 +3,7 @@ import { Save, Plus, Trash2, Upload, CheckCircle2 } from 'lucide-react';
 import { getAboutContent, updateAboutContent, uploadAboutHeadshot, IAboutContent } from '../services/contentApi';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { MAX_ABOUT_HEADING_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
 
@@ -228,7 +229,7 @@ export const AboutPageEditor: React.FC = () => {
               value={content.heading || ''}
               onChange={(val) => setContent({ ...content, heading: val })}
               label="About Main Heading (Rich Text)"
-              maxWords={30}
+              maxChars={MAX_ABOUT_HEADING_CHARS}
             />
           </AdminSection>
 

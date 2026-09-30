@@ -144,8 +144,23 @@ export const ServicesPage: React.FC = () => {
               </div>
             </div>
             <div className="admin-form-group" style={{ marginBottom: '1rem' }}>
-              <label className="admin-form-label">Description *</label>
-              <textarea name="description" value={formData.description || ''} onChange={handleChange} className="admin-form-textarea" required />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label className="admin-form-label" style={{ margin: 0 }}>Description *</label>
+                <span style={{ fontSize: '11px', color: (formData.description || '').length >= 250 ? '#E65100' : 'var(--admin-text-muted)' }}>
+                  {(formData.description || '').length} / 250 characters
+                </span>
+              </div>
+              <textarea
+                name="description"
+                value={formData.description || ''}
+                maxLength={250}
+                onChange={(e) => {
+                  const val = e.target.value.slice(0, 250);
+                  setFormData((prev) => ({ ...prev, description: val }));
+                }}
+                className="admin-form-textarea"
+                required
+              />
             </div>
             <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
               <div className="admin-form-group" style={{ width: '150px', marginBottom: 0 }}>
