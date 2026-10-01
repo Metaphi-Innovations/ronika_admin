@@ -9,19 +9,31 @@ import {
   Edit2,
   Image as ImageIcon,
   Mail,
-  ExternalLink,
+  Eye,
+  Clock,
+  Copy,
+  Reply,
+  ChevronDown,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getProjects, IProject } from '../services/projectApi';
 import { getGalleryCategories } from '../services/galleryApi';
 import { getShopProducts } from '../services/shopApi';
-import { getEnquiries, IEnquiry } from '../services/enquiryApi';
+import { getEnquiries, toggleEnquiryRead, IEnquiry } from '../services/enquiryApi';
 import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { getImageUrl } from '../utils/imageUrl';
+import { useAlert } from '../context/AlertContext';
+import { useLiveResource } from '../context/LiveSyncContext';
+import {
+  getGmailComposeUrl,
+  getMailtoUrl,
+  buildEnquiryReplyDraft,
+} from '../utils/mail';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
+  const alert = useAlert();
   const [counts, setCounts] = useState({
     projects: 0,
     categories: 0,
@@ -31,44 +43,105 @@ export const DashboardPage: React.FC = () => {
   });
   const [recentProjects, setRecentProjects] = useState<IProject[]>([]);
   const [recentEnquiries, setRecentEnquiries] = useState<IEnquiry[]>([]);
+  const [selectedEnquiry, setSelectedEnquiry] = useState<IEnquiry | null>(null);
+  const [replyMenuOpen, setReplyMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadMetrics = async () => {
+  const handleCopy = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert.success(`${label} copied to clipboard!`, 'Copied');
+    } catch {
+      alert.error('Failed to copy to clipboard', 'Error');
+    }
+  };
+
+  const handleOpenEnquiry = async (enquiry: IEnquiry) => {
+    setSelectedEnquiry(enquiry);
+    setReplyMenuOpen(false);
+    if (!enquiry.isRead) {
       try {
-        setLoading(true);
-        const [projRes, galRes, shopRes, enqRes] = await Promise.allSettled([
-          getProjects(),
-          getGalleryCategories(),
-          getShopProducts(),
-          getEnquiries(),
-        ]);
-
-        const projectList = projRes.status === 'fulfilled' && projRes.value?.success ? projRes.value.data : [];
-        const categoryCount = galRes.status === 'fulfilled' && galRes.value?.success ? galRes.value.data.length : 0;
-        const shopCount = shopRes.status === 'fulfilled' && shopRes.value?.success ? shopRes.value.data.length : 0;
-        const enquiryList: IEnquiry[] = enqRes.status === 'fulfilled' && enqRes.value?.success ? enqRes.value.data : [];
-
-        const unreadCount = enquiryList.filter((e) => !e.isRead).length;
-
-        setCounts({
-          projects: projectList.length,
-          categories: categoryCount,
-          shopProducts: shopCount,
-          enquiries: enquiryList.length,
-          unreadEnquiries: unreadCount,
-        });
-
-        setRecentProjects(projectList.slice(0, 5));
-        setRecentEnquiries(enquiryList.slice(0, 5));
-      } catch (err) {
-        console.error('Failed to load dashboard metrics:', err);
-      } finally {
-        setLoading(false);
+        const res = await toggleEnquiryRead(enquiry._id, true);
+        if (res.success) {
+          setRecentEnquiries((prev) =>
+            prev.map((e) => (e._id === enquiry._id ? { ...e, isRead: true } : e))
+          );
+          setCounts((prev) => ({
+            ...prev,
+            unreadEnquiries: Math.max(0, prev.unreadEnquiries - 1),
+          }));
+          setSelectedEnquiry((prev) => (prev ? { ...prev, isRead: true } : null));
+        }
+      } catch (err: any) {
+        console.error('Failed to mark enquiry as read:', err);
       }
-    };
-    loadMetrics();
+    }
+  };
+
+  const handleToggleReadStatus = async (enquiry: IEnquiry) => {
+    try {
+      const nextState = !enquiry.isRead;
+      const res = await toggleEnquiryRead(enquiry._id, nextState);
+      if (res.success) {
+        setRecentEnquiries((prev) =>
+          prev.map((e) => (e._id === enquiry._id ? { ...e, isRead: nextState } : e))
+        );
+        setCounts((prev) => ({
+          ...prev,
+          unreadEnquiries: nextState
+            ? Math.max(0, prev.unreadEnquiries - 1)
+            : prev.unreadEnquiries + 1,
+        }));
+        setSelectedEnquiry((prev) => (prev ? { ...prev, isRead: nextState } : null));
+        alert.success(`Marked enquiry as ${nextState ? 'read' : 'unread'}.`);
+      }
+    } catch (err: any) {
+      alert.error(err.message || 'Failed to update message status', 'Error');
+    }
+  };
+
+  const loadMetrics = async (isInitial = false) => {
+    try {
+      if (isInitial) setLoading(true);
+      const [projRes, galRes, shopRes, enqRes] = await Promise.allSettled([
+        getProjects(),
+        getGalleryCategories(),
+        getShopProducts(),
+        getEnquiries(),
+      ]);
+
+      const projectList = projRes.status === 'fulfilled' && projRes.value?.success ? projRes.value.data : [];
+      const categoryCount = galRes.status === 'fulfilled' && galRes.value?.success ? galRes.value.data.length : 0;
+      const shopCount = shopRes.status === 'fulfilled' && shopRes.value?.success ? shopRes.value.data.length : 0;
+      const enquiryList: IEnquiry[] = enqRes.status === 'fulfilled' && enqRes.value?.success ? enqRes.value.data : [];
+
+      const unreadCount = enquiryList.filter((e) => !e.isRead).length;
+
+      setCounts({
+        projects: projectList.length,
+        categories: categoryCount,
+        shopProducts: shopCount,
+        enquiries: enquiryList.length,
+        unreadEnquiries: unreadCount,
+      });
+
+      setRecentProjects(projectList.slice(0, 5));
+      setRecentEnquiries(enquiryList.slice(0, 5));
+    } catch (err) {
+      console.error('Failed to load dashboard metrics:', err);
+    } finally {
+      if (isInitial) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMetrics(true);
   }, []);
+
+  // Live CMS Synchronization for Dashboard
+  useLiveResource(['projects', 'gallery', 'shop', 'enquiries'], () => {
+    loadMetrics(false);
+  });
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '—';
@@ -423,14 +496,15 @@ export const DashboardPage: React.FC = () => {
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <Link
-                        to="/messages"
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEnquiry(enquiry)}
                         className="admin-btn-icon"
-                        title="View Enquiry"
-                        style={{ display: 'inline-flex' }}
+                        title="View Enquiry Details"
+                        style={{ display: 'inline-flex', cursor: 'pointer' }}
                       >
-                        <ExternalLink size={14} />
-                      </Link>
+                        <Eye size={14} />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -439,6 +513,359 @@ export const DashboardPage: React.FC = () => {
           </div>
         )}
       </AdminSection>
+
+      {/* In-place Client Enquiry View Modal */}
+      {selectedEnquiry && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            className="admin-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(94vw, 540px)',
+              padding: '1.25rem',
+              maxHeight: '90dvh',
+              overflowY: 'auto',
+              background: '#ffffff',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1rem',
+                borderBottom: '1px solid var(--admin-border-color)',
+                paddingBottom: '0.75rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>CLIENT ENQUIRY</h3>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    background: selectedEnquiry.isRead ? '#F3F4F6' : '#FEF3C7',
+                    color: selectedEnquiry.isRead ? '#4B5563' : '#92400E',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {selectedEnquiry.isRead ? 'Read' : 'New'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedEnquiry(null);
+                  setReplyMenuOpen(false);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  color: 'var(--admin-text-muted)',
+                }}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+              <div>
+                <label className="admin-label" style={{ fontSize: '11px' }}>
+                  Product Enquired
+                </label>
+                <div
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: 'var(--admin-text-main)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <ShoppingBag size={15} /> {selectedEnquiry.productName || 'General Enquiry'}
+                </div>
+              </div>
+
+              <div className="admin-two-col-grid" style={{ gap: '0.875rem' }}>
+                <div>
+                  <label className="admin-label" style={{ fontSize: '11px' }}>
+                    Client Name
+                  </label>
+                  <div style={{ fontSize: '13.5px', fontWeight: 500, color: 'var(--admin-text-main)' }}>
+                    {selectedEnquiry.name}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="admin-label" style={{ fontSize: '11px' }}>
+                    Received Date
+                  </label>
+                  <div
+                    style={{
+                      fontSize: '13px',
+                      color: 'var(--admin-text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Clock size={13} />
+                    {new Date(selectedEnquiry.createdAt).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              <div className="admin-two-col-grid" style={{ gap: '0.875rem' }}>
+                <div>
+                  <label className="admin-label" style={{ fontSize: '11px' }}>
+                    Email Address
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <a
+                      href={getGmailComposeUrl({
+                        to: selectedEnquiry.email,
+                        ...buildEnquiryReplyDraft(selectedEnquiry),
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: '13px', color: '#1E88E5', textDecoration: 'underline' }}
+                      title="Click to compose reply in Gmail"
+                    >
+                      {selectedEnquiry.email}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(selectedEnquiry.email, 'Email address')}
+                      className="admin-btn-icon"
+                      style={{ width: '22px', height: '22px', padding: 0 }}
+                      title="Copy email address"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="admin-label" style={{ fontSize: '11px' }}>
+                    Phone / WhatsApp
+                  </label>
+                  <div style={{ fontSize: '13px', color: 'var(--admin-text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>{selectedEnquiry.phone || '—'}</span>
+                    {selectedEnquiry.phone && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(selectedEnquiry.phone || '', 'Phone number')}
+                        className="admin-btn-icon"
+                        style={{ width: '22px', height: '22px', padding: 0 }}
+                        title="Copy phone number"
+                      >
+                        <Copy size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="admin-label" style={{ fontSize: '11px' }}>
+                  Client Message
+                </label>
+                <div
+                  style={{
+                    padding: '0.875rem',
+                    background: '#FAFAF8',
+                    border: '1px solid var(--admin-border-color)',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    lineHeight: '1.6',
+                    color: 'var(--admin-text-main)',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {selectedEnquiry.message || 'No additional message text.'}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: '0.5rem',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid var(--admin-border-color)',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleToggleReadStatus(selectedEnquiry)}
+                  className="admin-btn secondary"
+                  style={{ fontSize: '12px' }}
+                >
+                  Mark as {selectedEnquiry.isRead ? 'Unread' : 'Read'}
+                </button>
+
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedEnquiry(null);
+                      setReplyMenuOpen(false);
+                    }}
+                    className="admin-btn secondary"
+                    style={{ fontSize: '12px' }}
+                  >
+                    Close
+                  </button>
+
+                  <div style={{ position: 'relative', display: 'inline-flex' }}>
+                    <a
+                      href={getGmailComposeUrl({
+                        to: selectedEnquiry.email,
+                        ...buildEnquiryReplyDraft(selectedEnquiry),
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => {
+                        if (!selectedEnquiry.isRead) {
+                          handleToggleReadStatus(selectedEnquiry);
+                        }
+                        alert.success(
+                          `Opening Gmail compose for ${selectedEnquiry.name}...`,
+                          'Replying via Gmail'
+                        );
+                      }}
+                      className="admin-btn primary"
+                      style={{
+                        fontSize: '12px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        borderTopRightRadius: 0,
+                        borderBottomRightRadius: 0,
+                        paddingRight: '10px',
+                        textDecoration: 'none',
+                      }}
+                      title="Open in Gmail Compose"
+                    >
+                      <Reply size={13} /> Reply via Email
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => setReplyMenuOpen((prev) => !prev)}
+                      className="admin-btn primary"
+                      style={{
+                        fontSize: '12px',
+                        padding: '0 8px',
+                        borderTopLeftRadius: 0,
+                        borderBottomLeftRadius: 0,
+                        borderLeft: '1px solid rgba(255,255,255,0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      title="More reply options"
+                    >
+                      <ChevronDown size={13} />
+                    </button>
+
+                    {replyMenuOpen && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 6px)',
+                          right: 0,
+                          background: '#ffffff',
+                          border: '1px solid var(--admin-border-color)',
+                          borderRadius: '8px',
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
+                          zIndex: 100,
+                          minWidth: '220px',
+                          padding: '6px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px',
+                        }}
+                      >
+                        <a
+                          href={getGmailComposeUrl({
+                            to: selectedEnquiry.email,
+                            ...buildEnquiryReplyDraft(selectedEnquiry),
+                          })}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => {
+                            setReplyMenuOpen(false);
+                            alert.success(
+                              `Opening Gmail compose for ${selectedEnquiry.name}...`,
+                              'Replying via Gmail'
+                            );
+                          }}
+                          style={{
+                            padding: '8px 10px',
+                            fontSize: '12.5px',
+                            color: 'var(--admin-text-main)',
+                            textDecoration: 'none',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#f3f4f6')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <Mail size={13} color="#EA4335" />
+                          <span>Compose in Gmail</span>
+                        </a>
+
+                        <a
+                          href={getMailtoUrl({
+                            to: selectedEnquiry.email,
+                            ...buildEnquiryReplyDraft(selectedEnquiry),
+                          })}
+                          onClick={() => setReplyMenuOpen(false)}
+                          style={{
+                            padding: '8px 10px',
+                            fontSize: '12.5px',
+                            color: 'var(--admin-text-main)',
+                            textDecoration: 'none',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#f3f4f6')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <Reply size={13} />
+                          <span>Default Mail Client</span>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

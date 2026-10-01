@@ -646,8 +646,19 @@ export const ProjectEditor: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--admin-text-muted)' }}>
-        Loading project editor...
+      <div>
+        <PageHeader
+          title={isEditing ? 'EDIT PROJECT' : 'NEW PROJECT'}
+          actions={
+            <Link to="/projects" className="admin-btn secondary" style={{ fontSize: '13px' }}>
+              <ArrowLeft size={14} /> Back
+            </Link>
+          }
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '1rem', color: 'var(--admin-text-muted)' }}>
+          <div style={{ width: '28px', height: '28px', border: '2px solid rgba(0,0,0,0.1)', borderTopColor: '#111', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <span style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Loading project...</span>
+        </div>
       </div>
     );
   }
@@ -677,30 +688,6 @@ export const ProjectEditor: React.FC = () => {
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {categories.length === 0 && !loading && (
-          <div
-            style={{
-              padding: '0.75rem 1rem',
-              background: '#FFF3E0',
-              border: '1px solid #FFE0B2',
-              borderRadius: '6px',
-              fontSize: '12.5px',
-              color: '#E65100',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <span>No project categories exist yet. Create a category to classify this project.</span>
-            <Link
-              to="/categories"
-              style={{ fontWeight: 600, color: '#E65100', textDecoration: 'underline' }}
-            >
-              Manage Categories &rarr;
-            </Link>
-          </div>
-        )}
-
         {/* 1. PROJECT DETAILS */}
         <AdminSection title="PROJECT DETAILS">
           <div
@@ -756,11 +743,6 @@ export const ProjectEditor: React.FC = () => {
                   </option>
                 ))}
               </select>
-              {(!formData.category || (typeof formData.category === 'object' && !(formData.category as any)?._id)) && (
-                <div style={{ fontSize: '11px', color: '#D84315', marginTop: '4px', fontWeight: 500 }}>
-                  ⚠ Unassigned. Please select a category.
-                </div>
-              )}
             </div>
 
             <div className="admin-form-group" style={{ margin: 0 }}>
@@ -827,47 +809,28 @@ export const ProjectEditor: React.FC = () => {
             />
           </div>
 
-          {/* Publication & Feature Guidance Note */}
-          <div
-            style={{
-              marginTop: '1rem',
-              padding: '0.625rem 0.875rem',
-              borderRadius: '6px',
-              background: '#F9F9F8',
-              border: '1px solid var(--admin-border-color)',
-              fontSize: '12px',
-              color: 'var(--admin-text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-            }}
-          >
-            <span>
-              <strong>Publication & Featured:</strong> Projects can be published live directly from the{' '}
-              <Link to="/projects" style={{ color: 'var(--admin-primary, #111)', fontWeight: 600, textDecoration: 'underline' }}>
-                Portfolio Projects
-              </Link>{' '}
-              list. Homepage featured projects are selected from the{' '}
-              <Link to="/home" style={{ color: 'var(--admin-primary, #111)', fontWeight: 600, textDecoration: 'underline' }}>
-                Home Page
-              </Link>{' '}
-              editor.
-            </span>
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: '10px',
-                background: formData.published ? '#E8F5E9' : '#F5F5F5',
-                color: formData.published ? '#2E7D32' : '#616161',
-                border: formData.published ? '1px solid #A5D6A7' : '1px solid #E0E0E0',
-              }}
-            >
-              {formData.published ? 'Live on Portfolio' : 'Draft'}
-            </span>
+          {/* Publication & Homepage Feature Toggles */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '1.25rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}>
+              <input
+                type="checkbox"
+                name="published"
+                checked={Boolean(formData.published)}
+                onChange={(e) => setFormData((prev) => ({ ...prev, published: e.target.checked }))}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              Published
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}>
+              <input
+                type="checkbox"
+                name="featured"
+                checked={Boolean(formData.featured)}
+                onChange={(e) => setFormData((prev) => ({ ...prev, featured: e.target.checked }))}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              Featured on Homepage
+            </label>
           </div>
         </AdminSection>
 

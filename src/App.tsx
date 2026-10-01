@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AlertProvider } from './context/AlertContext';
+import { LiveSyncProvider } from './context/LiveSyncContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminLayout } from './components/AdminLayout';
 
@@ -56,38 +57,40 @@ export const App: React.FC = () => {
     <BrowserRouter>
       <AlertProvider>
         <AuthProvider>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* Public Route */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+          <LiveSyncProvider>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* Public Route */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
-              {/* Protected Admin Routes */}
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AdminLayout />}>
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/users" element={<UserManagementPage />} />
-                  <Route path="/content/home" element={<HomePageEditor />} />
-                  <Route path="/projects" element={<ProjectsPage />} />
-                  <Route path="/projects/new" element={<ProjectEditor />} />
-                  <Route path="/projects/:id" element={<ProjectEditor />} />
-                  <Route path="/categories" element={<CategoriesPage />} />
-                  <Route path="/gallery" element={<GalleryPageAdmin />} />
-                  <Route path="/services" element={<ServicesPage />} />
-                  <Route path="/shop" element={<ShopProductsPage />} />
-                  <Route path="/about" element={<AboutPageEditor />} />
-                  <Route path="/contact" element={<ContactPageEditor />} />
-                  <Route path="/messages" element={<MessagesPage />} />
-                  <Route path="/settings" element={<SettingsPageEditor />} />
-                  <Route path="/profile" element={<ProfilePage />} />
+                {/* Protected Admin Routes */}
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<AdminLayout />}>
+                    <Route path="/dashboard" element={<DashboardPage />} />
+                    <Route path="/users" element={<UserManagementPage />} />
+                    <Route path="/content/home" element={<HomePageEditor />} />
+                    <Route path="/projects" element={<ProjectsPage />} />
+                    <Route path="/projects/new" element={<ProjectEditor />} />
+                    <Route path="/projects/:id" element={<ProjectEditor />} />
+                    <Route path="/categories" element={<CategoriesPage />} />
+                    <Route path="/gallery" element={<GalleryPageAdmin />} />
+                    <Route path="/services" element={<ServicesPage />} />
+                    <Route path="/shop" element={<ShopProductsPage />} />
+                    <Route path="/about" element={<AboutPageEditor />} />
+                    <Route path="/contact" element={<ContactPageEditor />} />
+                    <Route path="/messages" element={<MessagesPage />} />
+                    <Route path="/settings" element={<SettingsPageEditor />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                  </Route>
                 </Route>
-              </Route>
 
-              {/* Fallback Redirect */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-          </Suspense>
+                {/* Fallback Redirect */}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </Suspense>
+          </LiveSyncProvider>
         </AuthProvider>
       </AlertProvider>
     </BrowserRouter>

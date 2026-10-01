@@ -6,6 +6,7 @@ import { AdminSection, PageHeader } from '../components/AdminSection';
 import { MAX_ABOUT_HEADING_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
+import { useLiveResource } from '../context/LiveSyncContext';
 
 const validatePortraitDimensions = (
   file: File,
@@ -71,22 +72,28 @@ export const AboutPageEditor: React.FC = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  useEffect(() => {
-    const fetchContent = async () => {
-      try {
-        setLoading(true);
-        const res = await getAboutContent();
-        if (res.success && res.data) {
-          setContent(res.data);
-        }
-      } catch (err: any) {
-        setErrorMsg('Failed to load about page configuration.');
-      } finally {
-        setLoading(false);
+  const fetchContent = async (isInitial = false) => {
+    try {
+      if (isInitial) setLoading(true);
+      const res = await getAboutContent();
+      if (res.success && res.data) {
+        setContent(res.data);
       }
-    };
-    fetchContent();
+    } catch (err: any) {
+      setErrorMsg('Failed to load about page configuration.');
+    } finally {
+      if (isInitial) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContent(true);
   }, []);
+
+  // Live CMS Synchronization: re-fetch about content when modified
+  useLiveResource(['about'], () => {
+    fetchContent(false);
+  });
 
   const handleParagraphChange = (index: number, val: string) => {
     const updated = [...(content.bioParagraphs || [])];
@@ -173,17 +180,14 @@ export const AboutPageEditor: React.FC = () => {
 
   if (loading) {
     return (
-      <div
-        style={{
-          padding: '3rem',
-          textAlign: 'center',
-          color: 'var(--admin-text-muted)',
-          fontSize: '13px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-        }}
-      >
-        Loading About Page Settings...
+      <div className="admin-page-container">
+        <PageHeader title="ABOUT & BIO" />
+        <div style={{ padding: '4rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+          <div className="spinner" style={{ width: '28px', height: '28px' }}></div>
+          <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-text-muted, #777)' }}>
+            Loading About Page Settings...
+          </span>
+        </div>
       </div>
     );
   }

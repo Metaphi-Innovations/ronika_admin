@@ -19,6 +19,7 @@ import { AdminSection, PageHeader } from '../components/AdminSection';
 import { countReadableChars, MAX_HERO_QUOTE_CHARS, MAX_CLIENT_BIO_CHARS, MAX_SERVICE_DESC_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
+import { useLiveResource } from '../context/LiveSyncContext';
 
 export const HomePageEditor: React.FC = () => {
   const alert = useAlert();
@@ -46,9 +47,9 @@ export const HomePageEditor: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const fetchData = async () => {
+  const fetchData = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const [homeRes, projectsRes, servicesRes, settingsRes] = await Promise.all([
         getHomeContent(),
         getProjects(),
@@ -72,13 +73,18 @@ export const HomePageEditor: React.FC = () => {
       console.error(err);
       setErrorMsg('Failed to load home page configuration.');
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
   }, []);
+
+  // Live CMS Synchronization: background updates without screen blanking
+  useLiveResource(['home', 'projects', 'services'], () => {
+    fetchData(false);
+  });
 
   // Validation helpers
   const quoteCharCount = countReadableChars(content.heroQuote);
@@ -468,7 +474,7 @@ export const HomePageEditor: React.FC = () => {
         });
 
         await Promise.all(servicePromises);
-        await fetchData();
+        fetchData(false);
         alert.success('Services Section updated successfully!', 'Saved');
       } else if (sectionName === 'B') {
         // Section B: Save Featured Projects & Section Title
@@ -477,7 +483,7 @@ export const HomePageEditor: React.FC = () => {
           featuredProjects: featuredIds,
         });
         if (homeRes.success) {
-          await fetchData();
+          fetchData(false);
           alert.success(
             `Featured Projects updated successfully! (${featuredIds.length} projects are now active in the homepage showcase).`,
             'Saved'
@@ -493,7 +499,7 @@ export const HomePageEditor: React.FC = () => {
           heroImage: content.heroImage,
         });
         if (homeRes.success) {
-          await fetchData();
+          fetchData(false);
           alert.success('Hero Section updated successfully!', 'Saved');
         }
       } else if (sectionName === 'C') {
@@ -505,7 +511,7 @@ export const HomePageEditor: React.FC = () => {
           ctaLink: content.ctaLink,
         });
         if (homeRes.success) {
-          await fetchData();
+          fetchData(false);
           alert.success('Biography & Portrait updated successfully!', 'Saved');
         }
       }
@@ -520,8 +526,14 @@ export const HomePageEditor: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        Loading Home CMS Settings...
+      <div className="admin-page-container">
+        <PageHeader title="HOME PAGE" />
+        <div style={{ padding: '4rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+          <div className="spinner" style={{ width: '28px', height: '28px' }}></div>
+          <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-text-muted, #777)' }}>
+            Loading Home CMS Settings...
+          </span>
+        </div>
       </div>
     );
   }

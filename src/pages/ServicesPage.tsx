@@ -5,6 +5,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { useAlert } from '../context/AlertContext';
+import { useLiveResource } from '../context/LiveSyncContext';
 
 export const ServicesPage: React.FC = () => {
   const alert = useAlert();
@@ -19,9 +20,9 @@ export const ServicesPage: React.FC = () => {
   const [formData, setFormData] = useState<Partial<IService>>({ title: '', description: '', icon: '', displayOrder: 0, isActive: true });
   const [isCreating, setIsCreating] = useState(false);
 
-  const fetchServices = async () => {
+  const fetchServices = async (isInitial = true) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const res = await getServices();
       if (res.success) {
         setServices(res.data);
@@ -31,13 +32,17 @@ export const ServicesPage: React.FC = () => {
     } catch (err: any) {
       setError(err.message || 'Error loading services');
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchServices();
+    fetchServices(true);
   }, []);
+
+  useLiveResource('services', () => {
+    fetchServices(false);
+  });
 
   const handleEdit = (srv: IService) => {
     setIsCreating(false);

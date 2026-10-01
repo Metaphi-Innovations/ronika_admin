@@ -4,6 +4,7 @@ import { getCategories, createCategory, updateCategory, deleteCategory } from '.
 import { ConfirmModal } from '../components/ConfirmModal';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { useAlert } from '../context/AlertContext';
+import { useLiveResource } from '../context/LiveSyncContext';
 
 interface ICategory {
   _id: string;
@@ -29,9 +30,9 @@ export const CategoriesPage: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const res = await getCategories();
       if (res.success) {
         setCategories(res.data);
@@ -41,13 +42,18 @@ export const CategoriesPage: React.FC = () => {
     } catch (err: any) {
       setError(err.message || 'Error loading categories');
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCategories();
+    fetchCategories(true);
   }, []);
+
+  // Live CMS Synchronization for Categories
+  useLiveResource(['categories'], () => {
+    fetchCategories(false);
+  });
 
   const handleEdit = (cat: ICategory) => {
     setIsCreating(false);
@@ -300,17 +306,9 @@ export const CategoriesPage: React.FC = () => {
 
       <AdminSection noPadding>
         {loading ? (
-          <div
-            style={{
-              padding: '3.5rem',
-              textAlign: 'center',
-              color: 'var(--admin-text-muted)',
-              fontSize: '13px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
-            Loading categories...
+          <div style={{ padding: '3.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+            <div className="spinner" style={{ width: '24px', height: '24px' }}></div>
+            <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-text-muted, #777)' }}>Loading categories...</span>
           </div>
         ) : categories.length === 0 ? (
           <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>

@@ -10,6 +10,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   GripVertical,
   MoreVertical,
   Eye,
@@ -39,6 +40,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { PageHeader } from '../components/AdminSection';
 import { countReadableChars, MAX_GALLERY_INTRO_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
+import { useLiveResource } from '../context/LiveSyncContext';
 import { getImageUrl } from '../utils/imageUrl';
 import './GalleryAdmin.css';
 
@@ -118,9 +120,9 @@ export const GalleryPageAdmin: React.FC = () => {
   const [editingImage, setEditingImage] = useState(false);
 
   // Fetch all gallery data
-  const fetchData = async () => {
+  const fetchData = async (isInitial = true) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       setError('');
       const [catsRes, imgsRes, settingsRes] = await Promise.all([
         getGalleryCategories(),
@@ -134,22 +136,31 @@ export const GalleryPageAdmin: React.FC = () => {
           (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)
         );
         setImages(sorted);
-        setOrderedImages(sorted);
-        setHasUnsavedChanges(false);
+        if (!hasUnsavedChanges) {
+          setOrderedImages(sorted);
+        }
       }
       if (settingsRes.success && settingsRes.data?.galleryHeader) {
         setGalleryHeader(settingsRes.data.galleryHeader);
       }
     } catch (err: any) {
-      setError("Couldn't load gallery.");
+      if (isInitial) setError("Couldn't load gallery.");
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
   }, []);
+
+  useLiveResource('gallery', () => {
+    fetchData(false);
+  });
+
+  useLiveResource('galleryCategories', () => {
+    fetchData(false);
+  });
 
   // Browser navigation warning when unsaved changes exist
   useEffect(() => {
@@ -289,8 +300,33 @@ export const GalleryPageAdmin: React.FC = () => {
     if (!deleteCatTarget) return;
     try {
       setDeleting(true);
-      await deleteGalleryCategory(deleteCatTarget.id);
-      setCategories(categories.filter((c) => c._id !== deleteCatTarget.id));
+      const deletedCatId = deleteCatTarget.id;
+      await deleteGalleryCategory(deletedCatId);
+
+      // 1. Remove category from categories list
+      setCategories((prev) => prev.filter((c) => c._id !== deletedCatId));
+
+      // 2. Immediately unassign this deleted category from all local images
+      const unassignCategory = (list: IGalleryImage[]) =>
+        list.map((item) => {
+          const itemCatId =
+            item.category && typeof item.category === 'object' && item.category._id
+              ? item.category._id
+              : (item.category as string);
+          if (String(itemCatId || '') === String(deletedCatId)) {
+            return { ...item, category: null as any };
+          }
+          return item;
+        });
+
+      setImages(unassignCategory);
+      setOrderedImages(unassignCategory);
+
+      // 3. If the deleted category was currently active filter, reset filter to 'ALL'
+      if (selectedCategory === deletedCatId) {
+        setSelectedCategory('ALL');
+      }
+
       alert.info(`Category "${deleteCatTarget.name}" deleted.`);
       setDeleteCatTarget(null);
     } catch (err: any) {
@@ -401,6 +437,23 @@ export const GalleryPageAdmin: React.FC = () => {
     }
   };
 
+  // Helper to reliably resolve category name whether category is populated object or string ID
+  const getCategoryName = (cat: any) => {
+    if (!cat) return 'Uncategorized';
+    const catId = typeof cat === 'object' && cat ? cat._id : cat;
+    if (catId && typeof catId === 'string' && catId.trim()) {
+      const found = categories.find((c) => String(c._id) === String(catId));
+      if (found) return found.name;
+      // Category ID was deleted from active categories
+      return 'Uncategorized';
+    }
+    if (cat && typeof cat === 'object' && cat.name) {
+      const foundByName = categories.find((c) => c.name.toLowerCase() === cat.name.toLowerCase());
+      if (foundByName) return foundByName.name;
+    }
+    return 'Uncategorized';
+  };
+
   // Edit Image Info
   const openEditModal = (img: IGalleryImage) => {
     setEditTarget(img);
@@ -422,7 +475,14 @@ export const GalleryPageAdmin: React.FC = () => {
       });
 
       if (res.success) {
-        const updatedImage = res.data;
+        let updatedImage = res.data;
+        // Ensure category object is populated in local state immediately
+        const catId = typeof updatedImage.category === 'object' && updatedImage.category
+          ? updatedImage.category._id
+          : (typeof updatedImage.category === 'string' ? updatedImage.category : editCategoryId);
+        const matchedCat = categories.find((c) => String(c._id) === String(catId));
+        updatedImage = { ...updatedImage, category: matchedCat || (null as any) };
+
         const updateList = (list: IGalleryImage[]) =>
           list.map((item) => (item._id === editTarget._id ? updatedImage : item));
 
@@ -500,7 +560,7 @@ export const GalleryPageAdmin: React.FC = () => {
       ? images
       : images.filter((img) => {
         const catId = typeof img.category === 'object' && img.category ? img.category._id : img.category;
-        return catId === selectedCategory;
+        return String(catId || '') === String(selectedCategory);
       });
 
   return (
@@ -549,7 +609,7 @@ export const GalleryPageAdmin: React.FC = () => {
         >
           <span>{error}</span>
           <button
-            onClick={fetchData}
+            onClick={() => fetchData(true)}
             className="admin-btn secondary"
             style={{ fontSize: '11px', padding: '3px 8px' }}
           >
@@ -615,22 +675,33 @@ export const GalleryPageAdmin: React.FC = () => {
                 justifyContent: 'space-between',
                 cursor: 'pointer',
                 backgroundColor: '#FAFAF8',
+                userSelect: 'none',
+                transition: 'background-color 0.15s ease',
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F5F5F2')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FAFAF8')}
             >
-              <span
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  color: 'var(--admin-text-main, #111)',
-                }}
-              >
-                Editorial Intro Text
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--admin-text-muted, #666)' }}>
-                {showIntroEditor ? 'Close' : 'Edit Text'}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: 'var(--admin-text-main, #111)',
+                  }}
+                >
+                  Editorial Intro Text
+                </span>
+                <ChevronDown
+                  size={15}
+                  style={{
+                    color: 'var(--admin-text-main, #111)',
+                    transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: showIntroEditor ? 'rotate(180deg)' : 'rotate(0deg)',
+                  }}
+                />
+              </div>
             </div>
 
             {showIntroEditor && (
@@ -739,10 +810,7 @@ export const GalleryPageAdmin: React.FC = () => {
               }}
             >
               {libraryImages.map((item) => {
-                const catName =
-                  item.category && typeof item.category === 'object' && item.category.name
-                    ? item.category.name
-                    : 'Uncategorized';
+                const catName = getCategoryName(item.category);
                 return (
                   <div
                     key={item._id}
@@ -990,10 +1058,7 @@ export const GalleryPageAdmin: React.FC = () => {
             <div className={`arrange-grid-container viewport-${arrangeViewport}`}>
               {orderedImages.map((item, index) => {
                 const positionNumber = String(index + 1).padStart(2, '0');
-                const catName =
-                  item.category && typeof item.category === 'object' && item.category.name
-                    ? item.category.name
-                    : 'Gallery';
+                const catName = getCategoryName(item.category);
                 const isDragging = draggedIndex === index;
                 const isDropTarget = dropTargetIndex === index && draggedIndex !== index;
 

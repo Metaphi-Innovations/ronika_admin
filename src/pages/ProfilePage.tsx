@@ -342,7 +342,6 @@ export const ProfilePage: React.FC = () => {
       {isEditModalOpen && (
         <div
           className="modal-backdrop"
-          onClick={() => !saving && setIsEditModalOpen(false)}
           role="dialog"
           aria-modal="true"
         >

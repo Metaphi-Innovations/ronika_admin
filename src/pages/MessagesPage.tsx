@@ -10,6 +10,9 @@ import {
   ShoppingBag,
   Clock,
   Check,
+  ChevronDown,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import {
   getEnquiries,
@@ -20,6 +23,12 @@ import {
 import { PageHeader, AdminSection } from '../components/AdminSection';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { useAlert } from '../context/AlertContext';
+import {
+  getGmailComposeUrl,
+  getMailtoUrl,
+  buildEnquiryReplyDraft,
+} from '../utils/mail';
+import { useLiveResource } from '../context/LiveSyncContext';
 
 export const MessagesPage: React.FC = () => {
   const alert = useAlert();
@@ -29,10 +38,20 @@ export const MessagesPage: React.FC = () => {
   const [selectedEnquiry, setSelectedEnquiry] = useState<IEnquiry | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<IEnquiry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [replyMenuOpen, setReplyMenuOpen] = useState(false);
 
-  const fetchEnquiries = async () => {
+  const handleCopy = async (text: string, label: string) => {
     try {
-      setLoading(true);
+      await navigator.clipboard.writeText(text);
+      alert.success(`${label} copied to clipboard!`, 'Copied');
+    } catch {
+      alert.error('Failed to copy to clipboard', 'Error');
+    }
+  };
+
+  const fetchEnquiries = async (isInitial = true) => {
+    try {
+      if (isInitial) setLoading(true);
       const res = await getEnquiries();
       if (res.success) {
         setEnquiries(res.data);
@@ -40,13 +59,17 @@ export const MessagesPage: React.FC = () => {
     } catch (err: any) {
       alert.error(err.message || 'Failed to load client messages', 'Error');
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchEnquiries();
+    fetchEnquiries(true);
   }, []);
+
+  useLiveResource('enquiries', () => {
+    fetchEnquiries(false);
+  });
 
   const handleToggleRead = async (enquiry: IEnquiry) => {
     try {
@@ -181,7 +204,7 @@ export const MessagesPage: React.FC = () => {
                   <th>Product Enquired</th>
                   <th>Message Preview</th>
                   <th>Received Date</th>
-                  <th>Status</th>
+                  <th style={{ whiteSpace: 'nowrap' }}>Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -217,7 +240,12 @@ export const MessagesPage: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '2px' }}>
                           <a
-                            href={`mailto:${enquiry.email}?subject=Regarding your enquiry for ${enquiry.productName}`}
+                            href={getGmailComposeUrl({
+                              to: enquiry.email,
+                              ...buildEnquiryReplyDraft(enquiry),
+                            })}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             style={{
                               fontSize: '12px',
                               color: 'var(--admin-text-muted)',
@@ -226,6 +254,7 @@ export const MessagesPage: React.FC = () => {
                               alignItems: 'center',
                               gap: '3px',
                             }}
+                            title="Click to compose reply in Gmail"
                           >
                             <Mail size={12} /> {enquiry.email}
                           </a>
@@ -295,7 +324,7 @@ export const MessagesPage: React.FC = () => {
                         })}
                       </span>
                     </td>
-                    <td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
                       <button
                         onClick={() => handleToggleRead(enquiry)}
                         style={{
@@ -303,6 +332,7 @@ export const MessagesPage: React.FC = () => {
                           border: 'none',
                           cursor: 'pointer',
                           padding: 0,
+                          display: 'inline-flex',
                         }}
                         title={enquiry.isRead ? 'Click to mark as unread' : 'Click to mark as read'}
                       >
@@ -317,7 +347,8 @@ export const MessagesPage: React.FC = () => {
                               fontWeight: 600,
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '3px',
+                              gap: '4px',
+                              whiteSpace: 'nowrap',
                             }}
                           >
                             <Check size={11} /> READ
@@ -332,9 +363,13 @@ export const MessagesPage: React.FC = () => {
                               borderRadius: '4px',
                               fontWeight: 700,
                               letterSpacing: '0.04em',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              whiteSpace: 'nowrap',
                             }}
                           >
-                            ● NEW / UNREAD
+                            <span style={{ fontSize: '8px', lineHeight: 1 }}>●</span> UNREAD
                           </span>
                         )}
                       </button>
@@ -355,9 +390,19 @@ export const MessagesPage: React.FC = () => {
                           <Eye size={15} />
                         </button>
                         <a
-                          href={`mailto:${enquiry.email}?subject=Regarding your enquiry for ${enquiry.productName}`}
+                          href={getGmailComposeUrl({
+                            to: enquiry.email,
+                            ...buildEnquiryReplyDraft(enquiry),
+                          })}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="admin-btn-icon"
-                          title="Reply via Email"
+                          title="Reply via Gmail"
+                          onClick={() => {
+                            if (!enquiry.isRead) {
+                              handleToggleRead(enquiry);
+                            }
+                          }}
                           style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         >
                           <Reply size={15} />
@@ -394,6 +439,7 @@ export const MessagesPage: React.FC = () => {
         >
           <div
             className="admin-card"
+            onClick={(e) => e.stopPropagation()}
             style={{ width: 'min(94vw, 520px)', padding: '1.25rem', maxHeight: '90dvh', overflowY: 'auto' }}
           >
             <div
@@ -474,13 +520,28 @@ export const MessagesPage: React.FC = () => {
                   <label className="admin-label" style={{ fontSize: '11px' }}>
                     Email Address
                   </label>
-                  <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <a
-                      href={`mailto:${selectedEnquiry.email}?subject=Regarding your enquiry for ${selectedEnquiry.productName}`}
+                      href={getGmailComposeUrl({
+                        to: selectedEnquiry.email,
+                        ...buildEnquiryReplyDraft(selectedEnquiry),
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       style={{ fontSize: '13px', color: '#1E88E5', textDecoration: 'underline' }}
+                      title="Click to compose reply in Gmail"
                     >
                       {selectedEnquiry.email}
                     </a>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(selectedEnquiry.email, 'Email address')}
+                      className="admin-btn-icon"
+                      style={{ width: '22px', height: '22px', padding: 0 }}
+                      title="Copy email address"
+                    >
+                      <Copy size={12} />
+                    </button>
                   </div>
                 </div>
 
@@ -533,22 +594,205 @@ export const MessagesPage: React.FC = () => {
                   Mark as {selectedEnquiry.isRead ? 'Unread' : 'Read'}
                 </button>
 
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <button
                     type="button"
-                    onClick={() => setSelectedEnquiry(null)}
+                    onClick={() => {
+                      setSelectedEnquiry(null);
+                      setReplyMenuOpen(false);
+                    }}
                     className="admin-btn secondary"
                     style={{ fontSize: '12px' }}
                   >
                     Close
                   </button>
-                  <a
-                    href={`mailto:${selectedEnquiry.email}?subject=Regarding your enquiry for ${selectedEnquiry.productName}&body=Hi ${selectedEnquiry.name},%0D%0A%0D%0AThank you for reaching out regarding ${selectedEnquiry.productName}.`}
-                    className="admin-btn primary"
-                    style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                  >
-                    <Reply size={13} /> Reply via Email
-                  </a>
+
+                  <div style={{ position: 'relative', display: 'inline-flex' }}>
+                    <a
+                      href={getGmailComposeUrl({
+                        to: selectedEnquiry.email,
+                        ...buildEnquiryReplyDraft(selectedEnquiry),
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => {
+                        if (!selectedEnquiry.isRead) {
+                          handleToggleRead(selectedEnquiry);
+                        }
+                        alert.success(
+                          `Opening Gmail compose for ${selectedEnquiry.name}...`,
+                          'Replying via Gmail'
+                        );
+                      }}
+                      className="admin-btn primary"
+                      style={{
+                        fontSize: '12px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        borderTopRightRadius: 0,
+                        borderBottomRightRadius: 0,
+                        paddingRight: '10px',
+                        textDecoration: 'none',
+                      }}
+                      title="Open in Gmail Compose"
+                    >
+                      <Reply size={13} /> Reply via Email
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => setReplyMenuOpen((prev) => !prev)}
+                      className="admin-btn primary"
+                      style={{
+                        fontSize: '12px',
+                        padding: '0 8px',
+                        borderTopLeftRadius: 0,
+                        borderBottomLeftRadius: 0,
+                        borderLeft: '1px solid rgba(255,255,255,0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      title="More reply options"
+                    >
+                      <ChevronDown size={13} />
+                    </button>
+
+                    {replyMenuOpen && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 6px)',
+                          right: 0,
+                          background: '#ffffff',
+                          border: '1px solid var(--admin-border-color)',
+                          borderRadius: '8px',
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
+                          zIndex: 100,
+                          minWidth: '220px',
+                          padding: '6px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px',
+                        }}
+                      >
+                        <a
+                          href={getGmailComposeUrl({
+                            to: selectedEnquiry.email,
+                            ...buildEnquiryReplyDraft(selectedEnquiry),
+                          })}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => {
+                            setReplyMenuOpen(false);
+                            if (!selectedEnquiry.isRead) handleToggleRead(selectedEnquiry);
+                            alert.success('Opening Gmail compose...', 'Replying via Gmail');
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 10px',
+                            fontSize: '12px',
+                            color: 'var(--admin-text-main)',
+                            textDecoration: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#F5F5F3')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <ExternalLink size={13} color="#EA4335" />
+                          <span>Open in Gmail (Web)</span>
+                        </a>
+
+                        <a
+                          href={getMailtoUrl({
+                            to: selectedEnquiry.email,
+                            ...buildEnquiryReplyDraft(selectedEnquiry),
+                          })}
+                          onClick={() => {
+                            setReplyMenuOpen(false);
+                            if (!selectedEnquiry.isRead) handleToggleRead(selectedEnquiry);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 10px',
+                            fontSize: '12px',
+                            color: 'var(--admin-text-main)',
+                            textDecoration: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#F5F5F3')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <Mail size={13} color="#1E88E5" />
+                          <span>Open in Desktop Mail App</span>
+                        </a>
+
+                        <div style={{ height: '1px', background: 'var(--admin-border-color)', margin: '4px 0' }} />
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplyMenuOpen(false);
+                            handleCopy(selectedEnquiry.email, 'Client email');
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 10px',
+                            fontSize: '12px',
+                            color: 'var(--admin-text-main)',
+                            background: 'none',
+                            border: 'none',
+                            textAlign: 'left',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                            width: '100%',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#F5F5F3')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <Copy size={13} />
+                          <span>Copy Client Email</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplyMenuOpen(false);
+                            const draft = buildEnquiryReplyDraft(selectedEnquiry);
+                            handleCopy(draft.body, 'Formatted reply draft');
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 10px',
+                            fontSize: '12px',
+                            color: 'var(--admin-text-main)',
+                            background: 'none',
+                            border: 'none',
+                            textAlign: 'left',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                            width: '100%',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#F5F5F3')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <Check size={13} />
+                          <span>Copy Reply Template</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

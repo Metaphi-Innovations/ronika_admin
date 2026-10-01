@@ -8,6 +8,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
+import { useLiveResource } from '../context/LiveSyncContext';
 
 export const ProjectsPage: React.FC = () => {
   const alert = useAlert();
@@ -19,34 +20,30 @@ export const ProjectsPage: React.FC = () => {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (isInitial = false) => {
     try {
-      setLoading(true);
-      const [res, homeRes] = await Promise.all([getProjects(), getHomeContent()]);
+      if (isInitial) setLoading(true);
+      const res = await getProjects();
       if (res.success) {
-        const homeFeaturedIds = new Set(
-          (homeRes?.data?.featuredProjects || []).map((p: any) =>
-            typeof p === 'object' && p ? String(p._id) : String(p)
-          ).filter(Boolean)
-        );
-        const syncedProjects = (res.data || []).map((proj: IProject) => ({
-          ...proj,
-          featured: homeFeaturedIds.has(String(proj._id)),
-        }));
-        setProjects(syncedProjects);
+        setProjects(res.data || []);
       } else {
         setError('Failed to load projects');
       }
     } catch (err: any) {
       setError(err.message || 'Error loading projects');
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProjects();
+    fetchProjects(true);
   }, []);
+
+  // Live CMS Synchronization: background updates when projects change
+  useLiveResource(['projects', 'home'], () => {
+    fetchProjects(false);
+  });
 
   const handleTogglePublish = async (project: IProject) => {
     if (!project._id || togglingId) return;
@@ -122,8 +119,9 @@ export const ProjectsPage: React.FC = () => {
 
       <AdminSection noPadding>
         {loading ? (
-          <div style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: '13px' }}>
-            Loading projects...
+          <div style={{ padding: '3.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+            <div className="spinner" style={{ width: '24px', height: '24px' }}></div>
+            <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-text-muted, #777)' }}>Loading projects...</span>
           </div>
         ) : projects.length === 0 ? (
           <div style={{ padding: '4rem 1.5rem', textAlign: 'center' }}>

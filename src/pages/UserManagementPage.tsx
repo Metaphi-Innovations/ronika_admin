@@ -27,6 +27,9 @@ export const UserManagementPage: React.FC = () => {
   const alert = useAlert();
   const { user: currentUser } = useAuth();
 
+  const isCurrentSuperAdmin =
+    Boolean(currentUser?.email && currentUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase());
+
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -110,6 +113,10 @@ export const UserManagementPage: React.FC = () => {
 
   // --- ADD USER HANDLERS ---
   const handleOpenAddModal = () => {
+    if (!isCurrentSuperAdmin) {
+      alert.error('Access denied: Only Super Admin has permission to add new administrator accounts.');
+      return;
+    }
     setModalError(null);
     setNewUserData({
       name: '',
@@ -164,8 +171,14 @@ export const UserManagementPage: React.FC = () => {
   // --- EDIT USER HANDLERS ---
   const handleOpenEditModal = (target: AdminUser) => {
     const isTargetRonika = target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
-    const isCurrentRonika = currentUser?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
-    if (isTargetRonika && !isCurrentRonika) {
+    const isSelf = currentUser?.id === target.id;
+
+    if (!isCurrentSuperAdmin && !isSelf) {
+      alert.error("Access denied: Only Super Admin has permission to edit another user's details.");
+      return;
+    }
+
+    if (isTargetRonika && !isCurrentSuperAdmin) {
       alert.error('Protected account: Only Ronika can edit her administrator account.');
       return;
     }
@@ -237,9 +250,15 @@ export const UserManagementPage: React.FC = () => {
   // --- TOGGLE STATUS HANDLER ---
   const handleConfirmToggleStatus = async () => {
     if (!statusToggleTarget) return;
+
+    if (!isCurrentSuperAdmin) {
+      alert.error('Access denied: Only Super Admin has permission to activate or deactivate administrator accounts.');
+      setStatusToggleTarget(null);
+      return;
+    }
+
     const isTargetRonika = statusToggleTarget.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
-    const isCurrentRonika = currentUser?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
-    if (isTargetRonika && !isCurrentRonika) {
+    if (isTargetRonika) {
       alert.error('Protected account: The primary administrator account cannot be deactivated.');
       setStatusToggleTarget(null);
       return;
@@ -264,6 +283,13 @@ export const UserManagementPage: React.FC = () => {
   // --- DELETE HANDLER ---
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+
+    if (!isCurrentSuperAdmin) {
+      alert.error('Access denied: Only Super Admin has permission to delete administrator accounts.');
+      setDeleteTarget(null);
+      return;
+    }
+
     const isTargetRonika = deleteTarget.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
     if (isTargetRonika) {
       alert.error('Protected account: The primary administrator account cannot be deleted.');
@@ -302,10 +328,12 @@ export const UserManagementPage: React.FC = () => {
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
               <span>Refresh</span>
             </button>
-            <button onClick={handleOpenAddModal} className="admin-btn primary">
-              <Plus size={15} />
-              <span>Add Administrator</span>
-            </button>
+            {isCurrentSuperAdmin && (
+              <button onClick={handleOpenAddModal} className="admin-btn primary">
+                <Plus size={15} />
+                <span>Add Administrator</span>
+              </button>
+            )}
           </div>
         }
       />
@@ -367,9 +395,13 @@ export const UserManagementPage: React.FC = () => {
                   const isSelf = currentUser?.id === target.id;
                   const isFullAdmin = target.role === 'admin';
                   const isFinalAdmin = isFullAdmin && target.isActive && activeAdminsCount <= 1;
-                  const isTargetRonika = target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
-                  const isCurrentRonika = currentUser?.email?.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
-                  const isProtectedRonika = isTargetRonika && !isCurrentRonika;
+                  const isTargetSuperAdmin = target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+
+                  // Permission flags:
+                  // Only Super Admin can edit other users' details; standard admin can only edit their own account.
+                  const canEdit = isCurrentSuperAdmin || isSelf;
+                  const canToggle = isCurrentSuperAdmin && !isSelf && !isTargetSuperAdmin && !(target.isActive && isFinalAdmin);
+                  const canDelete = isCurrentSuperAdmin && !isSelf && !isTargetSuperAdmin && !isFinalAdmin;
 
                   return (
                     <tr key={target.id}>
@@ -413,25 +445,45 @@ export const UserManagementPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Role Badge - Seamlessly displayed as Admin on frontend */}
+                      {/* Role Badge - Explicit Distinction for Super Admin vs Admin vs Editor */}
                       <td>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            background: target.role === 'admin' ? '#E8EAF6' : '#F5F5F5',
-                            color: target.role === 'admin' ? '#283593' : '#616161',
-                            textTransform: 'capitalize',
-                          }}
-                        >
-                          <Shield size={12} />
-                          {target.role === 'admin' ? 'Admin' : 'Editor'}
-                        </span>
+                        {isTargetSuperAdmin ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              background: '#EDE7F6',
+                              color: '#4527A0',
+                              letterSpacing: '0.02em',
+                            }}
+                          >
+                            <Shield size={12} color="#5E35B1" />
+                            Super Admin
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              background: target.role === 'admin' ? '#E8EAF6' : '#F5F5F5',
+                              color: target.role === 'admin' ? '#283593' : '#616161',
+                              textTransform: 'capitalize',
+                            }}
+                          >
+                            <Shield size={12} />
+                            {target.role === 'admin' ? 'Admin' : 'Editor'}
+                          </span>
+                        )}
                       </td>
 
                       {/* Status */}
@@ -466,79 +518,58 @@ export const UserManagementPage: React.FC = () => {
                             alignItems: 'center',
                           }}
                         >
-                          {/* Edit User Button */}
-                          <button
-                            onClick={() => !isProtectedRonika && handleOpenEditModal(target)}
-                            disabled={isProtectedRonika}
-                            className="admin-btn-icon"
-                            title={
-                              isProtectedRonika
-                                ? 'Protected account: Only Ronika can edit her administrator account'
-                                : 'Edit Administrator'
-                            }
-                            style={{
-                              opacity: isProtectedRonika ? 0.35 : 1,
-                              cursor: isProtectedRonika ? 'not-allowed' : 'pointer',
-                            }}
-                            aria-label={`Edit ${target.name}`}
-                          >
-                            <Edit2 size={16} />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleOpenEditModal(target)}
+                              className="admin-btn-icon"
+                              title={isSelf ? 'Edit Your Account' : `Edit ${target.name}`}
+                              aria-label={`Edit ${target.name}`}
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                          )}
 
-                          {/* Toggle Active/Inactive Button */}
-                          <button
-                            onClick={() => !isProtectedRonika && setStatusToggleTarget(target)}
-                            disabled={isSelf || isProtectedRonika || (target.isActive && isFinalAdmin)}
-                            className={`admin-btn-icon ${
-                              target.isActive ? 'warning' : 'success'
-                            }`}
-                            title={
-                              isProtectedRonika
-                                ? 'Protected account: The primary administrator account cannot be deactivated'
-                                : isSelf
-                                ? 'Self-protection: You cannot deactivate your own account'
-                                : target.isActive && isFinalAdmin
-                                ? 'Final admin protection: Cannot deactivate the only active administrator'
-                                : target.isActive
-                                ? 'Deactivate account'
-                                : 'Activate account'
-                            }
-                            style={{
-                              opacity: isSelf || isProtectedRonika || (target.isActive && isFinalAdmin) ? 0.35 : 1,
-                              cursor:
-                                isSelf || isProtectedRonika || (target.isActive && isFinalAdmin)
-                                  ? 'not-allowed'
-                                  : 'pointer',
-                              color: target.isActive ? '#E65100' : '#2E7D32',
-                            }}
-                            aria-label={`${target.isActive ? 'Deactivate' : 'Activate'} ${target.name}`}
-                          >
-                            <Power size={16} />
-                          </button>
+                          {canToggle && (
+                            <button
+                              onClick={() => setStatusToggleTarget(target)}
+                              className={`admin-btn-icon ${
+                                target.isActive ? 'warning' : 'success'
+                              }`}
+                              title={target.isActive ? 'Deactivate account' : 'Activate account'}
+                              style={{ color: target.isActive ? '#E65100' : '#2E7D32' }}
+                              aria-label={`${target.isActive ? 'Deactivate' : 'Activate'} ${target.name}`}
+                            >
+                              <Power size={16} />
+                            </button>
+                          )}
 
-                          {/* Delete User Button */}
-                          <button
-                            onClick={() => !isProtectedRonika && setDeleteTarget(target)}
-                            disabled={isSelf || isProtectedRonika || isFinalAdmin}
-                            className="admin-btn-icon danger"
-                            title={
-                              isProtectedRonika
-                                ? 'Protected account: The primary administrator account cannot be deleted'
-                                : isSelf
-                                ? 'Self-protection: You cannot delete your own account'
-                                : isFinalAdmin
-                                ? 'Final admin protection: Cannot delete the only active administrator'
-                                : 'Delete Administrator'
-                            }
-                            style={{
-                              opacity: isSelf || isProtectedRonika || isFinalAdmin ? 0.35 : 1,
-                              cursor:
-                                isSelf || isProtectedRonika || isFinalAdmin ? 'not-allowed' : 'pointer',
-                            }}
-                            aria-label={`Delete ${target.name}`}
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => setDeleteTarget(target)}
+                              className="admin-btn-icon danger"
+                              title="Delete Administrator"
+                              aria-label={`Delete ${target.name}`}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+
+                          {!canEdit && !canToggle && !canDelete && (
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                color: 'var(--admin-text-muted)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '3px 8px',
+                                background: '#F5F5F3',
+                                borderRadius: '4px',
+                              }}
+                            >
+                              <Lock size={11} /> View only
+                            </span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -556,7 +587,6 @@ export const UserManagementPage: React.FC = () => {
       {isAddModalOpen && (
         <div
           className="modal-backdrop"
-          onClick={() => !submitting && setIsAddModalOpen(false)}
           role="dialog"
           aria-modal="true"
         >
@@ -738,7 +768,6 @@ export const UserManagementPage: React.FC = () => {
       {editingUser && (
         <div
           className="modal-backdrop"
-          onClick={() => !submitting && setEditingUser(null)}
           role="dialog"
           aria-modal="true"
         >
@@ -830,96 +859,63 @@ export const UserManagementPage: React.FC = () => {
 
                 {/* Role */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
-                  <label className="admin-form-label">
-                    Role *
-                    {editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase() ? (
-                      <span
-                        style={{
-                          marginLeft: '0.5rem',
-                          fontSize: '11px',
-                          color: 'var(--admin-text-muted)',
-                        }}
-                      >
-                        (Primary Administrator role cannot be changed)
-                      </span>
-                    ) : currentUser?.id === editingUser.id ? (
-                      <span
-                        style={{
-                          marginLeft: '0.5rem',
-                          fontSize: '11px',
-                          color: 'var(--admin-text-muted)',
-                        }}
-                      >
-                        (Cannot demote own role)
-                      </span>
-                    ) : null}
-                  </label>
-                  <select
-                    value={editFormData.role}
-                    disabled={
-                      currentUser?.id === editingUser.id ||
-                      editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()
-                    }
-                    onChange={(e) =>
-                      setEditFormData((prev) => ({
-                        ...prev,
-                        role: e.target.value as 'admin' | 'editor',
-                      }))
-                    }
-                    className="admin-form-input"
-                    style={{
-                      cursor:
-                        currentUser?.id === editingUser.id ||
-                        editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()
-                          ? 'not-allowed'
-                          : 'pointer',
-                    }}
-                  >
-                    <option value="admin">Administrator (Full Access & User Management)</option>
-                    <option value="editor">Editor (Content & Media Management Only)</option>
-                  </select>
+                  <label className="admin-form-label">Role</label>
+                  {isCurrentSuperAdmin && editingUser.email.toLowerCase() !== SUPERADMIN_EMAIL.toLowerCase() ? (
+                    <select
+                      value={editFormData.role}
+                      onChange={(e) =>
+                        setEditFormData((prev) => ({
+                          ...prev,
+                          role: e.target.value as 'admin' | 'editor',
+                        }))
+                      }
+                      className="admin-form-input"
+                    >
+                      <option value="admin">Administrator</option>
+                      <option value="editor">Editor</option>
+                    </select>
+                  ) : (
+                    <div
+                      style={{
+                        padding: '8px 12px',
+                        background: '#F5F5F3',
+                        borderRadius: '4px',
+                        fontSize: '13px',
+                        color: 'var(--admin-text-main)',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()
+                        ? 'Super Admin'
+                        : editingUser.role === 'admin'
+                        ? 'Administrator'
+                        : 'Editor'}
+                    </div>
+                  )}
                 </div>
 
-                {/* Status Toggle */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                    <input
-                      type="checkbox"
-                      id="edit-user-active"
-                      disabled={
-                        currentUser?.id === editingUser.id ||
-                        editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase() ||
-                        (editingUser.isActive &&
-                          editingUser.role === 'admin' &&
-                          activeAdminsCount <= 1)
-                      }
-                      checked={editFormData.isActive}
-                      onChange={(e) =>
-                        setEditFormData((prev) => ({ ...prev, isActive: e.target.checked }))
-                      }
-                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                    />
-                    <label
-                      htmlFor="edit-user-active"
-                      style={{ fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}
-                    >
-                      Active Account
-                    </label>
-                  </div>
-                  {editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase() ? (
-                    <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)', marginLeft: '1.625rem' }}>
-                      Security protection: The primary administrator account cannot be deactivated.
-                    </span>
-                  ) : currentUser?.id === editingUser.id ? (
-                    <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)', marginLeft: '1.625rem' }}>
-                      Self-protection: You cannot deactivate yourself.
-                    </span>
-                  ) : editingUser.isActive && editingUser.role === 'admin' && activeAdminsCount <= 1 ? (
-                    <span style={{ fontSize: '11px', color: '#E65100', marginLeft: '1.625rem' }}>
-                      Final Admin protection: Cannot deactivate the only active administrator.
-                    </span>
-                  ) : null}
-                </div>
+                {/* Status Toggle - Only visible & editable for Super Admin editing other accounts */}
+                {isCurrentSuperAdmin &&
+                  editingUser.email.toLowerCase() !== SUPERADMIN_EMAIL.toLowerCase() &&
+                  currentUser?.id !== editingUser.id && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                      <input
+                        type="checkbox"
+                        id="edit-user-active"
+                        checked={editFormData.isActive}
+                        onChange={(e) =>
+                          setEditFormData((prev) => ({ ...prev, isActive: e.target.checked }))
+                        }
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <label
+                        htmlFor="edit-user-active"
+                        style={{ fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}
+                      >
+                        Active Account
+                      </label>
+                    </div>
+                  )}
 
                 {/* Change Password Section */}
                 <div

@@ -40,9 +40,6 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   return (
     <div
       className="modal-backdrop"
-      onClick={() => {
-        if (!isLoading) onClose();
-      }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-modal-title"

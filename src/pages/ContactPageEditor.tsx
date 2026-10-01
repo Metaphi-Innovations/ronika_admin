@@ -3,6 +3,7 @@ import { Save, Instagram, Linkedin, Mail } from 'lucide-react';
 import { getContactContent, updateContactContent, IContactContent } from '../services/contentApi';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { useAlert } from '../context/AlertContext';
+import { useLiveResource } from '../context/LiveSyncContext';
 
 export const ContactPageEditor: React.FC = () => {
   const alert = useAlert();
@@ -18,22 +19,28 @@ export const ContactPageEditor: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    const fetchContent = async () => {
-      try {
-        setLoading(true);
-        const res = await getContactContent();
-        if (res.success && res.data) {
-          setContent(res.data);
-        }
-      } catch (err: any) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+  const fetchContent = async (isInitial = false) => {
+    try {
+      if (isInitial) setLoading(true);
+      const res = await getContactContent();
+      if (res.success && res.data) {
+        setContent(res.data);
       }
-    };
-    fetchContent();
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      if (isInitial) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContent(true);
   }, []);
+
+  // Live CMS Synchronization: background reload without page blanking
+  useLiveResource(['contact'], () => {
+    fetchContent(false);
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,17 +69,14 @@ export const ContactPageEditor: React.FC = () => {
 
   if (loading) {
     return (
-      <div
-        style={{
-          padding: '3rem',
-          textAlign: 'center',
-          color: 'var(--admin-text-muted)',
-          fontSize: '13px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-        }}
-      >
-        Loading Contact Settings...
+      <div className="admin-page-container">
+        <PageHeader title="CONTACT DETAILS" />
+        <div style={{ padding: '4rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+          <div className="spinner" style={{ width: '28px', height: '28px' }}></div>
+          <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-text-muted, #777)' }}>
+            Loading Contact Settings...
+          </span>
+        </div>
       </div>
     );
   }
