@@ -26,6 +26,7 @@ import {
 import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { Loader } from '../components/Loader';
 import { useAlert } from '../context/AlertContext';
 import { useLiveResource } from '../context/LiveSyncContext';
 import { getImageUrl } from '../utils/imageUrl';
@@ -547,18 +548,7 @@ export const ShopProductsPage: React.FC = () => {
       {/* Product Data Grid Table */}
       <AdminSection noPadding>
         {loading ? (
-          <div
-            style={{
-              padding: '3.5rem',
-              textAlign: 'center',
-              color: 'var(--admin-text-muted)',
-              fontSize: '13px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
-            Loading catalog products...
-          </div>
+          <Loader text="Loading catalog products..." minHeight="200px" />
         ) : filteredProducts.length === 0 ? (
           <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
             <ShoppingBag
@@ -1083,9 +1073,10 @@ export const ShopProductsPage: React.FC = () => {
                     >
                       Click to choose product image
                     </span>
-                    <span style={{ fontSize: '10.5px', color: 'var(--admin-text-muted)' }}>
-                      Strict 1:1 Square (Width = Height, min. 600 × 600 px)
-                    </span>
+                    <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
+                      <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
+                      <span>Strict 1:1 Square (Min: 600 × 600 px)</span>
+                    </div>
                     <input
                       type="file"
                       accept="image/jpeg, image/png, image/webp, image/avif"
@@ -1295,34 +1286,6 @@ export const ShopProductsPage: React.FC = () => {
                           </div>
                         ))}
 
-                        <label
-                          style={{
-                            width: '48px',
-                            height: '48px',
-                            borderRadius: '5px',
-                            border: '1.5px dashed var(--admin-border-color)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '2px',
-                            cursor: 'pointer',
-                            background: '#FAFAF8',
-                            color: 'var(--admin-text-muted)',
-                            flexShrink: 0,
-                          }}
-                          title="Add more photos"
-                        >
-                          <Plus size={14} />
-                          <span style={{ fontSize: '9px', fontWeight: 600 }}>More</span>
-                          <input
-                            type="file"
-                            multiple
-                            accept="image/jpeg, image/png, image/webp, image/avif"
-                            onChange={handleCreateGallerySelect}
-                            style={{ display: 'none' }}
-                          />
-                        </label>
                       </div>
                     ) : (
                       <label
@@ -1542,9 +1505,10 @@ export const ShopProductsPage: React.FC = () => {
                 <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--admin-text-main)' }}>
                   {uploadingGallery ? 'Uploading Photos...' : 'Click to select additional images (Multi-select)'}
                 </span>
-                <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)' }}>
-                  Strict 1:1 Square only (Width = Height, min. 600 × 600 px)
-                </span>
+                <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
+                  <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
+                  <span>Strict 1:1 Square (Min: 600 × 600 px)</span>
+                </div>
                 <input
                   type="file"
                   multiple

@@ -3,6 +3,7 @@ import { Save, Plus, Trash2, Upload, CheckCircle2 } from 'lucide-react';
 import { getAboutContent, updateAboutContent, uploadAboutHeadshot, IAboutContent } from '../services/contentApi';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { Loader } from '../components/Loader';
 import { MAX_ABOUT_HEADING_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
@@ -170,7 +171,7 @@ export const AboutPageEditor: React.FC = () => {
         alert.success('About page content saved successfully!', 'Saved');
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to save about page content';
+      const msg = err.message || 'Failed to save about page content';
       alert.error(msg, 'Save Error');
       setErrorMsg(msg);
     } finally {
@@ -181,13 +182,7 @@ export const AboutPageEditor: React.FC = () => {
   if (loading) {
     return (
       <div className="admin-page-container">
-        <PageHeader title="ABOUT & BIO" />
-        <div style={{ padding: '4rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-          <div className="spinner" style={{ width: '28px', height: '28px' }}></div>
-          <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-text-muted, #777)' }}>
-            Loading About Page Settings...
-          </span>
-        </div>
+        <Loader text="Loading About Page Settings..." />
       </div>
     );
   }
@@ -454,22 +449,8 @@ export const AboutPageEditor: React.FC = () => {
                 >
                   {uploadingImage ? 'Uploading portrait...' : 'Click to upload portrait photo'}
                 </span>
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    marginTop: '2px',
-                    padding: '3px 9px',
-                    background: '#FFFFFF',
-                    borderRadius: '16px',
-                    border: '1px solid var(--admin-border-color)',
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    color: '#444444',
-                  }}
-                >
-                  <span style={{ color: '#E65100', fontWeight: 700 }}>REQUIRED:</span>
+                <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
+                  <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
                   <span>Portrait 3:4 • Min: 500 × 600 px (Optimal: 600–1000 × 800–1250 px)</span>
                 </div>
                 <input

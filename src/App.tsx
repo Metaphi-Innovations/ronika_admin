@@ -1,16 +1,16 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { AlertProvider } from './context/AlertContext';
 import { LiveSyncProvider } from './context/LiveSyncContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminLayout } from './components/AdminLayout';
+import { Loader } from './components/Loader';
 
 // Dynamic lazy imports for code splitting & minimal initial bundle
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
-const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
 const ProjectEditor = lazy(() => import('./pages/ProjectEditor').then(m => ({ default: m.ProjectEditor })));
 const CategoriesPage = lazy(() => import('./pages/CategoriesPage').then(m => ({ default: m.CategoriesPage })));
@@ -27,30 +27,13 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ defaul
 
 // Sleek fallback while chunk loads
 const PageLoader: React.FC = () => (
-  <div
-    style={{
-      minHeight: '55vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '12px',
-      color: 'var(--admin-text-muted, #777)',
-    }}
-  >
-    <div className="spinner" style={{ width: '28px', height: '28px' }}></div>
-    <span
-      style={{
-        fontSize: '11px',
-        fontWeight: 600,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-      }}
-    >
-      Loading Module...
-    </span>
-  </div>
+  <Loader text="Loading Module..." minHeight="55vh" />
 );
+
+const FallbackRedirect: React.FC = () => {
+  const { user } = useAuth();
+  return <Navigate to={user?.role === 'admin' ? '/users' : '/content/home'} replace />;
+};
 
 export const App: React.FC = () => {
   return (
@@ -68,8 +51,9 @@ export const App: React.FC = () => {
                 {/* Protected Admin Routes */}
                 <Route element={<ProtectedRoute />}>
                   <Route element={<AdminLayout />}>
-                    <Route path="/dashboard" element={<DashboardPage />} />
-                    <Route path="/users" element={<UserManagementPage />} />
+                    <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                      <Route path="/users" element={<UserManagementPage />} />
+                    </Route>
                     <Route path="/content/home" element={<HomePageEditor />} />
                     <Route path="/projects" element={<ProjectsPage />} />
                     <Route path="/projects/new" element={<ProjectEditor />} />
@@ -87,7 +71,7 @@ export const App: React.FC = () => {
                 </Route>
 
                 {/* Fallback Redirect */}
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                <Route path="*" element={<FallbackRedirect />} />
               </Routes>
             </Suspense>
           </LiveSyncProvider>

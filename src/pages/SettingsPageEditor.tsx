@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, CheckCircle } from 'lucide-react';
 import { getSiteSettings, updateSiteSettings, ISiteSettings } from '../services/contentApi';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { Loader } from '../components/Loader';
 import { useAlert } from '../context/AlertContext';
 
 export const SettingsPageEditor: React.FC = () => {
@@ -43,14 +44,14 @@ export const SettingsPageEditor: React.FC = () => {
         alert.success('Global site settings saved successfully!', 'Saved');
       }
     } catch (err: any) {
-      alert.error(err.response?.data?.message || err.message || 'Failed to save site settings', 'Save Error');
+      alert.error(err.message || 'Failed to save site settings', 'Save Error');
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--admin-text-muted)' }}>Loading Site Settings...</div>;
+    return <Loader text="Loading Site Settings..." />;
   }
 
   return (

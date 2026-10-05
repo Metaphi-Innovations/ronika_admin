@@ -1,5 +1,5 @@
 /**
- * Utility functions for composing and routing emails in the Admin dashboard.
+ * Utility functions for composing and routing emails in the Admin panel.
  */
 
 export interface ComposeEmailOptions {

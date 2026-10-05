@@ -4,6 +4,7 @@ import { getServices, createService, updateService, deleteService, IService } fr
 import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { Loader } from '../components/Loader';
 import { useAlert } from '../context/AlertContext';
 import { useLiveResource } from '../context/LiveSyncContext';
 
@@ -191,9 +192,7 @@ export const ServicesPage: React.FC = () => {
 
       <AdminSection noPadding>
         {loading ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Loading services...
-          </div>
+          <Loader text="Loading services..." minHeight="200px" />
         ) : services.length === 0 ? (
           <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
             <Wrench size={36} color="var(--admin-border-color)" style={{ marginBottom: '0.75rem' }} />

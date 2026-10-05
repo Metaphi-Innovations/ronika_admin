@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { Loader } from '../components/Loader';
 import { PasswordInput } from '../components/PasswordInput';
 import { useAlert } from '../context/AlertContext';
 
@@ -77,7 +78,7 @@ export const UserManagementPage: React.FC = () => {
       const data = await userApi.getUsers();
       setUsers(data);
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to load administrators.';
+      const msg = err.message || 'Failed to load administrators.';
       alert.error(msg);
     } finally {
       setLoading(false);
@@ -160,7 +161,7 @@ export const UserManagementPage: React.FC = () => {
       alert.success('Administrator account created successfully.');
       await fetchUsers();
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to create user.';
+      const msg = err.message || 'Failed to create user.';
       setModalError(msg);
       alert.error(msg);
     } finally {
@@ -239,7 +240,7 @@ export const UserManagementPage: React.FC = () => {
       alert.success('Administrator account updated successfully.');
       await fetchUsers();
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to update user.';
+      const msg = err.message || 'Failed to update user.';
       setModalError(msg);
       alert.error(msg);
     } finally {
@@ -272,7 +273,7 @@ export const UserManagementPage: React.FC = () => {
       alert.success(`Administrator account ${newStatus ? 'activated' : 'deactivated'} successfully.`);
       await fetchUsers();
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to toggle status.';
+      const msg = err.message || 'Failed to toggle status.';
       alert.error(msg);
       setStatusToggleTarget(null);
     } finally {
@@ -304,7 +305,7 @@ export const UserManagementPage: React.FC = () => {
       alert.info('Administrator account permanently removed.');
       await fetchUsers();
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to delete user.';
+      const msg = err.message || 'Failed to delete user.';
       alert.error(msg);
       setDeleteTarget(null);
     } finally {
@@ -341,18 +342,7 @@ export const UserManagementPage: React.FC = () => {
       {/* Users Data Grid Card */}
       <AdminSection title="ADMINISTRATOR ACCOUNTS" noPadding>
         {loading ? (
-          <div
-            style={{
-              padding: '4rem',
-              textAlign: 'center',
-              color: 'var(--admin-text-muted)',
-              fontSize: '13px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
-            Loading administrators...
-          </div>
+          <Loader text="Loading administrators..." minHeight="200px" />
         ) : users.length === 0 ? (
           <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
             <Users

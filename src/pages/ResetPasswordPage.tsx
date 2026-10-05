@@ -35,8 +35,7 @@ export const ResetPasswordPage: React.FC = () => {
       .catch((err) => {
         setTokenValid(false);
         setVerificationError(
-          err.response?.data?.message ||
-          'This password reset link is invalid, has expired (5-minute limit), or has already been used.'
+          err.message || 'This password reset link is invalid, has expired (5-minute limit), or has already been used.'
         );
       })
       .finally(() => {
@@ -69,7 +68,7 @@ export const ResetPasswordPage: React.FC = () => {
     } catch (err: any) {
       setStatus('error');
       setMessage(
-        err.response?.data?.message || 'Invalid or expired token. Please try again.'
+        err.message || 'Invalid or expired token. Please try again.'
       );
     }
   };

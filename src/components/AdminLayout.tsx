@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
   Home,
   FolderKanban,
   Layers,
@@ -76,7 +75,6 @@ export const AdminLayout: React.FC = () => {
     {
       title: 'OVERVIEW',
       items: [
-        { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         ...(isFullAdmin
           ? [{ label: 'User Management', path: '/users', icon: Users }]
           : []),
@@ -118,7 +116,7 @@ export const AdminLayout: React.FC = () => {
     if (path === '/messages') return 'Client Messages';
     if (path === '/settings') return 'Site Settings';
     if (path === '/users') return 'User Management';
-    return 'Dashboard';
+    return 'Admin Panel';
   };
 
   return (

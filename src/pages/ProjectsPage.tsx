@@ -6,6 +6,7 @@ import { getHomeContent } from '../services/contentApi';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { Loader } from '../components/Loader';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
 import { useLiveResource } from '../context/LiveSyncContext';
@@ -119,10 +120,7 @@ export const ProjectsPage: React.FC = () => {
 
       <AdminSection noPadding>
         {loading ? (
-          <div style={{ padding: '3.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-            <div className="spinner" style={{ width: '24px', height: '24px' }}></div>
-            <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-text-muted, #777)' }}>Loading projects...</span>
-          </div>
+          <Loader text="Loading projects..." />
         ) : projects.length === 0 ? (
           <div style={{ padding: '4rem 1.5rem', textAlign: 'center' }}>
             <p style={{ color: 'var(--admin-text-muted)', marginBottom: '1rem', fontSize: '14px' }}>

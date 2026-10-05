@@ -57,10 +57,9 @@ export const LoginPage: React.FC = () => {
         localStorage.removeItem('admin_remember_me');
       }
 
-      navigate('/dashboard');
+      navigate('/');
     } catch (err: any) {
       setError(
-        err.response?.data?.message ||
         err.message ||
         'Invalid login credentials. Please try again.'
       );
@@ -91,7 +90,6 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <div className="auth-sidebar-bottom">
-          <span style={{ color: '#555' }}>Ronika Bhatia Portfolio &copy; 2026</span>
         </div>
       </div>
 

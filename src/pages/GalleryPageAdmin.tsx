@@ -38,6 +38,7 @@ import { RichTextEditor } from '../components/RichTextEditor';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { PageHeader } from '../components/AdminSection';
+import { Loader } from '../components/Loader';
 import { countReadableChars, MAX_GALLERY_INTRO_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import { useLiveResource } from '../context/LiveSyncContext';
@@ -773,9 +774,7 @@ export const GalleryPageAdmin: React.FC = () => {
 
           {/* Image Library Grid */}
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#888', fontSize: '13px' }}>
-              Loading artwork...
-            </div>
+            <Loader text="Loading artwork..." minHeight="200px" />
           ) : libraryImages.length === 0 ? (
             <div
               style={{
@@ -1500,7 +1499,10 @@ export const GalleryPageAdmin: React.FC = () => {
                   >
                     <Upload size={20} color="var(--admin-text-main, #111)" />
                     <span style={{ fontSize: '13px', fontWeight: 600 }}>Choose Artwork File</span>
-                    <span style={{ fontSize: '11px', color: '#666' }}>All image sizes and ratios accepted</span>
+                    <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
+                      <strong style={{ color: '#E65100', marginRight: '6px' }}>INFO:</strong>
+                      <span>All image sizes and ratios accepted</span>
+                    </div>
                     <input
                       type="file"
                       accept="image/*"
@@ -1620,7 +1622,10 @@ export const GalleryPageAdmin: React.FC = () => {
                   >
                     <Upload size={20} />
                     <span style={{ fontSize: '13px', fontWeight: 600 }}>Select Replacement File</span>
-                    <span style={{ fontSize: '11px', color: '#666' }}>All image sizes and ratios accepted</span>
+                    <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
+                      <strong style={{ color: '#E65100', marginRight: '6px' }}>INFO:</strong>
+                      <span>All image sizes and ratios accepted</span>
+                    </div>
                     <input
                       type="file"
                       accept="image/*"

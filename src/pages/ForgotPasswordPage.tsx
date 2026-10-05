@@ -24,8 +24,7 @@ export const ForgotPasswordPage: React.FC = () => {
     } catch (err: any) {
       setStatus('error');
       setMessage(
-        err.response?.data?.message ||
-        'Password reset could not be completed. Please verify your email or contact support.'
+        err.message || 'Password reset could not be completed. Please verify your email or contact support.'
       );
     }
   };

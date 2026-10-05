@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, Instagram, Linkedin, Mail } from 'lucide-react';
 import { getContactContent, updateContactContent, IContactContent } from '../services/contentApi';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { Loader } from '../components/Loader';
 import { useAlert } from '../context/AlertContext';
 import { useLiveResource } from '../context/LiveSyncContext';
 
@@ -61,7 +62,7 @@ export const ContactPageEditor: React.FC = () => {
         alert.success('Contact details saved successfully!', 'Saved');
       }
     } catch (err: any) {
-      alert.error(err.response?.data?.message || err.message || 'Failed to save contact settings', 'Save Error');
+      alert.error(err.message || 'Failed to save contact settings', 'Save Error');
     } finally {
       setSaving(false);
     }
@@ -70,13 +71,7 @@ export const ContactPageEditor: React.FC = () => {
   if (loading) {
     return (
       <div className="admin-page-container">
-        <PageHeader title="CONTACT DETAILS" />
-        <div style={{ padding: '4rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-          <div className="spinner" style={{ width: '28px', height: '28px' }}></div>
-          <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-text-muted, #777)' }}>
-            Loading Contact Settings...
-          </span>
-        </div>
+        <Loader text="Loading Contact Settings..." />
       </div>
     );
   }

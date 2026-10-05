@@ -16,10 +16,13 @@ import { getServices, createService, updateService, deleteService, IService } fr
 import { StatusBadge } from '../components/StatusBadge';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { Loader } from '../components/Loader';
 import { countReadableChars, MAX_HERO_QUOTE_CHARS, MAX_CLIENT_BIO_CHARS, MAX_SERVICE_DESC_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
 import { useLiveResource } from '../context/LiveSyncContext';
+
+const MAX_FOOTER_TEXT_CHARS = 50;
 
 export const HomePageEditor: React.FC = () => {
   const alert = useAlert();
@@ -437,6 +440,11 @@ export const HomePageEditor: React.FC = () => {
       }
     }
 
+    if (sectionName === 'E' && (settings.footerText || '').length > MAX_FOOTER_TEXT_CHARS) {
+      alert.error(`Footer text exceeds maximum ${MAX_FOOTER_TEXT_CHARS} characters limit.`, 'Limit Exceeded');
+      return;
+    }
+
     if (sectionName === 'B' && !isFeaturedValid) {
       alert.warning('Featured projects selection is invalid. Maximum 7 unique, published projects can be saved.', 'Incomplete Selection');
       return;
@@ -516,7 +524,7 @@ export const HomePageEditor: React.FC = () => {
         }
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || `Failed to save Section ${sectionName}.`;
+      const msg = err.message || `Failed to save Section ${sectionName}.`;
       alert.error(msg, 'Save Error');
       setErrorMsg(msg);
     } finally {
@@ -527,13 +535,7 @@ export const HomePageEditor: React.FC = () => {
   if (loading) {
     return (
       <div className="admin-page-container">
-        <PageHeader title="HOME PAGE" />
-        <div style={{ padding: '4rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-          <div className="spinner" style={{ width: '28px', height: '28px' }}></div>
-          <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-text-muted, #777)' }}>
-            Loading Home CMS Settings...
-          </span>
-        </div>
+        <Loader text="Loading Home CMS Settings..." />
       </div>
     );
   }
@@ -668,9 +670,10 @@ export const HomePageEditor: React.FC = () => {
                 <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--admin-text-main)' }}>
                   {uploadingHero ? 'Uploading...' : 'Click to upload artwork'}
                 </span>
-                <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)' }}>
-                  Landscape (Min: 1600×900px | Optimal: 1920×1080px)
-                </span>
+                <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
+                  <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
+                  <span>Landscape 16:9 • Min: 1600 × 900 px (Optimal: 1920 × 1080 px)</span>
+                </div>
                 <input
                   type="file"
                   accept="image/*"
@@ -979,9 +982,10 @@ export const HomePageEditor: React.FC = () => {
                 <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--admin-text-main)' }}>
                   {uploadingIntro ? 'Uploading...' : 'Click to upload portrait'}
                 </span>
-                <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)' }}>
-                  Portrait 3:4 (Min: 500×600px | Optimal: 600×800px)
-                </span>
+                <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
+                  <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
+                  <span>Portrait 3:4 • Min: 500 × 600 px (Optimal: 600 × 800 px)</span>
+                </div>
                 <input
                   type="file"
                   accept="image/*"
@@ -1118,6 +1122,26 @@ export const HomePageEditor: React.FC = () => {
           </div>
         }
       >
+        <div style={{ marginBottom: '1.5rem', maxWidth: '600px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <label className="admin-form-label" style={{ margin: 0 }}>Footer Callout Text</label>
+            <span style={{ fontSize: '11px', color: (settings.footerText || '').length >= MAX_FOOTER_TEXT_CHARS ? '#E65100' : 'var(--admin-text-muted)' }}>
+              {(settings.footerText || '').length} / {MAX_FOOTER_TEXT_CHARS} characters
+            </span>
+          </div>
+          <input
+            type="text"
+            value={settings.footerText || ''}
+            maxLength={MAX_FOOTER_TEXT_CHARS}
+            onChange={(e) => {
+              const truncated = e.target.value.slice(0, MAX_FOOTER_TEXT_CHARS);
+              setSettings({ ...settings, footerText: truncated });
+            }}
+            className="admin-form-input"
+            style={{ marginBottom: 0 }}
+            placeholder="e.g. LETS BUILD SOMETHING COOL TOGETHER :)"
+          />
+        </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {(settings.socialButtons || []).map((btn, idx) => (

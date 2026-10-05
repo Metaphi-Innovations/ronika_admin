@@ -3,6 +3,7 @@ import { Layers, Plus, Edit, Trash2, X, Check } from 'lucide-react';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../services/categoryApi';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { Loader } from '../components/Loader';
 import { useAlert } from '../context/AlertContext';
 import { useLiveResource } from '../context/LiveSyncContext';
 
@@ -161,7 +162,6 @@ export const CategoriesPage: React.FC = () => {
       handleCancel();
     } catch (err: any) {
       const msg =
-        err.response?.data?.message ||
         err.message ||
         'Failed to save category. Please check your inputs and try again.';
       alert.error(msg, 'Save Failed');
@@ -180,7 +180,6 @@ export const CategoriesPage: React.FC = () => {
       setDeleteTarget(null);
     } catch (err: any) {
       const msg =
-        err.response?.data?.message ||
         err.message ||
         'Failed to delete category. Please try again.';
       alert.error(msg, 'Delete Failed');
@@ -306,10 +305,7 @@ export const CategoriesPage: React.FC = () => {
 
       <AdminSection noPadding>
         {loading ? (
-          <div style={{ padding: '3.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-            <div className="spinner" style={{ width: '24px', height: '24px' }}></div>
-            <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-text-muted, #777)' }}>Loading categories...</span>
-          </div>
+          <Loader text="Loading categories..." />
         ) : categories.length === 0 ? (
           <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
             <Layers

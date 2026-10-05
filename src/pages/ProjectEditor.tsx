@@ -39,6 +39,7 @@ import {
 } from '../utils/imageLayout';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { AdminSection, PageHeader } from '../components/AdminSection';
+import { Loader } from '../components/Loader';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
 
@@ -197,7 +198,7 @@ export const ProjectEditor: React.FC = () => {
           }
         }
       } catch (err: any) {
-        const msg = err.response?.data?.message || err.message || 'Failed to load project details.';
+        const msg = err.message || 'Failed to load project details.';
         alert.error(msg, 'Load Failed');
       } finally {
         setLoading(false);
@@ -458,7 +459,6 @@ export const ProjectEditor: React.FC = () => {
       );
     } catch (err: any) {
       const msg =
-        err.response?.data?.message ||
         err.message ||
         'Failed to save project. Please check your inputs and try again.';
       alert.error(msg, 'Save Failed');
@@ -533,7 +533,7 @@ export const ProjectEditor: React.FC = () => {
       if (refreshed?.data?.images) {
         setFormData((prev) => ({ ...prev, images: refreshed.data.images }));
       }
-      alert.error(err.response?.data?.message || err.message || 'Failed to save image order on server.', 'Order Error');
+      alert.error(err.message || 'Failed to save image order on server.', 'Order Error');
     }
   };
 
@@ -570,7 +570,7 @@ export const ProjectEditor: React.FC = () => {
       if (refreshed?.data?.images) {
         setFormData((prev) => ({ ...prev, images: refreshed.data.images }));
       }
-      alert.error(err.response?.data?.message || err.message || 'Failed to save image order.', 'Order Error');
+      alert.error(err.message || 'Failed to save image order.', 'Order Error');
     }
   };
 
@@ -636,7 +636,7 @@ export const ProjectEditor: React.FC = () => {
       }
     } catch (err: any) {
       alert.error(
-        err.response?.data?.message || err.message || 'Failed to replace image',
+        err.message || 'Failed to replace image',
         'Replacement Error'
       );
     } finally {
@@ -655,10 +655,7 @@ export const ProjectEditor: React.FC = () => {
             </Link>
           }
         />
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '1rem', color: 'var(--admin-text-muted)' }}>
-          <div style={{ width: '28px', height: '28px', border: '2px solid rgba(0,0,0,0.1)', borderTopColor: '#111', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-          <span style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Loading project...</span>
-        </div>
+        <Loader text="Loading project..." minHeight="300px" />
       </div>
     );
   }
@@ -987,22 +984,8 @@ export const ProjectEditor: React.FC = () => {
               >
                 Click to upload cover image
               </span>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  marginTop: '2px',
-                  padding: '3px 9px',
-                  background: '#FFFFFF',
-                  borderRadius: '16px',
-                  border: '1px solid var(--admin-border-color)',
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  color: '#444444',
-                }}
-              >
-                <span style={{ color: '#E65100', fontWeight: 700 }}>REQUIRED:</span>
+              <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
+                <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
                 <span>Landscape 16:9 • Min: 1600 × 900 px (Optimal: 1920 × 1080 px)</span>
               </div>
               <input
@@ -1101,18 +1084,10 @@ export const ProjectEditor: React.FC = () => {
                   <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--admin-text-main)' }}>
                     + Select Image for Position {nextPos}
                   </span>
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      color: '#1B5E20',
-                      background: '#E8F5E9',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontWeight: 600,
-                    }}
-                  >
-                    Required: {nextSlot.expectedText}
-                  </span>
+                  <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', textAlign: 'center', lineHeight: '1.5' }}>
+                    <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
+                    <span>{nextSlot.expectedText}</span>
+                  </div>
                 </div>
                 <input
                   type="file"
@@ -1424,15 +1399,10 @@ export const ProjectEditor: React.FC = () => {
                                       >
                                         {slot.type}
                                       </span>
-                                      <span
-                                        style={{
-                                          fontSize: '11px',
-                                          fontWeight: 500,
-                                          color: 'var(--admin-text-muted)',
-                                        }}
-                                      >
-                                        Required: {slot.expectedText}
-                                      </span>
+                                      <div style={{ display: 'inline-block', padding: '4px 10px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11px', color: 'var(--admin-text-main)', textAlign: 'center', lineHeight: '1.4' }}>
+                                        <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
+                                        <span>{slot.expectedText}</span>
+                                      </div>
 
                                       {/* Drag Target Status Indicator */}
                                       {draggedImage && !snapshot.isDragging && (

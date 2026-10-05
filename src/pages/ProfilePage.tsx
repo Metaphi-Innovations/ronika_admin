@@ -88,7 +88,6 @@ export const ProfilePage: React.FC = () => {
       setIsEditModalOpen(false);
     } catch (err: any) {
       const msg =
-        err.response?.data?.message ||
         err.message ||
         'Failed to update profile. Please try again.';
       setModalError(msg);
