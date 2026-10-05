@@ -9,6 +9,7 @@ import {
   Edit2,
   X,
   Image as ImageIcon,
+  ChevronDown,
 } from 'lucide-react';
 import {
   getShopCategories,
@@ -23,10 +24,12 @@ import {
   IShopCategory,
   IShopProduct,
 } from '../services/shopApi';
+import { getSiteSettings, updateSiteSettings, ISiteSettings } from '../services/contentApi';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { Loader } from '../components/Loader';
+import { RichTextEditor } from '../components/RichTextEditor';
 import { useAlert } from '../context/AlertContext';
 import { useLiveResource } from '../context/LiveSyncContext';
 import { getImageUrl } from '../utils/imageUrl';
@@ -82,6 +85,11 @@ export const ShopProductsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Settings state
+  const [settings, setSettings] = useState<ISiteSettings | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [isHeaderSettingsOpen, setIsHeaderSettingsOpen] = useState(false);
+
   // Delete Targets for ConfirmModal
   const [deleteCatTarget, setDeleteCatTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteProdTarget, setDeleteProdTarget] = useState<{ id: string; name: string } | null>(null);
@@ -130,16 +138,41 @@ export const ShopProductsPage: React.FC = () => {
   const fetchData = async (isInitial = true) => {
     try {
       if (isInitial) setLoading(true);
-      const [catsRes, prodsRes] = await Promise.all([
+      const [catsRes, prodsRes, settingsRes] = await Promise.all([
         getShopCategories(),
         getShopProducts(), // Fetch all products so category product counts are always 100% accurate
+        getSiteSettings(),
       ]);
       if (catsRes.success) setCategories(catsRes.data);
       if (prodsRes.success) setProducts(prodsRes.data);
+      if (settingsRes.success) setSettings(settingsRes.data);
     } catch (err: any) {
       if (isInitial) setError(err.message || 'Error loading shop data');
     } finally {
       if (isInitial) setLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!settings) return;
+    try {
+      setSavingSettings(true);
+      const { _id, __v, createdAt, updatedAt, ...cleanSettings } = settings as any;
+      const res = await updateSiteSettings(cleanSettings);
+      if (res.success) {
+        setSettings({
+          ...res.data,
+          shopHeaderTitle: res.data.shopHeaderTitle ?? cleanSettings.shopHeaderTitle,
+          shopHeaderSubtitle: res.data.shopHeaderSubtitle ?? cleanSettings.shopHeaderSubtitle
+        });
+        alert.success('Shop header settings saved successfully!');
+      } else {
+        alert.error(res.message || 'Failed to save settings.');
+      }
+    } catch (err: any) {
+      alert.error(err.message || 'An error occurred while saving.');
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -501,6 +534,76 @@ export const ShopProductsPage: React.FC = () => {
           {error}
         </div>
       )}
+
+      {/* SHOP PAGE HEADER SETTINGS */}
+      <div style={{ marginBottom: '24px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid var(--admin-border-color, #E5E5E0)', overflow: 'hidden' }}>
+        <div
+          onClick={() => setIsHeaderSettingsOpen(!isHeaderSettingsOpen)}
+          style={{
+            padding: '12px 16px',
+            background: '#FAFAF8',
+            borderBottom: isHeaderSettingsOpen ? '1px solid var(--admin-border-color, #E5E5E0)' : 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            transition: 'background-color 0.15s ease',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F5F5F2')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FAFAF8')}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--admin-text-main, #111)' }}>
+              Shop Page Header Settings
+            </span>
+            <ChevronDown
+              size={15}
+              style={{
+                color: 'var(--admin-text-main, #111)',
+                transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: isHeaderSettingsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              }}
+            />
+          </div>
+        </div>
+
+        {isHeaderSettingsOpen && (
+          <div style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 300px', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <RichTextEditor
+                    label="Title"
+                    value={settings?.shopHeaderTitle || ''}
+                    maxChars={50}
+                    onChange={(val) => setSettings(settings ? { ...settings, shopHeaderTitle: val } : null)}
+                  />
+                </div>
+              </div>
+              <div style={{ flex: '2 1 400px', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <RichTextEditor
+                    label="Subtitle"
+                    value={settings?.shopHeaderSubtitle || ''}
+                    maxChars={100}
+                    onChange={(val) => setSettings(settings ? { ...settings, shopHeaderSubtitle: val } : null)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                disabled={savingSettings || !settings}
+                className="admin-btn primary"
+              >
+                <span>{savingSettings ? 'Saving...' : 'Save Shop Header'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Category Pills Filter */}
       <div

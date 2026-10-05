@@ -639,16 +639,7 @@ export const HomePageEditor: React.FC = () => {
                       style={{ display: 'none' }}
                     />
                   </label>
-                  <button
-                    type="button"
-                    onClick={removeHeroImage}
-                    className="admin-btn-icon danger"
-                    title="Remove Artwork"
-                    style={{ padding: '0.4rem' }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+                  </div>
               </div>
             ) : (
               <label
@@ -951,16 +942,7 @@ export const HomePageEditor: React.FC = () => {
                       style={{ display: 'none' }}
                     />
                   </label>
-                  <button
-                    type="button"
-                    onClick={removeIntroImage}
-                    className="admin-btn-icon danger"
-                    title="Remove Image"
-                    style={{ padding: '0.4rem' }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+                  </div>
               </div>
             ) : (
               <label
@@ -1117,7 +1099,7 @@ export const HomePageEditor: React.FC = () => {
               className="admin-btn primary"
             >
               <Save size={14} />
-              <span>{savingSection === 'E' ? 'Saving...' : 'Save Links'}</span>
+              <span>{savingSection === 'E' ? 'Saving...' : 'Save Footer'}</span>
             </button>
           </div>
         }

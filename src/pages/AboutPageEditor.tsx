@@ -403,14 +403,6 @@ export const AboutPageEditor: React.FC = () => {
                         style={{ display: 'none' }}
                       />
                     </label>
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="admin-btn-icon danger"
-                      title="Remove Portrait"
-                    >
-                      <Trash2 size={15} />
-                    </button>
                   </div>
                 </div>
               </div>

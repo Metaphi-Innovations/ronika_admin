@@ -24,6 +24,8 @@ export interface ISiteSettings {
   footerText: string;
   logo?: string;
   galleryHeader?: string;
+  shopHeaderTitle?: string;
+  shopHeaderSubtitle?: string;
 }
 
 export interface IHomeContent {

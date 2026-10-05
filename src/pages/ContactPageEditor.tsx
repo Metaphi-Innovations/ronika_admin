@@ -49,6 +49,14 @@ export const ContactPageEditor: React.FC = () => {
       alert.warning('Please enter a contact heading.', 'Validation Error');
       return;
     }
+    if (!content.socialLinks?.instagram?.trim()) {
+      alert.warning('Please enter an Instagram URL.', 'Validation Error');
+      return;
+    }
+    if (!content.socialLinks?.linkedin?.trim()) {
+      alert.warning('Please enter a LinkedIn URL.', 'Validation Error');
+      return;
+    }
     if (!content.email?.trim()) {
       alert.warning('Please enter a Gmail / contact email address.', 'Validation Error');
       return;
@@ -113,7 +121,6 @@ export const ContactPageEditor: React.FC = () => {
                   onChange={(e) => setContent({ ...content, heading: e.target.value })}
                   className="admin-form-input"
                   placeholder="e.g. LET'S CREATE TOGETHER"
-                  required
                 />
               </div>
 
@@ -143,7 +150,7 @@ export const ContactPageEditor: React.FC = () => {
               <div className="admin-form-group" style={{ margin: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem' }}>
                   <Instagram size={15} style={{ color: 'var(--admin-text-main)' }} />
-                  <label className="admin-form-label" style={{ margin: 0, fontWeight: 600 }}>INSTAGRAM URL</label>
+                  <label className="admin-form-label" style={{ margin: 0, fontWeight: 600 }}>INSTAGRAM URL *</label>
                 </div>
                 <input
                   type="url"
@@ -163,7 +170,7 @@ export const ContactPageEditor: React.FC = () => {
               <div className="admin-form-group" style={{ margin: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem' }}>
                   <Linkedin size={15} style={{ color: 'var(--admin-text-main)' }} />
-                  <label className="admin-form-label" style={{ margin: 0, fontWeight: 600 }}>LINKEDIN URL</label>
+                  <label className="admin-form-label" style={{ margin: 0, fontWeight: 600 }}>LINKEDIN URL *</label>
                 </div>
                 <input
                   type="url"
@@ -191,7 +198,6 @@ export const ContactPageEditor: React.FC = () => {
                   onChange={(e) => setContent({ ...content, email: e.target.value })}
                   className="admin-form-input"
                   placeholder="ronikabhatia@gmail.com"
-                  required
                 />
               </div>
             </div>
