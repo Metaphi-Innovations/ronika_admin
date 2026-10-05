@@ -806,29 +806,7 @@ export const ProjectEditor: React.FC = () => {
             />
           </div>
 
-          {/* Publication & Homepage Feature Toggles */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '1.25rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}>
-              <input
-                type="checkbox"
-                name="published"
-                checked={Boolean(formData.published)}
-                onChange={(e) => setFormData((prev) => ({ ...prev, published: e.target.checked }))}
-                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-              />
-              Published
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}>
-              <input
-                type="checkbox"
-                name="featured"
-                checked={Boolean(formData.featured)}
-                onChange={(e) => setFormData((prev) => ({ ...prev, featured: e.target.checked }))}
-                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-              />
-              Featured on Homepage
-            </label>
-          </div>
+
         </AdminSection>
 
         {/* 2. COVER IMAGE */}
