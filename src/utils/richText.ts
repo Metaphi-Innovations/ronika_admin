@@ -31,6 +31,7 @@ export function stripHtmlToText(html?: string): string {
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
+    .replace(/^[\n\r]+/, '') // Remove leading newlines (ghost chars from empty editors)
     .replace(/[\n\r]+$/, ''); // Remove trailing newlines (ghost chars) but keep trailing spaces
 }
 
