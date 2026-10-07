@@ -107,6 +107,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
       // Strict enforcement: if user added characters exceeding maxChars, revert to last valid state
       if (maxChars !== undefined && currentChars > maxChars) {
+        // If we only slightly exceeded because of a paste/space miscalculation, we can try to just use the last valid state
+        // However, instead of reverting completely which frustrates users, let's just use the last valid html
         editorRef.current.innerHTML = lastValidHtmlRef.current;
 
         // Move cursor to end of text
@@ -189,8 +191,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     if (disabled) return;
     e.preventDefault();
-    const pasteText = e.clipboardData.getData('text/plain');
-    if (!pasteText) return;
+    const rawPasteText = e.clipboardData.getData('text/plain');
+    if (!rawPasteText) return;
+
+    // Convert newlines to a single space to paste inline globally
+    const pasteText = rawPasteText.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
 
     if (maxChars !== undefined) {
       const selection = window.getSelection();

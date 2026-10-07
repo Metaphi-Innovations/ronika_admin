@@ -31,8 +31,7 @@ export function stripHtmlToText(html?: string): string {
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
+    .replace(/\s+/g, ' ');
 }
 
 /**
