@@ -19,19 +19,19 @@ export const MAX_CLIENT_BIO_WORDS = 70;
 export function stripHtmlToText(html?: string): string {
   if (!html) return '';
   return html
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/p>/gi, ' ')
-    .replace(/<\/div>/gi, ' ')
-    .replace(/<\/li>/gi, ' ')
-    .replace(/<\/h[1-6]>/gi, ' ')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<[^>]*>/g, '') // Strip remaining tags without adding extra spaces
+    .replace(/&nbsp;|&#160;|&ensp;|&emsp;|&thinsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
-    .replace(/\s+/g, ' ');
+    .replace(/[\n\r]+$/, ''); // Remove trailing newlines (ghost chars) but keep trailing spaces
 }
 
 /**

@@ -131,7 +131,7 @@ export const HomePageEditor: React.FC = () => {
     if (!file) return;
 
     setErrorMsg('');
-    
+
 
     try {
       setUploadingHero(true);
@@ -166,7 +166,7 @@ export const HomePageEditor: React.FC = () => {
     if (!file) return;
 
     setErrorMsg('');
-    
+
 
     try {
       setUploadingIntro(true);
@@ -370,10 +370,10 @@ export const HomePageEditor: React.FC = () => {
           ...acc,
           [`service-title-${idx}`]: () => !(s.title || '').trim() ? 'A service title is required. Please enter a title.' : null,
           [`service-description-${idx}`]: () => {
-             const desc = (s.description || '').trim();
-             if (!desc) return 'A service description is required. Please enter a description.';
-             if (desc.length > MAX_SERVICE_DESC_CHARS) return `Service description exceeds maximum ${MAX_SERVICE_DESC_CHARS} characters limit.`;
-             return null;
+            const desc = (s.description || '').trim();
+            if (!desc) return 'A service description is required. Please enter a description.';
+            if (desc.length > MAX_SERVICE_DESC_CHARS) return `Service description exceeds maximum ${MAX_SERVICE_DESC_CHARS} characters limit.`;
+            return null;
           }
         }), {})
       });
@@ -579,7 +579,7 @@ export const HomePageEditor: React.FC = () => {
                       style={{ display: 'none' }}
                     />
                   </label>
-                  </div>
+                </div>
               </div>
             ) : (
               <label
@@ -882,7 +882,7 @@ export const HomePageEditor: React.FC = () => {
                       style={{ display: 'none' }}
                     />
                   </label>
-                  </div>
+                </div>
               </div>
             ) : (
               <label
@@ -1085,7 +1085,7 @@ export const HomePageEditor: React.FC = () => {
                 type="text"
                 value={btn.label}
                 onChange={(e) => handleUpdateSocialButton(idx, { label: e.target.value })}
-                placeholder="Label (e.g. Instagram)"
+                placeholder="Title"
                 className="admin-form-input"
                 style={{ marginBottom: 0 }}
                 required
@@ -1094,7 +1094,7 @@ export const HomePageEditor: React.FC = () => {
                 type="text"
                 value={btn.url}
                 onChange={(e) => handleUpdateSocialButton(idx, { url: e.target.value })}
-                placeholder="URL (e.g. https://... or mailto:...)"
+                placeholder="Link"
                 className="admin-form-input"
                 style={{ marginBottom: 0 }}
                 required
