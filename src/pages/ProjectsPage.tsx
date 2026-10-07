@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FolderKanban, Plus, Edit, Trash2, Image as ImageIcon, Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
+import { FolderKanban, Plus, Edit, Trash2, Image as ImageIcon, Eye, EyeOff, Loader2, Sparkles, Layers } from 'lucide-react';
 import { getProjects, updateProject, deleteProject, IProject } from '../services/projectApi';
 import { getHomeContent } from '../services/contentApi';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { ProjectCategoryModal } from '../components/ProjectCategoryModal';
+
 import { StatusBadge } from '../components/StatusBadge';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { Loader } from '../components/Loader';
@@ -19,6 +21,8 @@ export const ProjectsPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+
   const navigate = useNavigate();
 
   const fetchProjects = async (isInitial = false) => {
@@ -102,15 +106,26 @@ export const ProjectsPage: React.FC = () => {
       <PageHeader
         title="PORTFOLIO PROJECTS"
         actions={
-          <button
-            onClick={() => navigate('/projects/new')}
-            className="admin-btn primary"
-          >
-            <Plus size={15} />
-            <span>New Project</span>
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              onClick={() => setShowCategoryModal(true)}
+              className="admin-btn secondary"
+            >
+              <Layers size={15} />
+              <span>Manage Categories</span>
+            </button>
+            <button
+              onClick={() => navigate('/projects/new')}
+              className="admin-btn primary"
+            >
+              <Plus size={15} />
+              <span>New Project</span>
+            </button>
+          </div>
         }
       />
+
+
 
       {error && (
         <div style={{ padding: '0.75rem 1rem', background: '#FFEBEE', color: 'var(--admin-danger)', borderRadius: '6px', marginBottom: '1.125rem', border: '1px solid #FFCDD2', fontSize: '13px', fontWeight: 500 }}>
@@ -152,7 +167,7 @@ export const ProjectsPage: React.FC = () => {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         {project.heroImage?.url ? (
-                          <div style={{ width: '48px', height: '48px', borderRadius: '6px', overflow: 'hidden', background: '#FAFAF8', border: '1px solid var(--admin-border-color)' }}>
+                          <div style={{ width: '48px', height: '48px', borderRadius: '6px', overflow: 'hidden', background: 'var(--admin-surface-subtle)', border: '1px solid var(--admin-border)' }}>
                             <img
                               src={getImageUrl(project.heroImage.url)}
                               alt={project.title}
@@ -162,7 +177,7 @@ export const ProjectsPage: React.FC = () => {
                             />
                           </div>
                         ) : (
-                          <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: '#FAFAF8', border: '1px solid var(--admin-border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: 'var(--admin-surface-subtle)', border: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <ImageIcon size={20} color="var(--admin-text-light)" />
                           </div>
                         )}
@@ -184,7 +199,7 @@ export const ProjectsPage: React.FC = () => {
                       )}
                     </td>
                     <td>
-                      <span style={{ fontSize: '12px', background: '#FAFAF8', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--admin-border-color)' }}>
+                      <span style={{ fontSize: '12px', background: 'var(--admin-surface-subtle)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--admin-border)' }}>
                         {project.images?.length || 0} images
                       </span>
                     </td>
@@ -211,7 +226,7 @@ export const ProjectsPage: React.FC = () => {
                             cursor: togglingId === project._id ? 'wait' : 'pointer',
                             transition: 'all 0.18s ease',
                             border: project.published ? '1px solid #A5D6A7' : '1px solid #E0E0E0',
-                            background: project.published ? '#E8F5E9' : '#F5F5F5',
+                            background: project.published ? '#E8F5E9' : 'var(--admin-surface-subtle)',
                             color: project.published ? '#2E7D32' : '#616161',
                             opacity: togglingId === project._id ? 0.6 : 1,
                             userSelect: 'none',
@@ -284,6 +299,11 @@ export const ProjectsPage: React.FC = () => {
         isLoading={deleting}
         onConfirm={confirmDeleteProject}
         onClose={() => setDeleteTarget(null)}
+      />
+
+      <ProjectCategoryModal
+        isOpen={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
       />
     </div>
   );

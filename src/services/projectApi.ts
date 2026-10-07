@@ -7,6 +7,20 @@ export interface ICategory {
   isActive: boolean;
 }
 
+export interface ILayoutItem {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface ILayouts {
+  lg?: ILayoutItem;
+  md?: ILayoutItem;
+  sm?: ILayoutItem;
+  xs?: ILayoutItem;
+}
+
 export interface IImage {
   _id: string;
   url: string;
@@ -17,6 +31,7 @@ export interface IImage {
   aspectRatio: number;
   caption?: string;
   order: number;
+  layouts?: ILayouts;
 }
 
 export interface IHeroImage {
@@ -54,6 +69,26 @@ export interface IProject {
 
 export const getProjects = async () => {
   const response = await api.get('/admin/projects');
+  return response.data;
+};
+
+export const getCategories = async () => {
+  const response = await api.get('/admin/projects/categories');
+  return response.data;
+};
+
+export const createCategory = async (name: string) => {
+  const response = await api.post('/admin/projects/categories', { name });
+  return response.data;
+};
+
+export const updateCategory = async (id: string, name: string) => {
+  const response = await api.put(`/admin/projects/categories/${id}`, { name });
+  return response.data;
+};
+
+export const deleteCategory = async (id: string) => {
+  const response = await api.delete(`/admin/projects/categories/${id}`);
   return response.data;
 };
 

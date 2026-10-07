@@ -36,7 +36,18 @@ export function humanizeErrorMessage(rawMsg: string): string {
 
   // Title required
   if (/\btitle\b.*required/i.test(msg) || /Path\s+[`"']?title[`"']?\s+is\s+required/i.test(msg)) {
-    return 'A project title is required. Please enter a title.';
+    if (/service/i.test(msg)) return 'A service title is required. Please enter a title.';
+    if (/project/i.test(msg)) return 'A project title is required. Please enter a title.';
+    if (/product/i.test(msg)) return 'A product title is required. Please enter a title.';
+    return 'A title is required. Please enter a title.';
+  }
+
+  // Description required
+  if (/\bdescription\b.*required/i.test(msg) || /Path\s+[`"']?description[`"']?\s+is\s+required/i.test(msg)) {
+    if (/service/i.test(msg)) return 'A service description is required. Please enter a description.';
+    if (/project/i.test(msg)) return 'A project description is required. Please enter a description.';
+    if (/product/i.test(msg)) return 'A product description is required. Please enter a description.';
+    return 'A description is required. Please enter a description.';
   }
 
   // Name required

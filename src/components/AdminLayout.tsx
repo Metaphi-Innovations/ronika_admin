@@ -85,7 +85,6 @@ export const AdminLayout: React.FC = () => {
       items: [
         { label: 'Home Page', path: '/content/home', icon: Home },
         { label: 'Portfolio Projects', path: '/projects', icon: FolderKanban },
-        { label: 'Project Categories', path: '/categories', icon: Layers },
         { label: 'Gallery Artwork', path: '/gallery', icon: ImageIcon },
         { label: 'About / Bio', path: '/about', icon: User },
         { label: 'Contact Details', path: '/contact', icon: Mail },
@@ -106,15 +105,14 @@ export const AdminLayout: React.FC = () => {
     if (path.startsWith('/projects/new')) return 'New Project';
     if (path.startsWith('/projects/')) return 'Edit Project';
     if (path === '/projects') return 'Portfolio Projects';
-    if (path === '/categories') return 'Categories';
     if (path === '/gallery') return 'Gallery Artwork';
-    if (path === '/services') return 'Services';
+
     if (path === '/shop') return 'Shop Catalog';
     if (path === '/content/home') return 'Home Page';
     if (path === '/about') return 'About & Bio';
     if (path === '/contact') return 'Contact & Social';
     if (path === '/messages') return 'Client Messages';
-    if (path === '/settings') return 'Site Settings';
+
     if (path === '/users') return 'User Management';
     return 'Admin Panel';
   };

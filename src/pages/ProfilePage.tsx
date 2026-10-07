@@ -390,7 +390,7 @@ export const ProfilePage: React.FC = () => {
 
                 {/* Name */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
-                  <label className="admin-form-label">Full Name *</label>
+                  <label className="admin-form-label">Full Name <span className="admin-required-asterisk">*</span></label>
                   <input
                     type="text"
                     value={editName}
@@ -404,7 +404,7 @@ export const ProfilePage: React.FC = () => {
 
                 {/* Email */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
-                  <label className="admin-form-label">Email Address *</label>
+                  <label className="admin-form-label">Email Address <span className="admin-required-asterisk">*</span></label>
                   <input
                     type="email"
                     value={editEmail}
@@ -438,7 +438,7 @@ export const ProfilePage: React.FC = () => {
                   {changePassword && (
                     <div style={{ marginTop: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                       <div className="admin-form-group" style={{ margin: 0 }}>
-                        <label className="admin-form-label">New Password (min. 6 characters) *</label>
+                        <label className="admin-form-label">New Password (min. 6 characters) <span className="admin-required-asterisk">*</span></label>
                         <PasswordInput
                           name="profile_edit_new_password"
                           value={newPassword}
@@ -451,7 +451,7 @@ export const ProfilePage: React.FC = () => {
                       </div>
 
                       <div className="admin-form-group" style={{ margin: 0 }}>
-                        <label className="admin-form-label">Confirm New Password *</label>
+                        <label className="admin-form-label">Confirm New Password <span className="admin-required-asterisk">*</span></label>
                         <PasswordInput
                           name="profile_edit_confirm_password"
                           value={confirmPassword}

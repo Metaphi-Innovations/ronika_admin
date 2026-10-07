@@ -21,21 +21,19 @@ import {
   Smartphone,
 } from 'lucide-react';
 import {
-  getGalleryCategories,
-  createGalleryCategory,
-  deleteGalleryCategory,
   getGalleryImages,
   createGalleryImage,
   updateGalleryImage,
   replaceGalleryImage,
   reorderGalleryImages,
   deleteGalleryImage,
-  IGalleryCategory,
   IGalleryImage,
 } from '../services/galleryApi';
+import { getCategories, ICategory } from '../services/projectApi';
 import { getSiteSettings, updateSiteSettings } from '../services/contentApi';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { MediaGridEditor } from '../components/MediaGridEditor';
 import { StatusBadge } from '../components/StatusBadge';
 import { PageHeader } from '../components/AdminSection';
 import { Loader } from '../components/Loader';
@@ -48,11 +46,10 @@ import './GalleryAdmin.css';
 export const GalleryPageAdmin: React.FC = () => {
   const alert = useAlert();
 
-  // Active view tab: 'images' or 'arrange'
-  const [activeTab, setActiveTab] = useState<'images' | 'arrange'>('images');
+
 
   // Server state
-  const [categories, setCategories] = useState<IGalleryCategory[]>([]);
+  const [categories, setCategories] = useState<ICategory[]>([]);
   const [images, setImages] = useState<IGalleryImage[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
@@ -64,15 +61,7 @@ export const GalleryPageAdmin: React.FC = () => {
   const [savingOrder, setSavingOrder] = useState(false);
   const [arrangeViewport, setArrangeViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
 
-  // Unsaved guard modal
-  const [pendingTabSwitch, setPendingTabSwitch] = useState<'images' | 'arrange' | null>(null);
 
-  // Drag and Drop state
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
-
-  // Active card menu popup id
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   // Preview Modal state
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -84,15 +73,9 @@ export const GalleryPageAdmin: React.FC = () => {
   );
   const [savingHeader, setSavingHeader] = useState(false);
   const [showIntroEditor, setShowIntroEditor] = useState(false);
-
-  // Delete Targets for ConfirmModal
-  const [deleteCatTarget, setDeleteCatTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteImageTarget, setDeleteImageTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Category Modal State
-  const [newCatName, setNewCatName] = useState('');
-  const [showCatModal, setShowCatModal] = useState(false);
 
   // Upload Modal State
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -126,7 +109,7 @@ export const GalleryPageAdmin: React.FC = () => {
       if (isInitial) setLoading(true);
       setError('');
       const [catsRes, imgsRes, settingsRes] = await Promise.all([
-        getGalleryCategories(),
+        getCategories(),
         getGalleryImages(),
         getSiteSettings(),
       ]);
@@ -176,79 +159,9 @@ export const GalleryPageAdmin: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // Close menus on outside click
-  useEffect(() => {
-    const handleDocumentClick = () => {
-      setActiveMenuId(null);
-    };
-    document.addEventListener('click', handleDocumentClick);
-    return () => document.removeEventListener('click', handleDocumentClick);
-  }, []);
 
-  // Tab switching with unsaved changes guard
-  const handleTabChange = (newTab: 'images' | 'arrange') => {
-    if (newTab === activeTab) return;
-    if (hasUnsavedChanges) {
-      setPendingTabSwitch(newTab);
-      return;
-    }
-    setActiveTab(newTab);
-  };
 
-  const confirmDiscardTabSwitch = () => {
-    if (pendingTabSwitch) {
-      setOrderedImages([...images]);
-      setHasUnsavedChanges(false);
-      setActiveTab(pendingTabSwitch);
-      setPendingTabSwitch(null);
-    }
-  };
 
-  // Reorder Actions (Left-to-right sequence 1 2 3, 4 5 6, 7 8 9...)
-  const moveImage = (fromIndex: number, toIndex: number) => {
-    if (toIndex < 0 || toIndex >= orderedImages.length || fromIndex === toIndex) return;
-    const updated = [...orderedImages];
-    const [moved] = updated.splice(fromIndex, 1);
-    updated.splice(toIndex, 0, moved);
-    setOrderedImages(updated);
-    setHasUnsavedChanges(true);
-  };
-
-  // Drag and Drop handlers
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', String(index));
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dropTargetIndex !== index) {
-      setDropTargetIndex(index);
-    }
-  };
-
-  const handleDragLeave = (_e: React.DragEvent, index: number) => {
-    if (dropTargetIndex === index) {
-      setDropTargetIndex(null);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault();
-    setDropTargetIndex(null);
-    const sourceIndex = draggedIndex ?? parseInt(e.dataTransfer.getData('text/plain'), 10);
-    if (!isNaN(sourceIndex) && sourceIndex !== targetIndex) {
-      moveImage(sourceIndex, targetIndex);
-    }
-    setDraggedIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDropTargetIndex(null);
-  };
 
   // Save Reordered Images
   const handleSaveOrder = async () => {
@@ -257,6 +170,7 @@ export const GalleryPageAdmin: React.FC = () => {
       const items = orderedImages.map((img, index) => ({
         _id: img._id,
         displayOrder: index + 1,
+        layouts: img.layouts
       }));
 
       const res = await reorderGalleryImages(items);
@@ -280,62 +194,7 @@ export const GalleryPageAdmin: React.FC = () => {
     setHasUnsavedChanges(false);
   };
 
-  // Category Actions
-  const handleCreateCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCatName.trim()) return;
-    try {
-      const res = await createGalleryCategory({ name: newCatName.trim() });
-      if (res.success) {
-        setCategories([...categories, res.data]);
-        setNewCatName('');
-        setShowCatModal(false);
-        alert.success(`Category "${res.data.name}" created.`);
-      }
-    } catch (err: any) {
-      alert.error(err.message || 'Failed to create category');
-    }
-  };
 
-  const confirmDeleteCategory = async () => {
-    if (!deleteCatTarget) return;
-    try {
-      setDeleting(true);
-      const deletedCatId = deleteCatTarget.id;
-      await deleteGalleryCategory(deletedCatId);
-
-      // 1. Remove category from categories list
-      setCategories((prev) => prev.filter((c) => c._id !== deletedCatId));
-
-      // 2. Immediately unassign this deleted category from all local images
-      const unassignCategory = (list: IGalleryImage[]) =>
-        list.map((item) => {
-          const itemCatId =
-            item.category && typeof item.category === 'object' && item.category._id
-              ? item.category._id
-              : (item.category as string);
-          if (String(itemCatId || '') === String(deletedCatId)) {
-            return { ...item, category: null as any };
-          }
-          return item;
-        });
-
-      setImages(unassignCategory);
-      setOrderedImages(unassignCategory);
-
-      // 3. If the deleted category was currently active filter, reset filter to 'ALL'
-      if (selectedCategory === deletedCatId) {
-        setSelectedCategory('ALL');
-      }
-
-      alert.info(`Category "${deleteCatTarget.name}" deleted.`);
-      setDeleteCatTarget(null);
-    } catch (err: any) {
-      alert.error(err.message || 'Failed to delete category');
-    } finally {
-      setDeleting(false);
-    }
-  };
 
   // Upload Artwork — Zero dimension or ratio validation
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -443,7 +302,7 @@ export const GalleryPageAdmin: React.FC = () => {
     if (!cat) return 'Uncategorized';
     const catId = typeof cat === 'object' && cat ? cat._id : cat;
     if (catId && typeof catId === 'string' && catId.trim()) {
-      const found = categories.find((c) => String(c._id) === String(catId));
+      const found = categories.find((c) => String(c._id) === String(catId) || c.name === String(catId));
       if (found) return found.name;
       // Category ID was deleted from active categories
       return 'Uncategorized';
@@ -572,14 +431,7 @@ export const GalleryPageAdmin: React.FC = () => {
         subtitle="Manage the images shown on your portfolio."
         actions={
           <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
-            <button
-              onClick={() => setShowCatModal(true)}
-              className="admin-btn secondary"
-              style={{ fontSize: '13px' }}
-            >
-              <Layers size={14} />
-              <span>Add Category</span>
-            </button>
+
             <button
               onClick={() => setShowUploadModal(true)}
               className="admin-btn primary"
@@ -619,636 +471,224 @@ export const GalleryPageAdmin: React.FC = () => {
         </div>
       )}
 
-      {/* Two Simple Modes Tabs */}
-      <div className="gallery-admin-tabs">
-        <button
-          type="button"
-          onClick={() => handleTabChange('images')}
-          className={`gallery-admin-tab-btn ${activeTab === 'images' ? 'active' : ''}`}
+      {/* ========================================================================= */}
+      {/* UNIFIED GALLERY VIEW (RGL GRID + METADATA)                               */}
+      {/* ========================================================================= */}
+      <div style={{ marginTop: '1rem' }}>
+        {/* Editorial Intro Section */}
+        <div
+          style={{
+            marginBottom: '1.25rem',
+            border: '1px solid var(--admin-border)',
+            borderRadius: '6px',
+            backgroundColor: '#FFFFFF',
+            overflow: 'hidden',
+          }}
         >
-          <ImageIcon size={15} />
-          <span>Images</span>
-          <span className="tab-badge-pill">{images.length}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabChange('arrange')}
-          className={`gallery-admin-tab-btn ${activeTab === 'arrange' ? 'active' : ''}`}
-        >
-          <GripVertical size={15} />
-          <span>Arrange</span>
-          {hasUnsavedChanges && (
+          <div
+            style={{
+              padding: '10px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              backgroundColor: 'var(--admin-surface-subtle)',
+              borderBottom: '1px solid var(--admin-border)'
+            }}
+          >
             <span
               style={{
-                width: '7px',
-                height: '7px',
-                borderRadius: '50%',
-                backgroundColor: '#D97706',
+                fontSize: '12px',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                color: 'var(--admin-text-main, #111)',
               }}
-              title="Unsaved changes"
+            >
+              Editorial Intro Text
+            </span>
+          </div>
+
+          <div style={{ padding: '16px' }}>
+            <RichTextEditor
+              label="Editorial Introduction"
+              value={galleryHeader}
+              onChange={setGalleryHeader}
+              maxChars={MAX_GALLERY_INTRO_CHARS}
             />
-          )}
-        </button>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* VIEW 1: IMAGES VIEW                                                      */}
-      {/* ========================================================================= */}
-      {activeTab === 'images' && (
-        <div>
-          {/* Optional Editorial Intro Dropdown */}
-          <div
-            style={{
-              marginBottom: '1.25rem',
-              border: '1px solid var(--admin-border-color, #E2E0D8)',
-              borderRadius: '6px',
-              backgroundColor: '#FFFFFF',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              onClick={() => setShowIntroEditor(!showIntroEditor)}
-              style={{
-                padding: '10px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                cursor: 'pointer',
-                backgroundColor: '#FAFAF8',
-                userSelect: 'none',
-                transition: 'background-color 0.15s ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F5F5F2')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FAFAF8')}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    color: 'var(--admin-text-main, #111)',
-                  }}
-                >
-                  Editorial Intro Text
-                </span>
-                <ChevronDown
-                  size={15}
-                  style={{
-                    color: 'var(--admin-text-main, #111)',
-                    transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    transform: showIntroEditor ? 'rotate(180deg)' : 'rotate(0deg)',
-                  }}
-                />
-              </div>
-            </div>
-
-            {showIntroEditor && (
-              <div style={{ padding: '16px' }}>
-                <RichTextEditor
-                  label="Editorial Introduction"
-                  value={galleryHeader}
-                  onChange={setGalleryHeader}
-                  maxChars={MAX_GALLERY_INTRO_CHARS}
-                />
-                <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    onClick={handleSaveHeader}
-                    disabled={savingHeader}
-                    className="admin-btn primary"
-                    style={{ fontSize: '12px' }}
-                  >
-                    <Save size={13} />
-                    <span>{savingHeader ? 'Saving...' : 'Save Intro'}</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Category Filter Pills */}
-          <div
-            style={{
-              display: 'flex',
-              gap: '6px',
-              marginBottom: '1.25rem',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-            }}
-          >
-            <button
-              onClick={() => setSelectedCategory('ALL')}
-              className={`admin-btn ${selectedCategory === 'ALL' ? 'primary' : 'secondary'}`}
-              style={{ padding: '4px 14px', fontSize: '12px', borderRadius: '16px' }}
-            >
-              All ({images.length})
-            </button>
-            {categories.map((cat) => (
-              <div key={cat._id} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                <button
-                  onClick={() => setSelectedCategory(cat._id)}
-                  className={`admin-btn ${selectedCategory === cat._id ? 'primary' : 'secondary'}`}
-                  style={{ padding: '4px 14px', fontSize: '12px', borderRadius: '16px' }}
-                >
-                  {cat.name}
-                </button>
-                <button
-                  onClick={() => setDeleteCatTarget({ id: cat._id, name: cat.name })}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--admin-text-muted, #666)',
-                    padding: '2px',
-                  }}
-                  title="Delete Category"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Image Library Grid */}
-          {loading ? (
-            <Loader text="Loading artwork..." minHeight="200px" />
-          ) : libraryImages.length === 0 ? (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '4rem 1rem',
-                border: '1px dashed var(--admin-border-color, #E2E0D8)',
-                borderRadius: '8px',
-                backgroundColor: '#FFFFFF',
-              }}
-            >
-              <ImageIcon size={36} color="#BBB" style={{ marginBottom: '0.75rem' }} />
-              <p
-                style={{
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: 'var(--admin-text-main, #111)',
-                  margin: '0 0 1rem 0',
-                }}
-              >
-                No artwork added yet.
-              </p>
-              <button onClick={() => setShowUploadModal(true)} className="admin-btn primary">
-                <Plus size={14} /> Add Images
-              </button>
-            </div>
-          ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                gap: '18px',
-              }}
-            >
-              {libraryImages.map((item) => {
-                const catName = getCategoryName(item.category);
-                return (
-                  <div
-                    key={item._id}
-                    style={{
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid var(--admin-border-color, #E2E0D8)',
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column',
-                    }}
-                  >
-                    {/* Visual Preview */}
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '175px',
-                        backgroundColor: '#F8F8F6',
-                        position: 'relative',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <img
-                        src={getImageUrl(item.image?.url)}
-                        alt={item.title}
-                        loading="lazy"
-                        decoding="async"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                      <span
-                        style={{
-                          position: 'absolute',
-                          top: '8px',
-                          left: '8px',
-                          backgroundColor: 'rgba(0,0,0,0.75)',
-                          color: '#FFFFFF',
-                          fontSize: '10px',
-                          fontWeight: 600,
-                          padding: '2px 7px',
-                          borderRadius: '3px',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        {catName}
-                      </span>
-                    </div>
-
-                    {/* Metadata Content */}
-                    <div
-                      style={{
-                        padding: '10px 12px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        flex: 1,
-                      }}
-                    >
-                      <div style={{ marginBottom: '8px' }}>
-                        <div
-                          style={{
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: 'var(--admin-text-main, #111)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {item.title}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--admin-text-muted, #666)' }}>
-                          {catName}
-                        </div>
-                      </div>
-
-                      {/* Card Actions */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          borderTop: '1px solid var(--admin-border-color, #E2E0D8)',
-                          paddingTop: '8px',
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePublish(item)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: 0,
-                          }}
-                        >
-                          <StatusBadge status={item.published ? 'published' : 'draft'} />
-                        </button>
-
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(item)}
-                            className="admin-btn-icon"
-                            title="Edit Info"
-                            style={{ padding: '4px' }}
-                          >
-                            <Edit2 size={13} />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setReplaceTarget(item)}
-                            className="admin-btn-icon"
-                            title="Replace Image"
-                            style={{ padding: '4px' }}
-                          >
-                            <RotateCcw size={13} />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setDeleteImageTarget({ id: item._id, title: item.title })}
-                            className="admin-btn-icon danger"
-                            title="Delete"
-                            style={{ padding: '4px' }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* VIEW 2: ARRANGE VIEW (UNIFORM 3-COLUMN REORDER GRID)                      */}
-      {/* ========================================================================= */}
-      {activeTab === 'arrange' && (
-        <div>
-          {/* Top Bar with Responsive Viewport Selector */}
-          <div className="arrange-top-bar">
-            <div className="arrange-title-wrap">
-              <h3>Arrange Gallery</h3>
-              <p>Drag images to set their order (1 2 3, 4 5 6, 7 8 9... left to right).</p>
-            </div>
-
-            <div className="arrange-actions">
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => setArrangeViewport('desktop')}
-                  className={`admin-btn ${arrangeViewport === 'desktop' ? 'primary' : 'secondary'}`}
-                  style={{ fontSize: '11.5px', padding: '4px 10px' }}
-                  title="3 Columns (Desktop)"
-                >
-                  <Monitor size={13} /> 3 Col
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setArrangeViewport('tablet')}
-                  className={`admin-btn ${arrangeViewport === 'tablet' ? 'primary' : 'secondary'}`}
-                  style={{ fontSize: '11.5px', padding: '4px 10px' }}
-                  title="2 Columns (Tablet)"
-                >
-                  <Tablet size={13} /> 2 Col
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setArrangeViewport('mobile')}
-                  className={`admin-btn ${arrangeViewport === 'mobile' ? 'primary' : 'secondary'}`}
-                  style={{ fontSize: '11.5px', padding: '4px 10px' }}
-                  title="1 Column (Mobile)"
-                >
-                  <Smartphone size={13} /> 1 Col
-                </button>
-              </div>
-
+            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                onClick={() => setShowPreviewModal(true)}
-                className="admin-btn secondary"
-                style={{ fontSize: '12.5px' }}
+                onClick={handleSaveHeader}
+                disabled={savingHeader}
+                className="admin-btn primary"
+                style={{ fontSize: '12px' }}
               >
-                <Eye size={14} />
-                <span>Live Website Preview</span>
+                <Save size={13} />
+                <span>{savingHeader ? 'Saving...' : 'Save Intro'}</span>
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Unsaved Changes Banner */}
-          {hasUnsavedChanges && (
-            <div className="unsaved-banner">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontWeight: 600 }}>Unsaved changes</span>
-                <span style={{ opacity: 0.85 }}>— Remember to save your new order.</span>
-              </div>
-              <div className="unsaved-banner-actions">
-                <button
-                  type="button"
-                  onClick={handleDiscardOrder}
-                  disabled={savingOrder}
-                  className="admin-btn secondary"
-                  style={{ fontSize: '12px', padding: '5px 12px' }}
-                >
-                  Discard
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveOrder}
-                  disabled={savingOrder}
-                  className="admin-btn primary"
-                  style={{ fontSize: '12px', padding: '5px 14px' }}
-                >
-                  <Save size={13} />
-                  <span>{savingOrder ? 'Saving...' : 'Save Changes'}</span>
-                </button>
-              </div>
+        {/* Unsaved Changes Banner */}
+        {hasUnsavedChanges && (
+          <div className="unsaved-banner" style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontWeight: 600 }}>Unsaved changes</span>
+              <span style={{ opacity: 0.85 }}>— Remember to save your new layout.</span>
             </div>
-          )}
-
-          {/* Empty state */}
-          {orderedImages.length === 0 ? (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '4rem 1rem',
-                border: '1px dashed var(--admin-border-color, #E2E0D8)',
-                borderRadius: '8px',
-                backgroundColor: '#FFFFFF',
-              }}
-            >
-              <p style={{ fontSize: '14px', color: '#666', margin: '0 0 1rem 0' }}>
-                No artwork added yet.
-              </p>
-              <button onClick={() => setShowUploadModal(true)} className="admin-btn primary">
-                <Plus size={14} /> Add Images
+            <div className="unsaved-banner-actions">
+              <button
+                type="button"
+                onClick={handleDiscardOrder}
+                disabled={savingOrder}
+                className="admin-btn secondary"
+                style={{ fontSize: '12px', padding: '5px 12px' }}
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveOrder}
+                disabled={savingOrder}
+                className="admin-btn primary"
+                style={{ fontSize: '12px', padding: '5px 14px' }}
+              >
+                <Save size={13} />
+                <span>{savingOrder ? 'Saving...' : 'Save Changes'}</span>
               </button>
             </div>
-          ) : (
-            <div className={`arrange-grid-container viewport-${arrangeViewport}`}>
-              {orderedImages.map((item, index) => {
-                const positionNumber = String(index + 1).padStart(2, '0');
-                const catName = getCategoryName(item.category);
-                const isDragging = draggedIndex === index;
-                const isDropTarget = dropTargetIndex === index && draggedIndex !== index;
+          </div>
+        )}
 
-                return (
-                  <div
-                    key={item._id}
-                    className={`arrange-card ${isDragging ? 'is-dragging' : ''} ${isDropTarget ? 'is-drop-target' : ''
-                      }`}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDragLeave={(e) => handleDragLeave(e, index)}
-                    onDrop={(e) => handleDrop(e, index)}
-                    onDragEnd={handleDragEnd}
+        {/* Interactive RGL Grid */}
+        {loading ? (
+          <Loader text="Loading artwork..." minHeight="200px" />
+        ) : orderedImages.length === 0 ? (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '4rem 1rem',
+              border: '2px dashed var(--admin-border-strong)',
+              borderRadius: '8px',
+              backgroundColor: 'var(--admin-surface-subtle)',
+            }}
+          >
+            <ImageIcon size={36} color="var(--admin-text-muted)" style={{ marginBottom: '0.75rem' }} />
+            <p
+              style={{
+                fontSize: '14px',
+                fontWeight: 600,
+                color: 'var(--admin-text-main, #111)',
+                margin: '0 0 1rem 0',
+              }}
+            >
+              No artwork added yet.
+            </p>
+            <button onClick={() => setShowUploadModal(true)} className="admin-btn primary">
+              <Plus size={14} /> Add Images
+            </button>
+          </div>
+        ) : (() => {
+          const filteredImages = selectedCategory === 'ALL' 
+            ? orderedImages 
+            : orderedImages.filter(img => {
+                const catId = img.category && typeof img.category === 'object' && 'name' in img.category 
+                  ? (img.category as any)._id 
+                  : img.category;
+                return String(catId) === selectedCategory;
+              });
+
+          return (
+            <MediaGridEditor
+              items={filteredImages.map(img => ({
+                id: img._id,
+                url: getImageUrl(img.image?.url),
+                layouts: img.layouts,
+                title: img.title,
+                categoryName: getCategoryName(img.category),
+                published: img.published
+              }))}
+              headerContent={
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '6px',
+                    marginBottom: '10px',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    background: 'var(--admin-surface-subtle)',
+                    padding: '10px 14px',
+                    borderRadius: '6px'
+                  }}
+                >
+                  <button
+                    onClick={() => setSelectedCategory('ALL')}
+                    className={`admin-btn ${selectedCategory === 'ALL' ? 'primary' : 'secondary'}`}
+                    style={{ padding: '4px 14px', fontSize: '12px', borderRadius: '16px' }}
                   >
-                    {/* Visual Card Image — Uniform frame for stable dragging */}
-                    <div className="arrange-card-visual">
-                      <img
-                        src={getImageUrl(item.image?.url)}
-                        alt={item.title}
-                        loading="lazy"
-                        decoding="async"
-                        className="arrange-card-img"
-                      />
-                      <div className="position-badge">Position {positionNumber}</div>
-                      <div className="arrange-drag-handle" title="Drag to reorder">
-                        <GripVertical size={14} />
-                      </div>
+                    All ({orderedImages.length})
+                  </button>
+                  {categories.map((cat) => (
+                    <div key={cat._id} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      <button
+                        onClick={() => setSelectedCategory(cat._id)}
+                        className={`admin-btn ${selectedCategory === cat._id ? 'primary' : 'secondary'}`}
+                        style={{ padding: '4px 14px', fontSize: '12px', borderRadius: '16px' }}
+                      >
+                        {cat.name}
+                      </button>
+
                     </div>
+                  ))}
+                </div>
+              }
+              onChange={(updatedItems) => {
+                const newOrdered = [...orderedImages];
+                let hasChanges = false;
+                
+                updatedItems.forEach(u => {
+                  const imgIndex = newOrdered.findIndex(i => i._id === u.id);
+                  if (imgIndex !== -1 && JSON.stringify(newOrdered[imgIndex].layouts) !== JSON.stringify(u.layouts)) {
+                    newOrdered[imgIndex] = { ...newOrdered[imgIndex], layouts: u.layouts };
+                    hasChanges = true;
+                  }
+                });
 
-                    {/* Information Bar */}
-                    <div className="arrange-card-info">
-                      <div className="arrange-card-title">{item.title}</div>
-                      <div className="arrange-card-cat">{catName}</div>
-                    </div>
+                if (hasChanges) {
+                  setOrderedImages(newOrdered);
+                  setHasUnsavedChanges(true);
+                }
+              }}
+              onDelete={(id) => {
+                const target = orderedImages.find(img => img._id === id);
+                if (target) {
+                  setDeleteImageTarget({ id: target._id, title: target.title });
+                }
+              }}
+              onReplace={(id) => {
+                const target = orderedImages.find(img => img._id === id);
+                if (target) {
+                  setReplaceTarget(target);
+                }
+              }}
+              onEdit={(id) => {
+                const target = orderedImages.find(img => img._id === id);
+                if (target) {
+                  openEditModal(target);
+                }
+              }}
+              onTogglePublish={(id) => {
+                const target = orderedImages.find(img => img._id === id);
+                if (target) {
+                  handleTogglePublish(target);
+                }
+              }}
+            />
+          );
+        })()}
+      </div>
 
-                    {/* Bottom Controls */}
-                    <div className="arrange-card-actions">
-                      <div className="arrange-order-btn-group">
-                        <button
-                          type="button"
-                          className="arrange-order-btn"
-                          disabled={index === 0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            moveImage(index, index - 1);
-                          }}
-                          aria-label={`Move ${item.title} earlier`}
-                          title="Move left/earlier"
-                        >
-                          <ChevronLeft size={14} />
-                          <span>Move Left</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="arrange-order-btn"
-                          disabled={index === orderedImages.length - 1}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            moveImage(index, index + 1);
-                          }}
-                          aria-label={`Move ${item.title} later`}
-                          title="Move right/later"
-                        >
-                          <span>Move Right</span>
-                          <ChevronRight size={14} />
-                        </button>
-                      </div>
 
-                      {/* Dropdown ⋯ */}
-                      <div style={{ position: 'relative' }}>
-                        <button
-                          type="button"
-                          className="card-menu-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenuId(activeMenuId === item._id ? null : item._id);
-                          }}
-                          aria-label="Image actions"
-                        >
-                          <MoreVertical size={14} />
-                        </button>
-
-                        {activeMenuId === item._id && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              right: 0,
-                              bottom: '28px',
-                              backgroundColor: '#FFFFFF',
-                              border: '1px solid var(--admin-border-color, #E2E0D8)',
-                              borderRadius: '6px',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                              zIndex: 50,
-                              minWidth: '130px',
-                              overflow: 'hidden',
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveMenuId(null);
-                                openEditModal(item);
-                              }}
-                              style={{
-                                width: '100%',
-                                textAlign: 'left',
-                                padding: '8px 12px',
-                                background: 'none',
-                                border: 'none',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                color: 'var(--admin-text-main, #111)',
-                              }}
-                            >
-                              <Edit2 size={13} /> Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveMenuId(null);
-                                setReplaceTarget(item);
-                              }}
-                              style={{
-                                width: '100%',
-                                textAlign: 'left',
-                                padding: '8px 12px',
-                                background: 'none',
-                                border: 'none',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                color: 'var(--admin-text-main, #111)',
-                              }}
-                            >
-                              <RotateCcw size={13} /> Replace
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveMenuId(null);
-                                setDeleteImageTarget({ id: item._id, title: item.title });
-                              }}
-                              style={{
-                                width: '100%',
-                                textAlign: 'left',
-                                padding: '8px 12px',
-                                background: 'none',
-                                border: 'none',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                color: '#DC2626',
-                              }}
-                            >
-                              <Trash2 size={13} /> Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL 1: UNSAVED CHANGES TAB-SWITCH GUARD                                 */}
-      {/* ========================================================================= */}
-      {pendingTabSwitch && (
-        <ConfirmModal
-          isOpen={Boolean(pendingTabSwitch)}
-          title="You have unsaved changes."
-          message="Switching views without saving will discard your new arrangement."
-          confirmLabel="Discard"
-          cancelLabel="Stay"
-          onConfirm={confirmDiscardTabSwitch}
-          onClose={() => setPendingTabSwitch(null)}
-        />
-      )}
 
       {/* ========================================================================= */}
       {/* MODAL 2: LIVE WEBSITE PREVIEW MODAL (EXACT PORTFOLIO REPLICA)            */}
@@ -1386,7 +826,7 @@ export const GalleryPageAdmin: React.FC = () => {
 
             <form onSubmit={handleUploadImage}>
               <div className="admin-form-group" style={{ marginBottom: '0.875rem' }}>
-                <label className="admin-form-label">Category *</label>
+                <label className="admin-form-label">Category <span className="admin-required-asterisk">*</span></label>
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
@@ -1395,36 +835,27 @@ export const GalleryPageAdmin: React.FC = () => {
                 >
                   <option value="">Select Category</option>
                   {categories.map((c) => (
-                    <option key={c._id} value={c._id}>
+                    <option key={c._id} value={c.name}>
                       {c.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="admin-form-group" style={{ marginBottom: '0.875rem' }}>
-                <label className="admin-form-label">Artwork Title</label>
-                <input
-                  type="text"
-                  value={artworkTitle}
-                  onChange={(e) => setArtworkTitle(e.target.value)}
-                  className="admin-form-input"
-                  placeholder="Auto-derived from filename if empty"
-                />
-              </div>
+
 
               <div className="admin-form-group" style={{ marginBottom: '1.25rem' }}>
-                <label className="admin-form-label">Artwork Image File *</label>
+                <label className="admin-form-label">Artwork Image File <span className="admin-required-asterisk">*</span></label>
                 {filePreview ? (
                   <div
                     style={{
-                      border: '1px solid var(--admin-border-color, #E2E0D8)',
+                      border: '1px solid var(--admin-border)',
                       borderRadius: '6px',
                       padding: '8px 10px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '10px',
-                      backgroundColor: '#FAFAF8',
+                      backgroundColor: 'var(--admin-surface-subtle)',
                     }}
                   >
                     <div
@@ -1484,7 +915,7 @@ export const GalleryPageAdmin: React.FC = () => {
                 ) : (
                   <label
                     style={{
-                      border: '2px dashed var(--admin-border-color, #E2E0D8)',
+                      border: '2px dashed var(--admin-border-strong)',
                       borderRadius: '6px',
                       padding: '1.5rem',
                       display: 'flex',
@@ -1493,7 +924,7 @@ export const GalleryPageAdmin: React.FC = () => {
                       justifyContent: 'center',
                       gap: '6px',
                       cursor: 'pointer',
-                      backgroundColor: '#FAFAF8',
+                      backgroundColor: 'var(--admin-surface-subtle)',
                       textAlign: 'center',
                     }}
                   >
@@ -1559,7 +990,7 @@ export const GalleryPageAdmin: React.FC = () => {
             <h3 style={{ fontSize: '14.5px', fontWeight: 600, marginBottom: '0.5rem' }}>
               REPLACE ARTWORK IMAGE
             </h3>
-            <p style={{ fontSize: '12px', color: '#666', marginBottom: '1rem' }}>
+            <p style={{ fontSize: '12px', color: 'var(--admin-text-secondary)', marginBottom: '1rem' }}>
               Replacing this file preserves its position and metadata.
             </p>
 
@@ -1568,13 +999,13 @@ export const GalleryPageAdmin: React.FC = () => {
                 {replacePreview ? (
                   <div
                     style={{
-                      border: '1px solid var(--admin-border-color, #E2E0D8)',
+                      border: '1px solid var(--admin-border)',
                       borderRadius: '6px',
                       padding: '8px 10px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '10px',
-                      backgroundColor: '#FAFAF8',
+                      backgroundColor: 'var(--admin-surface-subtle)',
                     }}
                   >
                     <img
@@ -1607,7 +1038,7 @@ export const GalleryPageAdmin: React.FC = () => {
                 ) : (
                   <label
                     style={{
-                      border: '2px dashed var(--admin-border-color, #E2E0D8)',
+                      border: '2px dashed var(--admin-border-strong)',
                       borderRadius: '6px',
                       padding: '1.5rem',
                       display: 'flex',
@@ -1616,7 +1047,7 @@ export const GalleryPageAdmin: React.FC = () => {
                       justifyContent: 'center',
                       gap: '6px',
                       cursor: 'pointer',
-                      backgroundColor: '#FAFAF8',
+                      backgroundColor: 'var(--admin-surface-subtle)',
                       textAlign: 'center',
                     }}
                   >
@@ -1684,19 +1115,10 @@ export const GalleryPageAdmin: React.FC = () => {
             </h3>
 
             <form onSubmit={handleEditSubmit}>
-              <div className="admin-form-group" style={{ marginBottom: '0.875rem' }}>
-                <label className="admin-form-label">Title *</label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="admin-form-input"
-                  required
-                />
-              </div>
+
 
               <div className="admin-form-group" style={{ marginBottom: '1.25rem' }}>
-                <label className="admin-form-label">Category *</label>
+                <label className="admin-form-label">Category <span className="admin-required-asterisk">*</span></label>
                 <select
                   value={editCategoryId}
                   onChange={(e) => setEditCategoryId(e.target.value)}
@@ -1705,7 +1127,7 @@ export const GalleryPageAdmin: React.FC = () => {
                 >
                   <option value="">Select Category</option>
                   {categories.map((c) => (
-                    <option key={c._id} value={c._id}>
+                    <option key={c._id} value={c.name}>
                       {c.name}
                     </option>
                   ))}
@@ -1729,66 +1151,7 @@ export const GalleryPageAdmin: React.FC = () => {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL 6: CREATE CATEGORY MODAL                                            */}
-      {/* ========================================================================= */}
-      {showCatModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div className="admin-card" style={{ width: '380px', padding: '1.25rem' }}>
-            <h3 style={{ fontSize: '14.5px', fontWeight: 600, marginBottom: '0.875rem' }}>
-              CREATE CATEGORY
-            </h3>
-            <form onSubmit={handleCreateCategory}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label className="admin-label">Category Name *</label>
-                <input
-                  type="text"
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  className="admin-input"
-                  placeholder="e.g. Photography"
-                  required
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCatModal(false)}
-                  className="admin-btn secondary"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="admin-btn primary">
-                  Save Category
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* ========================================================================= */}
-      {/* MODAL 7: CONFIRM DELETE MODALS                                            */}
-      {/* ========================================================================= */}
-      <ConfirmModal
-        isOpen={Boolean(deleteCatTarget)}
-        title="Delete Category?"
-        message={`Are you sure you want to delete "${deleteCatTarget?.name}"?`}
-        confirmLabel="Delete Category"
-        isLoading={deleting}
-        onConfirm={confirmDeleteCategory}
-        onClose={() => setDeleteCatTarget(null)}
-      />
 
       <ConfirmModal
         isOpen={Boolean(deleteImageTarget)}

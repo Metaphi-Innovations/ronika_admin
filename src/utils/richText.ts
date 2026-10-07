@@ -5,7 +5,8 @@
 export const MAX_HERO_QUOTE_CHARS = 80;
 export const MAX_CLIENT_BIO_CHARS = 250;
 export const MAX_SERVICE_DESC_CHARS = 250;
-export const MAX_ABOUT_HEADING_CHARS = 80;
+export const MAX_ABOUT_HEADING_CHARS = 50;
+export const MAX_ABOUT_BIO_CHARS = 700;
 export const MAX_GALLERY_INTRO_CHARS = 80;
 
 // Deprecated word constants (kept for backward compatibility)

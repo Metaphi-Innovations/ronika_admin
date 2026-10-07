@@ -347,7 +347,7 @@ export const UserManagementPage: React.FC = () => {
           <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
             <Users
               size={36}
-              color="var(--admin-border-color)"
+              color="var(--admin-border)"
               style={{ marginBottom: '0.75rem' }}
             />
             <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--admin-text-main)', marginBottom: '0.25rem' }}>
@@ -465,7 +465,7 @@ export const UserManagementPage: React.FC = () => {
                               fontWeight: 600,
                               padding: '3px 8px',
                               borderRadius: '4px',
-                              background: target.role === 'admin' ? '#E8EAF6' : '#F5F5F5',
+                              background: target.role === 'admin' ? '#E8EAF6' : 'var(--admin-surface-subtle)',
                               color: target.role === 'admin' ? '#283593' : '#616161',
                               textTransform: 'capitalize',
                             }}
@@ -626,7 +626,7 @@ export const UserManagementPage: React.FC = () => {
 
                 {/* Name */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
-                  <label className="admin-form-label">Full Name *</label>
+                  <label className="admin-form-label">Full Name <span className="admin-required-asterisk">*</span></label>
                   <input
                     type="text"
                     name="new_admin_full_name"
@@ -643,7 +643,7 @@ export const UserManagementPage: React.FC = () => {
 
                 {/* Email */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
-                  <label className="admin-form-label">Email Address *</label>
+                  <label className="admin-form-label">Email Address <span className="admin-required-asterisk">*</span></label>
                   <input
                     type="email"
                     name="new_admin_account_email"
@@ -660,7 +660,7 @@ export const UserManagementPage: React.FC = () => {
 
                 {/* Role */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
-                  <label className="admin-form-label">Role *</label>
+                  <label className="admin-form-label">Role <span className="admin-required-asterisk">*</span></label>
                   <select
                     value={newUserData.role}
                     onChange={(e) =>
@@ -694,7 +694,7 @@ export const UserManagementPage: React.FC = () => {
 
                 {/* Confirm Password */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
-                  <label className="admin-form-label">Confirm Password *</label>
+                  <label className="admin-form-label">Confirm Password <span className="admin-required-asterisk">*</span></label>
                   <PasswordInput
                     name="new_admin_account_confirm_password"
                     autoComplete="new-password"
@@ -732,7 +732,7 @@ export const UserManagementPage: React.FC = () => {
                   display: 'flex',
                   justifyContent: 'flex-end',
                   gap: '0.75rem',
-                  borderTop: '1px solid var(--admin-border-color)',
+                  borderTop: '1px solid var(--admin-border)',
                 }}
               >
                 <button
@@ -817,7 +817,7 @@ export const UserManagementPage: React.FC = () => {
 
                 {/* Name */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
-                  <label className="admin-form-label">Full Name *</label>
+                  <label className="admin-form-label">Full Name <span className="admin-required-asterisk">*</span></label>
                   <input
                     type="text"
                     name="edit_admin_full_name"
@@ -833,7 +833,7 @@ export const UserManagementPage: React.FC = () => {
 
                 {/* Email */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
-                  <label className="admin-form-label">Email Address *</label>
+                  <label className="admin-form-label">Email Address <span className="admin-required-asterisk">*</span></label>
                   <input
                     type="email"
                     name="edit_admin_email_field"
@@ -912,8 +912,8 @@ export const UserManagementPage: React.FC = () => {
                   style={{
                     marginTop: '0.5rem',
                     padding: '1rem',
-                    background: '#FAFAF8',
-                    border: '1px solid var(--admin-border-color)',
+                    background: 'var(--admin-surface-subtle)',
+                    border: '1px solid var(--admin-border)',
                     borderRadius: '8px',
                   }}
                 >
@@ -995,7 +995,7 @@ export const UserManagementPage: React.FC = () => {
                   display: 'flex',
                   justifyContent: 'flex-end',
                   gap: '0.75rem',
-                  borderTop: '1px solid var(--admin-border-color)',
+                  borderTop: '1px solid var(--admin-border)',
                 }}
               >
                 <button

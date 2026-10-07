@@ -18,6 +18,8 @@ import { RichTextEditor } from '../components/RichTextEditor';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { Loader } from '../components/Loader';
 import { countReadableChars, MAX_HERO_QUOTE_CHARS, MAX_CLIENT_BIO_CHARS, MAX_SERVICE_DESC_CHARS } from '../utils/richText';
+import { useValidation } from '../hooks/useValidation';
+import { InlineError } from '../components/InlineError';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
 import { useLiveResource } from '../context/LiveSyncContext';
@@ -26,6 +28,7 @@ const MAX_FOOTER_TEXT_CHARS = 50;
 
 export const HomePageEditor: React.FC = () => {
   const alert = useAlert();
+  const { errors, validate, clearError } = useValidation<string>();
   const [content, setContent] = useState<Partial<IHomeContent>>({
     heroQuote: 'Works of art make rules, rules do not make works of art.',
     heroQuoteAuthor: 'Claude Debussy',
@@ -122,79 +125,13 @@ export const HomePageEditor: React.FC = () => {
   const activeServicesCount = services.filter(s => s.isActive).length;
   const isServicesValid = activeServicesCount === 3;
 
-  // Client-Side Image Dimension & Orientation Strict Validation
-  const validateImageDimensions = (
-    file: File,
-    minWidth: number,
-    minHeight: number,
-    type: 'landscape' | 'portrait'
-  ): Promise<{ valid: boolean; error?: string }> => {
-    return new Promise((resolve) => {
-      if (!file.type.startsWith('image/')) {
-        return resolve({ valid: false, error: 'Selected file is not an image.' });
-      }
-
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        const width = img.naturalWidth;
-        const height = img.naturalHeight;
-
-        if (type === 'landscape') {
-          if (width < minWidth || height < minHeight) {
-            return resolve({
-              valid: false,
-              error: `Hero Artwork resolution is too low (${width}×${height}px). Minimum required dimensions are ${minWidth}×${minHeight}px (Landscape). Optimal: 1920×1080px to 2560×1440px.`
-            });
-          }
-          if (width < height) {
-            return resolve({
-              valid: false,
-              error: `Hero Artwork must be a horizontal/landscape image (Width must be greater than Height). Uploaded image is vertical (${width}×${height}px).`
-            });
-          }
-        } else if (type === 'portrait') {
-          if (width < minWidth || height < minHeight) {
-            return resolve({
-              valid: false,
-              error: `Client Portrait resolution is too low (${width}×${height}px). Minimum required dimensions are ${minWidth}×${minHeight}px (Portrait 3:4). Optimal: 600×800px to 1000×1250px.`
-            });
-          }
-          if (width > height) {
-            return resolve({
-              valid: false,
-              error: `Client Portrait must be a vertical/portrait image (3:4 ratio). Uploaded image is horizontal (${width}×${height}px).`
-            });
-          }
-        }
-
-        return resolve({ valid: true });
-      };
-
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        resolve({ valid: false, error: 'Could not process image file. Please choose a valid JPG, PNG, or WebP image.' });
-      };
-
-      img.src = objectUrl;
-    });
-  };
-
   // Image Upload Handlers
   const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setErrorMsg('');
-    const validation = await validateImageDimensions(file, 1600, 900, 'landscape');
-    if (!validation.valid) {
-      alert.error(validation.error || 'Invalid hero artwork dimensions.', 'Upload Error');
-      setErrorMsg(validation.error || 'Invalid hero artwork dimensions.');
-      e.target.value = '';
-      return;
-    }
+    
 
     try {
       setUploadingHero(true);
@@ -229,13 +166,7 @@ export const HomePageEditor: React.FC = () => {
     if (!file) return;
 
     setErrorMsg('');
-    const validation = await validateImageDimensions(file, 500, 600, 'portrait');
-    if (!validation.valid) {
-      alert.error(validation.error || 'Invalid client portrait dimensions.', 'Upload Error');
-      setErrorMsg(validation.error || 'Invalid client portrait dimensions.');
-      e.target.value = '';
-      return;
-    }
+    
 
     try {
       setUploadingIntro(true);
@@ -433,11 +364,20 @@ export const HomePageEditor: React.FC = () => {
     }
 
     if (sectionName === 'D') {
-      const overLimitService = services.find((s) => (s.description || '').length > MAX_SERVICE_DESC_CHARS);
-      if (overLimitService) {
-        alert.error(`Service description for "${overLimitService.title || 'Service'}" exceeds maximum ${MAX_SERVICE_DESC_CHARS} characters limit.`, 'Limit Exceeded');
-        return;
-      }
+      const isValid = validate({
+        servicesSectionTitle: () => !content.servicesSectionTitle?.trim() ? 'Services Section Title is required. Please enter a title.' : null,
+        ...services.reduce((acc, s, idx) => ({
+          ...acc,
+          [`service-title-${idx}`]: () => !(s.title || '').trim() ? 'A service title is required. Please enter a title.' : null,
+          [`service-description-${idx}`]: () => {
+             const desc = (s.description || '').trim();
+             if (!desc) return 'A service description is required. Please enter a description.';
+             if (desc.length > MAX_SERVICE_DESC_CHARS) return `Service description exceeds maximum ${MAX_SERVICE_DESC_CHARS} characters limit.`;
+             return null;
+          }
+        }), {})
+      });
+      if (!isValid) return;
     }
 
     if (sectionName === 'E' && (settings.footerText || '').length > MAX_FOOTER_TEXT_CHARS) {
@@ -583,7 +523,7 @@ export const HomePageEditor: React.FC = () => {
           {/* Traditional Hero Artwork Image Upload Card */}
           <div
             style={{
-              border: '1px solid var(--admin-border-color)',
+              border: '1px solid var(--admin-border)',
               borderRadius: '8px',
               padding: '0.875rem',
               background: 'var(--admin-bg-body)',
@@ -607,7 +547,7 @@ export const HomePageEditor: React.FC = () => {
                     height: '140px',
                     borderRadius: '6px',
                     overflow: 'hidden',
-                    border: '1px solid var(--admin-border-color)',
+                    border: '1px solid var(--admin-border)',
                     background: '#000000',
                     marginBottom: '0.625rem'
                   }}
@@ -644,7 +584,7 @@ export const HomePageEditor: React.FC = () => {
             ) : (
               <label
                 style={{
-                  border: '2px dashed var(--admin-border-color)',
+                  border: '1px dashed var(--admin-border-strong)',
                   borderRadius: '6px',
                   padding: '1.5rem 1rem',
                   display: 'flex',
@@ -663,7 +603,7 @@ export const HomePageEditor: React.FC = () => {
                 </span>
                 <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
                   <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
-                  <span>Landscape 16:9 • Min: 1600 × 900 px (Optimal: 1920 × 1080 px)</span>
+                  <span>Cover Image</span>
                 </div>
                 <input
                   type="file"
@@ -733,7 +673,7 @@ export const HomePageEditor: React.FC = () => {
         )}
 
         {selectedFeaturedIds.length === 0 && (
-          <div style={{ padding: '0.75rem 1rem', background: 'var(--admin-bg-body)', borderRadius: '6px', marginBottom: '1rem', border: '1px solid var(--admin-border-color)', fontSize: '13px', color: 'var(--admin-text-muted)' }}>
+          <div style={{ padding: '0.75rem 1rem', background: 'var(--admin-bg-body)', borderRadius: '6px', marginBottom: '1rem', border: '1px solid var(--admin-border)', fontSize: '13px', color: 'var(--admin-text-muted)' }}>
             ℹ️ No featured projects selected. The featured showcase section will not be displayed on the homepage.
           </div>
         )}
@@ -766,7 +706,7 @@ export const HomePageEditor: React.FC = () => {
                   justifyContent: 'space-between',
                   padding: '0.75rem 1rem',
                   background: isInvalid ? '#FFEBEE' : 'var(--admin-bg-body)',
-                  border: isInvalid ? '1px solid #FFCDD2' : '1px solid var(--admin-border-color)',
+                  border: isInvalid ? '1px solid #FFCDD2' : '1px solid var(--admin-border)',
                   borderRadius: '6px',
                 }}
               >
@@ -833,7 +773,7 @@ export const HomePageEditor: React.FC = () => {
                 style={{
                   padding: '0.4rem 0.75rem',
                   borderRadius: '20px',
-                  border: isSelected ? '1px solid #111111' : '1px solid var(--admin-border-color)',
+                  border: isSelected ? '1px solid #111111' : '1px solid var(--admin-border)',
                   background: isSelected ? '#111111' : '#FFFFFF',
                   color: isSelected ? '#FFFFFF' : 'inherit',
                   fontSize: '12.5px',
@@ -886,7 +826,7 @@ export const HomePageEditor: React.FC = () => {
           {/* Traditional Client Portrait Image Upload Card */}
           <div
             style={{
-              border: '1px solid var(--admin-border-color)',
+              border: '1px solid var(--admin-border)',
               borderRadius: '8px',
               padding: '0.875rem',
               background: 'var(--admin-bg-body)',
@@ -910,7 +850,7 @@ export const HomePageEditor: React.FC = () => {
                     height: '190px',
                     borderRadius: '6px',
                     overflow: 'hidden',
-                    border: '1px solid var(--admin-border-color)',
+                    border: '1px solid var(--admin-border)',
                     background: '#F0F0EE',
                     marginBottom: '0.625rem'
                   }}
@@ -947,7 +887,7 @@ export const HomePageEditor: React.FC = () => {
             ) : (
               <label
                 style={{
-                  border: '2px dashed var(--admin-border-color)',
+                  border: '1px dashed var(--admin-border-strong)',
                   borderRadius: '6px',
                   padding: '1.75rem 1rem',
                   display: 'flex',
@@ -966,7 +906,7 @@ export const HomePageEditor: React.FC = () => {
                 </span>
                 <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
                   <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
-                  <span>Portrait 3:4 • Min: 500 × 600 px (Optimal: 600 × 800 px)</span>
+                  <span>Profile Image (Optimal: 600 × 800 px)</span>
                 </div>
                 <input
                   type="file"
@@ -997,15 +937,18 @@ export const HomePageEditor: React.FC = () => {
         }
       >
         <div style={{ marginBottom: '1.25rem', maxWidth: '420px' }}>
-          <label className="admin-form-label" style={{ marginBottom: '4px' }}>Services Section Title</label>
+          <label className="admin-form-label" style={{ marginBottom: '4px' }}>Services Section Title <span className="admin-required-asterisk">*</span></label>
           <input
             type="text"
+            id="field-servicesSectionTitle"
             value={content.servicesSectionTitle || ''}
-            onChange={(e) => setContent({ ...content, servicesSectionTitle: e.target.value })}
+            onChange={(e) => { setContent({ ...content, servicesSectionTitle: e.target.value }); clearError('servicesSectionTitle'); }}
             className="admin-form-input"
             style={{ marginBottom: 0 }}
             placeholder="e.g. Services I offer:"
+            aria-invalid={!!errors['servicesSectionTitle']}
           />
+          <InlineError error={errors['servicesSectionTitle']} />
         </div>
 
         {/* 3 Service Cards Arranged Horizontally */}
@@ -1017,7 +960,7 @@ export const HomePageEditor: React.FC = () => {
                 background: 'var(--admin-bg-body)',
                 padding: '1rem',
                 borderRadius: '8px',
-                border: '1px solid var(--admin-border-color)',
+                border: '1px solid var(--admin-border)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.75rem'
@@ -1040,38 +983,45 @@ export const HomePageEditor: React.FC = () => {
               </div>
 
               <div>
-                <label className="admin-form-label" style={{ fontSize: '12px', marginBottom: '4px' }}>Title *</label>
+                <label className="admin-form-label" style={{ fontSize: '12px', marginBottom: '4px' }}>Title <span className="admin-required-asterisk">*</span></label>
                 <input
                   type="text"
+                  id={`field-service-title-${idx}`}
                   value={srv.title || ''}
-                  onChange={(e) => handleUpdateServiceLocal(idx, { title: e.target.value })}
+                  onChange={(e) => { handleUpdateServiceLocal(idx, { title: e.target.value }); clearError(`service-title-${idx}`); }}
                   className="admin-form-input"
                   style={{ marginBottom: 0 }}
                   placeholder={`Service 0${idx + 1} Title`}
+                  aria-invalid={!!errors[`service-title-${idx}`]}
                   required
                 />
+                <InlineError error={errors[`service-title-${idx}`]} />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <label className="admin-form-label" style={{ fontSize: '12px', margin: 0 }}>Description *</label>
+                  <label className="admin-form-label" style={{ fontSize: '12px', margin: 0 }}>Description <span className="admin-required-asterisk">*</span></label>
                   <span style={{ fontSize: '11px', color: (srv.description || '').length >= MAX_SERVICE_DESC_CHARS ? '#E65100' : 'var(--admin-text-muted)' }}>
                     {(srv.description || '').length} / {MAX_SERVICE_DESC_CHARS} characters
                   </span>
                 </div>
                 <textarea
+                  id={`field-service-description-${idx}`}
                   value={srv.description || ''}
                   maxLength={MAX_SERVICE_DESC_CHARS}
                   onChange={(e) => {
                     const truncated = e.target.value.slice(0, MAX_SERVICE_DESC_CHARS);
                     handleUpdateServiceLocal(idx, { description: truncated });
+                    clearError(`service-description-${idx}`);
                   }}
                   className="admin-form-textarea"
                   style={{ marginBottom: 0, resize: 'vertical', minHeight: '80px', flex: 1 }}
                   rows={3}
                   placeholder="Service description paragraph..."
+                  aria-invalid={!!errors[`service-description-${idx}`]}
                   required
                 />
+                <InlineError error={errors[`service-description-${idx}`]} />
               </div>
             </div>
           ))}

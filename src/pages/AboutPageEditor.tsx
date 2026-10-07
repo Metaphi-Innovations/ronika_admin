@@ -4,10 +4,12 @@ import { getAboutContent, updateAboutContent, uploadAboutHeadshot, IAboutContent
 import { RichTextEditor } from '../components/RichTextEditor';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { Loader } from '../components/Loader';
-import { MAX_ABOUT_HEADING_CHARS } from '../utils/richText';
+import { MAX_ABOUT_HEADING_CHARS, MAX_ABOUT_BIO_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
 import { useLiveResource } from '../context/LiveSyncContext';
+import { useValidation } from '../hooks/useValidation';
+import { InlineError } from '../components/InlineError';
 
 const validatePortraitDimensions = (
   file: File,
@@ -72,6 +74,7 @@ export const AboutPageEditor: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const { errors, validate, clearError } = useValidation<string>();
 
   const fetchContent = async (isInitial = false) => {
     try {
@@ -96,19 +99,10 @@ export const AboutPageEditor: React.FC = () => {
     fetchContent(false);
   });
 
-  const handleParagraphChange = (index: number, val: string) => {
-    const updated = [...(content.bioParagraphs || [])];
-    updated[index] = val;
-    setContent({ ...content, bioParagraphs: updated });
-  };
-
-  const addParagraph = () => {
-    setContent({ ...content, bioParagraphs: [...(content.bioParagraphs || []), ''] });
-  };
-
-  const removeParagraph = (index: number) => {
-    const updated = (content.bioParagraphs || []).filter((_, i) => i !== index);
-    setContent({ ...content, bioParagraphs: updated });
+  // Single bio handler
+  const handleBioChange = (val: string) => {
+    setContent({ ...content, bioParagraphs: val.split('\n') });
+    clearError('bio');
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,6 +152,20 @@ export const AboutPageEditor: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const rules: Record<string, () => string | null> = {};
+    rules['heading'] = () => {
+      const text = content.heading?.replace(/<[^>]*>?/gm, '').trim();
+      return !text ? 'Please enter an about heading.' : null;
+    };
+    
+    rules['bio'] = () => {
+      const allText = (content.bioParagraphs || []).join('').trim();
+      return !allText ? 'Please write a biography.' : null;
+    };
+
+    if (!validate(rules)) return;
+    
     try {
       setSaving(true);
       setErrorMsg('');
@@ -168,7 +176,7 @@ export const AboutPageEditor: React.FC = () => {
         bioParagraphs: (content.bioParagraphs || []).filter((p) => p.trim() !== ''),
       });
       if (res.success) {
-        alert.success('About page content saved successfully!', 'Saved');
+        alert.success('About page updated.');
       }
     } catch (err: any) {
       const msg = err.message || 'Failed to save about page content';
@@ -221,93 +229,88 @@ export const AboutPageEditor: React.FC = () => {
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* 1. Page Headline */}
+        <div className="admin-split-grid-reverse">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* 1. Page Headline */}
           <AdminSection title="PAGE HEADLINE">
-            <RichTextEditor
-              value={content.heading || ''}
-              onChange={(val) => setContent({ ...content, heading: val })}
-              label="About Main Heading (Rich Text)"
-              maxChars={MAX_ABOUT_HEADING_CHARS}
-            />
-          </AdminSection>
-
-          {/* 2. Biography Paragraphs */}
-          <AdminSection
-            title="BIOGRAPHY PARAGRAPHS"
-            actions={
-              <button
-                type="button"
-                onClick={addParagraph}
-                className="admin-btn secondary"
-                style={{ fontSize: '12px', padding: '4px 10px' }}
-              >
-                <Plus size={13} /> Add Paragraph
-              </button>
-            }
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              {(content.bioParagraphs || []).map((p, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '3px',
-                      }}
-                    >
-                      <label
-                        className="admin-form-label"
-                        style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', margin: 0 }}
-                      >
-                        PARAGRAPH {String(idx + 1).padStart(2, '0')}
-                      </label>
-                      <span style={{ fontSize: '10.5px', color: 'var(--admin-text-muted)' }}>
-                        Drag corner to extend ↘
-                      </span>
-                    </div>
-                    <textarea
-                      value={p}
-                      onChange={(e) => handleParagraphChange(idx, e.target.value)}
-                      className="admin-form-textarea"
-                      style={{
-                        marginBottom: 0,
-                        minHeight: '48px',
-                        height: '52px',
-                        padding: '8px 12px',
-                        fontSize: '13px',
-                        lineHeight: '1.45',
-                        resize: 'vertical',
-                      }}
-                      rows={2}
-                      placeholder={`Write biography paragraph ${idx + 1}...`}
-                      required
-                    />
-                  </div>
-                  {(content.bioParagraphs || []).length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeParagraph(idx)}
-                      className="admin-btn-icon danger"
-                      style={{ marginTop: '20px', height: '36px', width: '36px' }}
-                      title="Remove Paragraph"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  )}
-                </div>
-              ))}
+            <div id="field-heading" tabIndex={-1} style={{ outline: 'none' }}>
+              <RichTextEditor
+                value={content.heading || ''}
+                onChange={(val) => { setContent({ ...content, heading: val }); clearError('heading'); }}
+                label="About Main Heading (Rich Text)"
+                maxChars={MAX_ABOUT_HEADING_CHARS}
+              />
+              <InlineError id="error-heading" error={errors.heading} />
             </div>
           </AdminSection>
 
-          {/* 3. Profile Portrait */}
-          <AdminSection title="PROFILE PORTRAIT">
+          {/* 2. Biography Content */}
+          <AdminSection title="BIOGRAPHY CONTENT">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '3px',
+                  }}
+                >
+                  <label
+                    className="admin-form-label"
+                    style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.04em', margin: 0 }}
+                  >
+                    BIOGRAPHY TEXT
+                  </label>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '10.5px', color: 'var(--admin-text-muted)' }}>
+                      Press Enter to create new paragraphs ↘
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        color: ((content.bioParagraphs || []).join('\n').length > MAX_ABOUT_BIO_CHARS) 
+                                ? 'var(--admin-danger)' 
+                                : 'var(--admin-text-muted)',
+                        fontWeight: ((content.bioParagraphs || []).join('\n').length > MAX_ABOUT_BIO_CHARS) ? 600 : 400
+                      }}
+                    >
+                      {(content.bioParagraphs || []).join('\n').length} / {MAX_ABOUT_BIO_CHARS} characters
+                    </span>
+                  </div>
+                </div>
+                <textarea
+                  id="field-bio"
+                  value={(content.bioParagraphs || []).join('\n')}
+                  onChange={(e) => handleBioChange(e.target.value)}
+                  maxLength={MAX_ABOUT_BIO_CHARS}
+                  className={`admin-form-textarea ${errors['bio'] ? 'has-error' : ''}`}
+                  style={{
+                    marginBottom: 0,
+                    minHeight: '200px',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    resize: 'vertical',
+                  }}
+                  placeholder="Write biography..."
+                  aria-invalid={!!errors['bio']}
+                  aria-describedby={errors['bio'] ? 'error-bio' : undefined}
+                />
+                <InlineError id="error-bio" error={errors['bio']} />
+              </div>
+            </div>
+          </AdminSection>
+
+          </div>
+
+          <div>
+            {/* 3. Profile Portrait */}
+            <AdminSection title="PROFILE PORTRAIT">
             {content.headshotImage?.url ? (
               <div
                 style={{
-                  border: '1px solid var(--admin-border-color)',
+                  border: '1px solid var(--admin-border)',
                   borderRadius: '8px',
                   padding: '0.875rem 1rem',
                   background: '#FFFFFF',
@@ -324,7 +327,7 @@ export const AboutPageEditor: React.FC = () => {
                     height: '185px',
                     borderRadius: '6px',
                     overflow: 'hidden',
-                    border: '1px solid var(--admin-border-color)',
+                    border: '1px solid var(--admin-border)',
                     flexShrink: 0,
                   }}
                 >
@@ -409,7 +412,7 @@ export const AboutPageEditor: React.FC = () => {
             ) : (
               <label
                 style={{
-                  border: '2px dashed var(--admin-border-color)',
+                  border: '2px dashed var(--admin-border-strong)',
                   borderRadius: '8px',
                   padding: '1.75rem 1.5rem',
                   display: 'flex',
@@ -418,17 +421,17 @@ export const AboutPageEditor: React.FC = () => {
                   justifyContent: 'center',
                   gap: '0.5rem',
                   cursor: 'pointer',
-                  background: '#FAFAF8',
+                  background: 'var(--admin-surface-subtle)',
                   transition: 'all 0.2s ease',
                   textAlign: 'center',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--admin-primary)';
-                  e.currentTarget.style.background = '#FFFFFF';
+                  e.currentTarget.style.borderColor = 'var(--admin-text-main)';
+                  e.currentTarget.style.background = 'var(--admin-surface)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--admin-border-color)';
-                  e.currentTarget.style.background = '#FAFAF8';
+                  e.currentTarget.style.borderColor = 'var(--admin-border-strong)';
+                  e.currentTarget.style.background = 'var(--admin-surface-subtle)';
                 }}
               >
                 <Upload size={22} color="var(--admin-text-main)" />
@@ -454,7 +457,8 @@ export const AboutPageEditor: React.FC = () => {
                 />
               </label>
             )}
-          </AdminSection>
+            </AdminSection>
+          </div>
         </div>
       </form>
     </div>

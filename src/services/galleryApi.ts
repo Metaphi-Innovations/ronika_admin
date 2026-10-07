@@ -3,10 +3,20 @@ import { api } from './api';
 export interface IGalleryCategory {
   _id: string;
   name: string;
-  slug: string;
-  description?: string;
-  displayOrder: number;
-  isActive: boolean;
+}
+
+export interface ILayoutItem {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface ILayouts {
+  lg?: ILayoutItem;
+  md?: ILayoutItem;
+  sm?: ILayoutItem;
+  xs?: ILayoutItem;
 }
 
 export interface IGalleryImage {
@@ -25,32 +35,10 @@ export interface IGalleryImage {
   caption?: string;
   displayOrder: number;
   published: boolean;
+  layouts?: ILayouts;
 }
 
-export const getGalleryCategories = async () => {
-  const res = await api.get('/gallery/categories');
-  return res.data;
-};
 
-export const createGalleryCategory = async (data: Partial<IGalleryCategory>) => {
-  const res = await api.post('/admin/gallery/categories', data);
-  return res.data;
-};
-
-export const updateGalleryCategory = async (id: string, data: Partial<IGalleryCategory>) => {
-  const res = await api.put(`/admin/gallery/categories/${id}`, data);
-  return res.data;
-};
-
-export const reorderGalleryCategories = async (items: Array<{ _id: string; displayOrder: number }>) => {
-  const res = await api.put('/admin/gallery/categories/reorder', { items });
-  return res.data;
-};
-
-export const deleteGalleryCategory = async (id: string) => {
-  const res = await api.delete(`/admin/gallery/categories/${id}`);
-  return res.data;
-};
 
 export const getGalleryImages = async (params?: { category?: string; published?: boolean }) => {
   const res = await api.get('/gallery/images', { params });

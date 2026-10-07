@@ -5,6 +5,8 @@ import { AdminSection, PageHeader } from '../components/AdminSection';
 import { Loader } from '../components/Loader';
 import { useAlert } from '../context/AlertContext';
 import { useLiveResource } from '../context/LiveSyncContext';
+import { useValidation } from '../hooks/useValidation';
+import { InlineError } from '../components/InlineError';
 
 export const ContactPageEditor: React.FC = () => {
   const alert = useAlert();
@@ -19,6 +21,7 @@ export const ContactPageEditor: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { errors, validate, clearError } = useValidation<'heading'>();
 
   const fetchContent = async (isInitial = false) => {
     try {
@@ -45,32 +48,23 @@ export const ContactPageEditor: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.heading?.trim()) {
-      alert.warning('Please enter a contact heading.', 'Validation Error');
-      return;
-    }
-    if (!content.socialLinks?.instagram?.trim()) {
-      alert.warning('Please enter an Instagram URL.', 'Validation Error');
-      return;
-    }
-    if (!content.socialLinks?.linkedin?.trim()) {
-      alert.warning('Please enter a LinkedIn URL.', 'Validation Error');
-      return;
-    }
-    if (!content.email?.trim()) {
-      alert.warning('Please enter a Gmail / contact email address.', 'Validation Error');
-      return;
-    }
+    
+    const isValid = validate({
+      heading: () => !content.heading?.trim() ? 'Please enter a contact heading.' : null,
+    });
+    
+    if (!isValid) return;
+
 
     try {
       setSaving(true);
       const { _id, __v, createdAt, updatedAt, ...cleanContent } = content as any;
       const res = await updateContactContent(cleanContent);
       if (res.success) {
-        alert.success('Contact details saved successfully!', 'Saved');
+        alert.success('Contact details saved.');
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to save contact settings', 'Save Error');
+      alert.error(err.message || "We couldn't save your changes. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -114,20 +108,53 @@ export const ContactPageEditor: React.FC = () => {
               }}
             >
               <div className="admin-form-group" style={{ margin: 0 }}>
-                <label className="admin-form-label">Heading *</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="admin-form-label" htmlFor="field-heading" style={{ margin: 0 }}>
+                    Heading <span className="admin-required-asterisk">*</span>
+                  </label>
+                  <span
+                    style={{
+                      fontSize: '10.5px',
+                      color: (content.heading?.length || 0) >= 25 ? 'var(--admin-danger)' : 'var(--admin-text-muted)',
+                      fontWeight: (content.heading?.length || 0) >= 25 ? 600 : 400
+                    }}
+                  >
+                    {content.heading?.length || 0} / 25 characters
+                  </span>
+                </div>
                 <input
+                  id="field-heading"
                   type="text"
+                  maxLength={25}
                   value={content.heading || ''}
-                  onChange={(e) => setContent({ ...content, heading: e.target.value })}
-                  className="admin-form-input"
+                  onChange={(e) => {
+                    setContent({ ...content, heading: e.target.value });
+                    clearError('heading');
+                  }}
+                  className={`admin-form-input ${errors.heading ? 'has-error' : ''}`}
                   placeholder="e.g. LET'S CREATE TOGETHER"
+                  aria-invalid={!!errors.heading}
+                  aria-describedby={errors.heading ? 'error-heading' : undefined}
                 />
+                <InlineError id="error-heading" error={errors.heading} />
               </div>
 
               <div className="admin-form-group" style={{ margin: 0 }}>
-                <label className="admin-form-label">Introductory Description</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="admin-form-label" style={{ margin: 0 }}>Introductory Description</label>
+                  <span
+                    style={{
+                      fontSize: '10.5px',
+                      color: (content.description?.length || 0) >= 300 ? 'var(--admin-danger)' : 'var(--admin-text-muted)',
+                      fontWeight: (content.description?.length || 0) >= 300 ? 600 : 400
+                    }}
+                  >
+                    {content.description?.length || 0} / 300 characters
+                  </span>
+                </div>
                 <textarea
                   value={content.description || ''}
+                  maxLength={300}
                   onChange={(e) => setContent({ ...content, description: e.target.value })}
                   className="admin-form-textarea"
                   rows={2}
@@ -137,150 +164,7 @@ export const ContactPageEditor: React.FC = () => {
             </div>
           </AdminSection>
 
-          {/* 2. Connected Links (Instagram, LinkedIn, Gmail) */}
-          <AdminSection title="CONTACT & SOCIAL LINKS">
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                gap: '1rem',
-              }}
-            >
-              {/* Instagram */}
-              <div className="admin-form-group" style={{ margin: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem' }}>
-                  <Instagram size={15} style={{ color: 'var(--admin-text-main)' }} />
-                  <label className="admin-form-label" style={{ margin: 0, fontWeight: 600 }}>INSTAGRAM URL *</label>
-                </div>
-                <input
-                  type="url"
-                  value={content.socialLinks?.instagram || ''}
-                  onChange={(e) =>
-                    setContent({
-                      ...content,
-                      socialLinks: { ...content.socialLinks, instagram: e.target.value },
-                    })
-                  }
-                  className="admin-form-input"
-                  placeholder="https://instagram.com/ronika_bhatia"
-                />
-              </div>
 
-              {/* LinkedIn */}
-              <div className="admin-form-group" style={{ margin: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem' }}>
-                  <Linkedin size={15} style={{ color: 'var(--admin-text-main)' }} />
-                  <label className="admin-form-label" style={{ margin: 0, fontWeight: 600 }}>LINKEDIN URL *</label>
-                </div>
-                <input
-                  type="url"
-                  value={content.socialLinks?.linkedin || ''}
-                  onChange={(e) =>
-                    setContent({
-                      ...content,
-                      socialLinks: { ...content.socialLinks, linkedin: e.target.value },
-                    })
-                  }
-                  className="admin-form-input"
-                  placeholder="https://linkedin.com/in/ronikabhatia"
-                />
-              </div>
-
-              {/* Gmail / Contact Email */}
-              <div className="admin-form-group" style={{ margin: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem' }}>
-                  <Mail size={15} style={{ color: 'var(--admin-text-main)' }} />
-                  <label className="admin-form-label" style={{ margin: 0, fontWeight: 600 }}>GMAIL ADDRESS *</label>
-                </div>
-                <input
-                  type="email"
-                  value={content.email || ''}
-                  onChange={(e) => setContent({ ...content, email: e.target.value })}
-                  className="admin-form-input"
-                  placeholder="ronikabhatia@gmail.com"
-                />
-              </div>
-            </div>
-
-            {/* Live Preview Bar matching the frontend display */}
-            <div
-              style={{
-                marginTop: '1.25rem',
-                paddingTop: '1rem',
-                borderTop: '1px solid var(--admin-border)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.5rem',
-              }}
-            >
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: 'var(--admin-text-muted)',
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Public Contact Page Preview
-              </span>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '2.5rem',
-                  padding: '1rem 1.5rem',
-                  backgroundColor: 'var(--admin-card-bg)',
-                  border: '1px solid var(--admin-border)',
-                  borderRadius: '6px',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: content.socialLinks?.instagram ? 'var(--admin-text-main)' : 'var(--admin-text-muted)',
-                  }}
-                >
-                  <Instagram size={17} /> INSTAGRAM
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: content.socialLinks?.linkedin ? 'var(--admin-text-main)' : 'var(--admin-text-muted)',
-                  }}
-                >
-                  <Linkedin size={17} /> LINKEDIN
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: content.email ? 'var(--admin-text-main)' : 'var(--admin-text-muted)',
-                  }}
-                >
-                  <Mail size={17} /> GMAIL
-                </div>
-              </div>
-            </div>
-          </AdminSection>
         </div>
       </form>
     </div>

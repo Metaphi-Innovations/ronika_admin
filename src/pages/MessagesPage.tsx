@@ -13,6 +13,8 @@ import {
   ChevronDown,
   Copy,
   ExternalLink,
+  MoreVertical,
+  MailOpen
 } from 'lucide-react';
 import {
   getEnquiries,
@@ -24,11 +26,6 @@ import { PageHeader, AdminSection } from '../components/AdminSection';
 import { Loader } from '../components/Loader';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { useAlert } from '../context/AlertContext';
-import {
-  getGmailComposeUrl,
-  getMailtoUrl,
-  buildEnquiryReplyDraft,
-} from '../utils/mail';
 import { useLiveResource } from '../context/LiveSyncContext';
 
 export const MessagesPage: React.FC = () => {
@@ -40,6 +37,7 @@ export const MessagesPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<IEnquiry | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [replyMenuOpen, setReplyMenuOpen] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const handleCopy = async (text: string, label: string) => {
     try {
@@ -154,14 +152,14 @@ export const MessagesPage: React.FC = () => {
         }
       />
 
-      <AdminSection noPadding>
+      <AdminSection noPadding style={{ overflow: 'visible' }} bodyStyle={{ overflow: 'visible' }}>
         {loading ? (
           <Loader text="Loading client messages..." minHeight="200px" />
         ) : filteredEnquiries.length === 0 ? (
           <div style={{ padding: '4rem 1.5rem', textAlign: 'center' }}>
             <MessageSquare
               size={36}
-              color="var(--admin-border-color)"
+              color="var(--admin-border)"
               style={{ marginBottom: '0.75rem' }}
             />
             <h3
@@ -185,7 +183,7 @@ export const MessagesPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflow: 'visible' }}>
             <table className="admin-data-grid">
               <thead>
                 <tr>
@@ -229,26 +227,18 @@ export const MessagesPage: React.FC = () => {
                           {enquiry.name}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                          <a
-                            href={getGmailComposeUrl({
-                              to: enquiry.email,
-                              ...buildEnquiryReplyDraft(enquiry),
-                            })}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <div
                             style={{
                               fontSize: '12px',
                               color: 'var(--admin-text-muted)',
-                              textDecoration: 'none',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '4px',
                               wordBreak: 'break-all'
                             }}
-                            title="Click to compose reply in Gmail"
                           >
                             <Mail size={12} style={{ flexShrink: 0 }} /> {enquiry.email}
-                          </a>
+                          </div>
                           {enquiry.phone && (
                             <span
                               style={{
@@ -273,7 +263,7 @@ export const MessagesPage: React.FC = () => {
                           alignItems: 'center',
                           gap: '5px',
                           background: '#F5F5F3',
-                          border: '1px solid var(--admin-border-color)',
+                          border: '1px solid var(--admin-border)',
                           padding: '3px 8px',
                           borderRadius: '5px',
                           fontSize: '12px',
@@ -287,16 +277,13 @@ export const MessagesPage: React.FC = () => {
                     </td>
                     <td style={{ maxWidth: '240px' }}>
                       <div
-                        onClick={() => handleOpenView(enquiry)}
                         style={{
                           fontSize: '12.5px',
                           color: 'var(--admin-text-main)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          cursor: 'pointer',
                         }}
-                        title="Click to view full message"
                       >
                         {enquiry.message || '(No written message provided)'}
                       </div>
@@ -317,16 +304,10 @@ export const MessagesPage: React.FC = () => {
                       </span>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <button
-                        onClick={() => handleToggleRead(enquiry)}
+                      <div
                         style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: 0,
                           display: 'inline-flex',
                         }}
-                        title={enquiry.isRead ? 'Click to mark as unread' : 'Click to mark as read'}
                       >
                         {enquiry.isRead ? (
                           <span
@@ -364,48 +345,106 @@ export const MessagesPage: React.FC = () => {
                             <span style={{ fontSize: '8px', lineHeight: 1 }}>●</span> UNREAD
                           </span>
                         )}
-                      </button>
+                      </div>
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div
                         style={{
                           display: 'flex',
-                          gap: '0.4rem',
                           justifyContent: 'flex-end',
+                          position: 'relative',
                         }}
                       >
                         <button
-                          onClick={() => handleOpenView(enquiry)}
-                          className="admin-btn-icon"
-                          title="View Message Details"
-                        >
-                          <Eye size={15} />
-                        </button>
-                        <a
-                          href={getGmailComposeUrl({
-                            to: enquiry.email,
-                            ...buildEnquiryReplyDraft(enquiry),
-                          })}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="admin-btn-icon"
-                          title="Reply via Gmail"
-                          onClick={() => {
-                            if (!enquiry.isRead) {
-                              handleToggleRead(enquiry);
-                            }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(openDropdownId === enquiry._id ? null : enquiry._id);
                           }}
-                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          className="admin-btn-icon"
+                          title="Actions"
                         >
-                          <Reply size={15} />
-                        </a>
-                        <button
-                          onClick={() => setDeleteTarget(enquiry)}
-                          className="admin-btn-icon danger"
-                          title="Delete Enquiry"
-                        >
-                          <Trash2 size={15} />
+                          <MoreVertical size={16} />
                         </button>
+                        
+                        {openDropdownId === enquiry._id && (
+                          <>
+                            <div 
+                              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdownId(null);
+                              }}
+                            />
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: '100%',
+                                right: 0,
+                                marginTop: '4px',
+                                background: '#FFFFFF',
+                                border: '1px solid var(--admin-border)',
+                                borderRadius: '6px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                zIndex: 100,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden',
+                                minWidth: '160px'
+                              }}
+                            >
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(null);
+                                  handleOpenView(enquiry);
+                                }}
+                                style={{
+                                  background: 'none', border: 'none', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--admin-text-main)', textAlign: 'left', width: '100%'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9F9F9'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                <Eye size={14} /> View Details
+                              </button>
+                              
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(null);
+                                  handleToggleRead(enquiry);
+                                }}
+                                style={{
+                                  background: 'none', border: 'none', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--admin-text-main)', textAlign: 'left', width: '100%',
+                                  borderTop: '1px solid var(--admin-border)'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9F9F9'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                {enquiry.isRead ? (
+                                  <><Mail size={14} /> Mark as Unread</>
+                                ) : (
+                                  <><MailOpen size={14} /> Mark as Read</>
+                                )}
+                              </button>
+                              
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(null);
+                                  setDeleteTarget(enquiry);
+                                }}
+                                style={{
+                                  background: 'none', border: 'none', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--admin-danger)', textAlign: 'left', width: '100%',
+                                  borderTop: '1px solid var(--admin-border)'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FEF2F2'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -440,7 +479,7 @@ export const MessagesPage: React.FC = () => {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '1rem',
-                borderBottom: '1px solid var(--admin-border-color)',
+                borderBottom: '1px solid var(--admin-border)',
                 paddingBottom: '0.75rem',
               }}
             >
@@ -513,18 +552,11 @@ export const MessagesPage: React.FC = () => {
                     Email Address
                   </label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <a
-                      href={getGmailComposeUrl({
-                        to: selectedEnquiry.email,
-                        ...buildEnquiryReplyDraft(selectedEnquiry),
-                      })}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontSize: '13px', color: '#1E88E5', textDecoration: 'underline' }}
-                      title="Click to compose reply in Gmail"
+                    <span
+                      style={{ fontSize: '13px', color: 'var(--admin-text-main)' }}
                     >
                       {selectedEnquiry.email}
-                    </a>
+                    </span>
                     <button
                       type="button"
                       onClick={() => handleCopy(selectedEnquiry.email, 'Email address')}
@@ -554,8 +586,8 @@ export const MessagesPage: React.FC = () => {
                 <div
                   style={{
                     padding: '0.875rem',
-                    background: '#FAFAF8',
-                    border: '1px solid var(--admin-border-color)',
+                    background: 'var(--admin-surface-subtle)',
+                    border: '1px solid var(--admin-border)',
                     borderRadius: '6px',
                     fontSize: '13px',
                     lineHeight: '1.6',
@@ -576,7 +608,7 @@ export const MessagesPage: React.FC = () => {
                   alignItems: 'center',
                   marginTop: '0.5rem',
                   paddingTop: '1rem',
-                  borderTop: '1px solid var(--admin-border-color)',
+                  borderTop: '1px solid var(--admin-border)',
                 }}
               >
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -591,35 +623,6 @@ export const MessagesPage: React.FC = () => {
                   >
                     Close
                   </button>
-
-                  <a
-                    href={getGmailComposeUrl({
-                      to: selectedEnquiry.email,
-                      ...buildEnquiryReplyDraft(selectedEnquiry),
-                    })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => {
-                      if (!selectedEnquiry.isRead) {
-                        handleToggleRead(selectedEnquiry);
-                      }
-                      alert.success(
-                        `Opening Gmail compose for ${selectedEnquiry.name}...`,
-                        'Replying via Gmail'
-                      );
-                    }}
-                    className="admin-btn primary"
-                    style={{
-                      fontSize: '12px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      textDecoration: 'none',
-                    }}
-                    title="Open in Gmail (Web)"
-                  >
-                    <ExternalLink size={13} /> Open in Gmail (Web)
-                  </a>
                 </div>
               </div>
             </div>

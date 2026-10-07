@@ -536,40 +536,12 @@ export const ShopProductsPage: React.FC = () => {
       )}
 
       {/* SHOP PAGE HEADER SETTINGS */}
-      <div style={{ marginBottom: '24px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid var(--admin-border-color, #E5E5E0)', overflow: 'hidden' }}>
-        <div
-          onClick={() => setIsHeaderSettingsOpen(!isHeaderSettingsOpen)}
-          style={{
-            padding: '12px 16px',
-            background: '#FAFAF8',
-            borderBottom: isHeaderSettingsOpen ? '1px solid var(--admin-border-color, #E5E5E0)' : 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            transition: 'background-color 0.15s ease',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F5F5F2')}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FAFAF8')}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--admin-text-main, #111)' }}>
-              Shop Page Header Settings
-            </span>
-            <ChevronDown
-              size={15}
-              style={{
-                color: 'var(--admin-text-main, #111)',
-                transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: isHeaderSettingsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-              }}
-            />
-          </div>
-        </div>
-
-        {isHeaderSettingsOpen && (
-          <div style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
+      <div className="admin-card" style={{ marginBottom: '20px', padding: '16px 20px' }}>
+        <h3 style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--admin-text-main)', marginBottom: '12px' }}>
+          SHOP PAGE HEADER SETTINGS
+        </h3>
+        <div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 300px', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <RichTextEditor
@@ -591,7 +563,7 @@ export const ShopProductsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={handleSaveSettings}
@@ -602,7 +574,6 @@ export const ShopProductsPage: React.FC = () => {
               </button>
             </div>
           </div>
-        )}
       </div>
 
       {/* Category Pills Filter */}
@@ -656,7 +627,7 @@ export const ShopProductsPage: React.FC = () => {
           <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
             <ShoppingBag
               size={32}
-              color="var(--admin-border-color)"
+              color="var(--admin-border)"
               style={{ marginBottom: '0.5rem' }}
             />
             <h3
@@ -686,7 +657,6 @@ export const ShopProductsPage: React.FC = () => {
                   <th style={{ width: '60px' }}>S.No.</th>
                   <th>Product</th>
                   <th>Category</th>
-                  <th>Gallery</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -718,8 +688,8 @@ export const ShopProductsPage: React.FC = () => {
                               height: '44px',
                               borderRadius: '5px',
                               overflow: 'hidden',
-                              background: '#FAFAF8',
-                              border: '1px solid var(--admin-border-color)',
+                              background: 'var(--admin-surface-subtle)',
+                              border: '1px solid var(--admin-border)',
                               flexShrink: 0,
                             }}
                           >
@@ -773,18 +743,6 @@ export const ShopProductsPage: React.FC = () => {
                       </td>
                       <td>
                         <button
-                          type="button"
-                          onClick={() => handleOpenGalleryModal(prod)}
-                          className="admin-btn secondary"
-                          style={{ padding: '3px 8px', fontSize: '11.5px', gap: '4px' }}
-                          title="Manage images shown on product view more page"
-                        >
-                          <ImageIcon size={12} />
-                          <span>{prod.images?.length || 1} Photo{(prod.images?.length || 1) !== 1 ? 's' : ''}</span>
-                        </button>
-                      </td>
-                      <td>
-                        <button
                           onClick={() => handleTogglePublish(prod)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                         >
@@ -799,13 +757,6 @@ export const ShopProductsPage: React.FC = () => {
                             justifyContent: 'flex-end',
                           }}
                         >
-                          <button
-                            onClick={() => handleOpenGalleryModal(prod)}
-                            className="admin-btn-icon"
-                            title="Manage Gallery Images"
-                          >
-                            <ImageIcon size={15} />
-                          </button>
                           <button
                             onClick={() => handleEditProduct(prod)}
                             className="admin-btn-icon"
@@ -871,7 +822,7 @@ export const ShopProductsPage: React.FC = () => {
             </h3>
             <form onSubmit={handleCreateCategory}>
               <div style={{ marginBottom: '1rem' }}>
-                <label className="admin-label">Category Name *</label>
+                <label className="admin-label">Category Name <span className="admin-required-asterisk">*</span></label>
                 <input
                   type="text"
                   value={newCatName}
@@ -929,7 +880,7 @@ export const ShopProductsPage: React.FC = () => {
                 alignItems: 'center',
                 marginBottom: '1rem',
                 paddingBottom: '0.625rem',
-                borderBottom: '1px solid var(--admin-border-color)',
+                borderBottom: '1px solid var(--admin-border)',
               }}
             >
               <h3
@@ -964,7 +915,7 @@ export const ShopProductsPage: React.FC = () => {
                 }}
               >
                 <div>
-                  <label className="admin-label">Product Name *</label>
+                  <label className="admin-label">Product Name <span className="admin-required-asterisk">*</span></label>
                   <input
                     type="text"
                     value={name}
@@ -974,7 +925,7 @@ export const ShopProductsPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="admin-label">Category *</label>
+                  <label className="admin-label">Category <span className="admin-required-asterisk">*</span></label>
                   <select
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
@@ -992,7 +943,7 @@ export const ShopProductsPage: React.FC = () => {
 
               {/* Description */}
               <div style={{ marginBottom: '0.75rem' }}>
-                <label className="admin-label">Description *</label>
+                <label className="admin-label">Description <span className="admin-required-asterisk">*</span></label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -1086,13 +1037,13 @@ export const ShopProductsPage: React.FC = () => {
                 {imagePreview ? (
                   <div
                     style={{
-                      border: '1px solid var(--admin-border-color)',
+                      border: '1px solid var(--admin-border)',
                       borderRadius: '6px',
                       padding: '6px 10px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      background: '#FAFAF8',
+                      background: 'var(--admin-surface-subtle)',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
@@ -1104,7 +1055,7 @@ export const ShopProductsPage: React.FC = () => {
                           height: '40px',
                           borderRadius: '4px',
                           objectFit: 'cover',
-                          border: '1px solid var(--admin-border-color)',
+                          border: '1px solid var(--admin-border)',
                           flexShrink: 0,
                         }}
                       />
@@ -1153,7 +1104,7 @@ export const ShopProductsPage: React.FC = () => {
                 ) : (
                   <label
                     style={{
-                      border: '1.5px dashed var(--admin-border-color)',
+                      border: '1px dashed var(--admin-border-strong)',
                       borderRadius: '6px',
                       padding: '1rem',
                       display: 'flex',
@@ -1162,7 +1113,7 @@ export const ShopProductsPage: React.FC = () => {
                       justifyContent: 'center',
                       gap: '4px',
                       cursor: 'pointer',
-                      background: '#FAFAF8',
+                      background: 'var(--admin-surface-subtle)',
                       textAlign: 'center',
                     }}
                   >
@@ -1195,7 +1146,7 @@ export const ShopProductsPage: React.FC = () => {
                 style={{
                   marginBottom: '1rem',
                   paddingTop: '0.625rem',
-                  borderTop: '1px solid var(--admin-border-color)',
+                  borderTop: '1px solid var(--admin-border)',
                 }}
               >
                 {editingProduct ? (
@@ -1262,8 +1213,8 @@ export const ShopProductsPage: React.FC = () => {
                               height: '48px',
                               borderRadius: '5px',
                               overflow: 'hidden',
-                              border: '1px solid var(--admin-border-color)',
-                              background: '#FAFAF8',
+                              border: '1px solid var(--admin-border)',
+                              background: 'var(--admin-surface-subtle)',
                               flexShrink: 0,
                             }}
                           >
@@ -1353,8 +1304,8 @@ export const ShopProductsPage: React.FC = () => {
                               height: '48px',
                               borderRadius: '5px',
                               overflow: 'hidden',
-                              border: '1px solid var(--admin-border-color)',
-                              background: '#FAFAF8',
+                              border: '1px solid var(--admin-border)',
+                              background: 'var(--admin-surface-subtle)',
                               flexShrink: 0,
                             }}
                           >
@@ -1393,7 +1344,7 @@ export const ShopProductsPage: React.FC = () => {
                     ) : (
                       <label
                         style={{
-                          border: '1.5px dashed var(--admin-border-color)',
+                          border: '1px dashed var(--admin-border-strong)',
                           borderRadius: '6px',
                           padding: '10px 12px',
                           display: 'flex',
@@ -1401,7 +1352,7 @@ export const ShopProductsPage: React.FC = () => {
                           justifyContent: 'center',
                           gap: '6px',
                           cursor: 'pointer',
-                          background: '#FAFAF8',
+                          background: 'var(--admin-surface-subtle)',
                           fontSize: '11.5px',
                           color: 'var(--admin-text-main)',
                         }}
@@ -1428,7 +1379,7 @@ export const ShopProductsPage: React.FC = () => {
                   gap: '0.5rem',
                   justifyContent: 'flex-end',
                   paddingTop: '0.625rem',
-                  borderTop: '1px solid var(--admin-border-color)',
+                  borderTop: '1px solid var(--admin-border)',
                 }}
               >
                 <button
@@ -1512,8 +1463,8 @@ export const ShopProductsPage: React.FC = () => {
                       aspectRatio: '1/1',
                       borderRadius: '6px',
                       overflow: 'hidden',
-                      border: '1px solid var(--admin-border-color)',
-                      background: '#FAFAF8',
+                      border: '1px solid var(--admin-border)',
+                      background: 'var(--admin-surface-subtle)',
                     }}
                   >
                     <img
@@ -1591,7 +1542,7 @@ export const ShopProductsPage: React.FC = () => {
               <label className="admin-label">Upload Additional Photos</label>
               <label
                 style={{
-                  border: '2px dashed var(--admin-border-color)',
+                  border: '1px dashed var(--admin-border-strong)',
                   borderRadius: '6px',
                   padding: '1.25rem',
                   display: 'flex',
@@ -1600,7 +1551,7 @@ export const ShopProductsPage: React.FC = () => {
                   justifyContent: 'center',
                   gap: '6px',
                   cursor: uploadingGallery ? 'wait' : 'pointer',
-                  background: '#FAFAF8',
+                  background: 'var(--admin-surface-subtle)',
                   textAlign: 'center',
                 }}
               >
