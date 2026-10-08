@@ -48,7 +48,6 @@ export interface IProject {
   slug: string;
   subtitle?: string;
   category: ICategory | string;
-  year?: string;
   role?: string;
   client?: string;
   description?: string;
@@ -128,11 +127,14 @@ export const uploadHeroImage = async (projectId: string, file: File) => {
   return response.data;
 };
 
-export const uploadGalleryImages = async (projectId: string, files: FileList | File[]) => {
+export const uploadGalleryImages = async (projectId: string, items: { file: File, layouts?: any }[]) => {
   const formData = new FormData();
-  Array.from(files).forEach((file) => {
-    formData.append('gallery', file);
+  const layoutsArr: any[] = [];
+  items.forEach((item) => {
+    formData.append('gallery', item.file);
+    layoutsArr.push(item.layouts || null);
   });
+  formData.append('layouts', JSON.stringify(layoutsArr));
 
   const response = await api.post(`/admin/projects/${projectId}/images`, formData, {
     headers: {

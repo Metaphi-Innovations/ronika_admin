@@ -29,7 +29,7 @@ import {
 
 
 import { ConfirmModal } from '../components/ConfirmModal';
-import { MediaGridEditor } from '../components/MediaGridEditor';
+import { ProjectMediaGridEditor } from '../components/ProjectMediaGridEditor';
 import { AdminSection, PageHeader } from '../components/AdminSection';
 import { Loader } from '../components/Loader';
 import { useAlert } from '../context/AlertContext';
@@ -43,26 +43,27 @@ interface PendingGalleryItem {
   previewUrl: string;
   width: number;
   height: number;
+  layouts?: any;
 }
 
 export const ProjectEditor: React.FC = () => {
   const alert = useAlert();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const isEditing = Boolean(id);
-  const { errors, validate, clearError } = useValidation<string>();
+  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+  const activeProjectId = id || createdProjectId;
+  const isEditing = Boolean(activeProjectId);
+  const { errors, validate, clearError, setErrors } = useValidation<string>();
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
-  const [replacingImageId, setReplacingImageId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<IProject>>({
     title: '',
     slug: '',
     subtitle: '',
     category: '',
-    year: new Date().getFullYear().toString(),
     role: '',
     client: '',
     description: '',
@@ -120,7 +121,10 @@ export const ProjectEditor: React.FC = () => {
           const projRes = await getProject(id);
           if (projRes.success && projRes.data) {
             setFormData(projRes.data);
-            if (projRes.data.slug) {
+            if (projRes.data.slug && projRes.data.title) {
+              const expectedSlug = projRes.data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+              setSlugManuallyEdited(projRes.data.slug !== expectedSlug);
+            } else if (projRes.data.slug) {
               setSlugManuallyEdited(true);
             }
 
@@ -146,7 +150,17 @@ export const ProjectEditor: React.FC = () => {
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;
-    setFormData((prev) => ({ ...prev, title: newTitle }));
+    setFormData((prev) => {
+      const nextState = { ...prev, title: newTitle };
+      if (!slugManuallyEdited) {
+        nextState.slug = newTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      }
+      return nextState;
+    });
+    clearError('title');
+    if (!slugManuallyEdited) {
+      clearError('slug');
+    }
   };
 
   const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,6 +178,7 @@ export const ProjectEditor: React.FC = () => {
     const { name, value, type } = e.target;
     const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
     setFormData((prev) => ({ ...prev, [name]: val }));
+    clearError(name as string);
   };
 
   // Cover Image Selection
@@ -219,7 +234,7 @@ export const ProjectEditor: React.FC = () => {
         const previewUrl = URL.createObjectURL(file);
         
         newPending.push({
-          id: `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+          id: `pending-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
           file,
           previewUrl,
           width,
@@ -254,20 +269,20 @@ export const ProjectEditor: React.FC = () => {
     let trimmedSlug = formData.slug?.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '') || '';
 
     const isValid = validate({
-      title: () => !trimmedTitle ? 'Please enter a project title before saving.' : null,
-      slug: () => !trimmedSlug ? 'Please enter a URL slug for the project (e.g. "my-project").' : null,
-      category: () => !formData.category ? 'Please select a project category from the dropdown.' : null,
-      heroImage: () => !isEditing && !heroFile && !formData.heroImage?.url ? 'Cover Image is required. Please upload a cover image.' : null
+      title: () => !trimmedTitle ? 'Please enter a project title.' : null,
+      slug: () => !trimmedSlug ? 'Please enter a slug.' : null,
+      category: () => !formData.category ? 'Please choose a category for this project.' : null,
+      description: () => !formData.description?.trim() ? 'Please enter a project description.' : null,
+      heroImage: () => !isEditing && !heroFile && !formData.heroImage?.url ? 'Please add a cover image.' : null
     });
 
     if (!isValid) {
-      alert.warning('Please fix the validation errors before saving.', 'Validation Failed');
       return;
     }
 
     try {
       setSaving(true);
-      let projectId = id;
+      let projectId = activeProjectId;
 
       // 1. Save Basic Data
       const projectPayload = {
@@ -280,11 +295,12 @@ export const ProjectEditor: React.FC = () => {
             : formData.category || undefined,
       };
 
-      if (isEditing && id) {
-        await updateProject(id, projectPayload);
+      if (isEditing && activeProjectId) {
+        await updateProject(activeProjectId, projectPayload);
       } else {
         const res = await createProject(projectPayload);
         projectId = res.data._id;
+        setCreatedProjectId(projectId);
       }
 
       // 2. Upload Hero Image if staged
@@ -293,8 +309,17 @@ export const ProjectEditor: React.FC = () => {
       }
 
       // 3. Upload Gallery Images if staged
-      if (galleryFiles.length > 0 && projectId) {
-        await uploadGalleryImages(projectId, galleryFiles);
+      if (pendingGallery.length > 0 && projectId) {
+        await uploadGalleryImages(projectId, pendingGallery.map(p => ({ file: p.file, layouts: p.layouts })));
+      }
+
+      // 4. Update layouts/order for existing images if we are editing
+      if (projectId && formData.images && formData.images.length > 0) {
+        await reorderGalleryImages(projectId, formData.images.map((img, idx) => ({ 
+           imageId: img._id, 
+           order: idx, 
+           layouts: img.layouts 
+        })));
       }
 
       // 4. Refetch project to keep state populated with saved URLs and dimensions
@@ -321,7 +346,7 @@ export const ProjectEditor: React.FC = () => {
 
       // Seamlessly transition URL if created new project, staying on Edit Project without leaving
       if (!isEditing && projectId) {
-        navigate(`/projects/edit/${projectId}`, { replace: true });
+        navigate(`/projects/${projectId}`, { replace: true });
       }
 
       // Clear, confidence-building save notification (Sections 18-22)
@@ -332,10 +357,28 @@ export const ProjectEditor: React.FC = () => {
         'Project Saved'
       );
     } catch (err: any) {
-      const msg =
-        err.message ||
-        'Failed to save project. Please check your inputs and try again.';
-      alert.error(msg, 'Save Failed');
+      const msg = err.message || '';
+      
+      if (msg.toLowerCase().includes('slug') && msg.toLowerCase().includes('already in use')) {
+        setErrors((prev) => ({ ...prev, slug: 'This slug is already in use. Please choose another one.' }));
+        const el = document.getElementById('field-slug');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.focus({ preventScroll: true });
+        }
+        alert.error('This slug is already in use. Please choose another one.');
+      } else if (msg.toLowerCase().includes('valid project category')) {
+        setErrors((prev) => ({ ...prev, category: 'Please choose a valid category from the list.' }));
+        const el = document.getElementById('field-category');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.focus({ preventScroll: true });
+        }
+        alert.error('Please choose a valid category from the list.');
+      } else {
+        const isNetworkOrServer = msg.toLowerCase().includes('network') || msg.toLowerCase().includes('500') || msg.toLowerCase().includes('failed to fetch');
+        alert.error(isNetworkOrServer ? "We couldn't save your changes. Please try again." : "Something went wrong while saving. Please try again.");
+      }
     } finally {
       setSaving(false);
     }
@@ -448,17 +491,7 @@ export const ProjectEditor: React.FC = () => {
               <InlineError error={errors['category']} />
             </div>
 
-            <div className="admin-form-group" style={{ margin: 0 }}>
-              <label className="admin-form-label">Year</label>
-              <input
-                type="text"
-                name="year"
-                value={formData.year || ''}
-                onChange={handleChange}
-                placeholder="2026"
-                className="admin-form-input"
-              />
-            </div>
+
 
             <div className="admin-form-group" style={{ margin: 0 }}>
               <label className="admin-form-label">Client</label>
@@ -496,27 +529,31 @@ export const ProjectEditor: React.FC = () => {
               }}
             >
               <label className="admin-form-label" style={{ margin: 0 }}>
-                Project Description
+                Project Description <span className="admin-required-asterisk">*</span>
               </label>
               <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)' }}>
                 {(formData.description || '').length} characters
               </span>
             </div>
             <textarea
+              id="field-description"
               name="description"
               rows={3}
               value={formData.description || ''}
               onChange={handleChange}
               placeholder="Brief summary of creative direction and deliverables..."
               className="admin-form-textarea"
+              aria-invalid={!!errors['description']}
+              required
             />
+            <InlineError error={errors['description']} />
           </div>
 
 
         </AdminSection>
 
         {/* 2. COVER IMAGE */}
-        <AdminSection title="COVER IMAGE">
+        <AdminSection title={<h3 className="admin-section-title">COVER IMAGE <span className="admin-required-asterisk">*</span></h3>}>
           <InlineError error={errors['heroImage']} />
           {heroPreview ? (
             <div
@@ -625,6 +662,7 @@ export const ProjectEditor: React.FC = () => {
                     <Upload size={13} />
                     <span>Change Cover</span>
                     <input
+                      id="field-heroImage"
                       type="file"
                       accept="image/jpeg, image/png, image/webp, image/avif"
                       onChange={handleHeroFileSelect}
@@ -674,6 +712,7 @@ export const ProjectEditor: React.FC = () => {
                 <span>Cover Image</span>
               </div>
               <input
+                id="field-heroImage"
                 type="file"
                 accept="image/jpeg, image/png, image/webp, image/avif"
                 onChange={handleHeroFileSelect}
@@ -716,41 +755,64 @@ export const ProjectEditor: React.FC = () => {
             />
           </label>
 
-          {/* Pending uploaded files */}
-          {pendingGallery.length > 0 && (
-            <div style={{ marginBottom: '1rem', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-               {pendingGallery.map(p => (
-                 <div key={p.id} style={{ position: 'relative', width: 100, height: 100 }}>
-                   <img src={p.previewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                   <button onClick={(e) => { e.preventDefault(); removePendingGalleryItem(p.id); }} style={{ position: 'absolute', top: 2, right: 2, background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer' }}>X</button>
-                 </div>
-               ))}
-               <p style={{ fontSize: '12px', color: 'gray', width: '100%' }}>Save project to apply these images to the grid.</p>
-            </div>
-          )}
+          {/* Combined Gallery (Saved + Pending) */}
+          {((formData.images && formData.images.length > 0) || pendingGallery.length > 0) && (
+            <>
+              {pendingGallery.length > 0 && !id && (
+                <p style={{ fontSize: '13px', color: '#E65100', marginBottom: '1rem', fontWeight: 500 }}>
+                  Note: Save project to permanently upload these newly added images.
+                </p>
+              )}
+              <ProjectMediaGridEditor
+                items={[
+                  ...(formData.images || []).map(img => ({ id: img._id, url: getImageUrl(img.url), layouts: img.layouts, aspectRatio: img.aspectRatio })),
+                  ...pendingGallery.map(p => ({ id: p.id, url: p.previewUrl, layouts: p.layouts, aspectRatio: p.height > 0 ? parseFloat((p.width / p.height).toFixed(4)) : 1 }))
+                ]}
+                onChange={(updated) => {
+                   let hasChanges = false;
+                   const newImages = [...(formData.images || [])];
+                   updated.forEach(u => {
+                      const imgIndex = newImages.findIndex(i => i._id === u.id);
+                      if (imgIndex !== -1 && JSON.stringify(newImages[imgIndex].layouts) !== JSON.stringify(u.layouts)) {
+                        newImages[imgIndex] = { ...newImages[imgIndex], layouts: u.layouts };
+                        hasChanges = true;
+                      }
+                   });
+                   if (hasChanges) {
+                      setFormData({ ...formData, images: newImages });
+                   }
 
-          {formData.images && formData.images.length > 0 && (
-            <MediaGridEditor
-              items={formData.images.map(img => ({ id: img._id, url: getImageUrl(img.url), layouts: img.layouts }))}
-              onChange={(updated) => {
-                 const newImages = [...(formData.images || [])];
-                 let hasChanges = false;
-                 updated.forEach(u => {
-                    const imgIndex = newImages.findIndex(i => i._id === u.id);
-                    if (imgIndex !== -1 && JSON.stringify(newImages[imgIndex].layouts) !== JSON.stringify(u.layouts)) {
-                      newImages[imgIndex] = { ...newImages[imgIndex], layouts: u.layouts };
-                      hasChanges = true;
-                    }
-                 });
-                 if (hasChanges) {
-                    setFormData({ ...formData, images: newImages });
-                    // Explicitly auto-save layouts on change
-                    if (id) reorderGalleryImages(id, updated.map((u, idx) => ({ imageId: u.id, order: idx, layouts: u.layouts })));
-                 }
-              }}
-              onDelete={async (imgId) => { const confirmed = await alert.confirm({ title: 'Remove Image?', message: 'Are you sure you want to remove this image from the project gallery? This cannot be undone.', confirmLabel: 'Remove', isDanger: true }); if (!confirmed || !id) return; try { const res = await deleteGalleryImage(id, imgId); if (res.data?.images) { setFormData(prev => ({ ...prev, images: res.data.images })); } alert.success('Image removed from gallery.', 'Removed'); } catch (err) { alert.error('Failed to remove image', 'Delete Failed'); } }}
-              onReplace={() => { /* Replacement via upload is preferred */ }}
-            />
+                   let pendingChanges = false;
+                   const newPending = [...pendingGallery];
+                   updated.forEach(u => {
+                      const pIndex = newPending.findIndex(p => p.id === u.id);
+                      if (pIndex !== -1 && JSON.stringify(newPending[pIndex].layouts) !== JSON.stringify(u.layouts)) {
+                        newPending[pIndex] = { ...newPending[pIndex], layouts: u.layouts };
+                        pendingChanges = true;
+                      }
+                   });
+                   if (pendingChanges) {
+                      setPendingGallery(newPending);
+                   }
+                }}
+                onDelete={async (imgId) => {
+                  if (imgId.startsWith('pending-')) {
+                    removePendingGalleryItem(imgId);
+                    return;
+                  }
+                  const confirmed = await alert.confirm({ title: 'Remove Image?', message: 'Are you sure you want to remove this image from the project gallery? This cannot be undone.', confirmLabel: 'Remove', isDanger: true }); 
+                  if (!confirmed || !id) return; 
+                  try { 
+                    const res = await deleteGalleryImage(id, imgId); 
+                    if (res.data?.images) { setFormData(prev => ({ ...prev, images: res.data.images })); } 
+                    alert.success('Image removed from gallery.', 'Removed'); 
+                  } catch (err: any) { 
+                    console.error('Delete failed:', err.response?.data || err);
+                    alert.error(err.response?.data?.message || err.message || 'Failed to remove image', 'Delete Failed'); 
+                  }
+                }}
+              />
+            </>
           )}
         </AdminSection>
       </div>

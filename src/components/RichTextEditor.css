@@ -3,7 +3,7 @@
   flex-direction: column;
   gap: 0.5rem;
   width: 100%;
-  height: 100%;
+  flex: 0 0 auto;
 }
 
 .rte-header {
@@ -37,7 +37,7 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 .rte-box.focused {
@@ -105,25 +105,39 @@
 }
 
 .rte-content {
-  min-height: 40px;
-  max-height: 180px;
+  min-height: 120px;
+  max-height: 600px;
   overflow-y: auto;
-  padding: 8px 10px;
+  overflow-wrap: break-word;
+  padding: 12px 14px;
   font-family: var(--font-main, 'Inter', sans-serif);
   font-size: var(--admin-text-size);
-  line-height: 1.35;
+  line-height: 1.45;
   color: var(--admin-text-main, #111111);
-  outline: none;
 }
 
-.rte-content p,
-.rte-content div,
-.rte-content h1,
-.rte-content h2,
-.rte-content h3,
-.rte-content h4,
-.rte-content h5,
-.rte-content h6 {
+.rte-content .tiptap {
+  outline: none;
+  min-height: 120px;
+}
+
+.rte-content.small-editor,
+.rte-container.is-small .rte-content {
+  min-height: 42px !important;
+  padding: 8px 12px !important;
+}
+
+.rte-content.small-editor .tiptap,
+.rte-container.is-small .rte-content .tiptap {
+  min-height: 22px !important;
+}
+.rte-content .tiptap div,
+.rte-content .tiptap h1,
+.rte-content .tiptap h2,
+.rte-content .tiptap h3,
+.rte-content .tiptap h4,
+.rte-content .tiptap h5,
+.rte-content .tiptap h6 {
   margin: 0;
   padding: 0;
   font-size: inherit;
@@ -131,32 +145,41 @@
   line-height: 1.35;
 }
 
-.rte-content p + p,
-.rte-content div + div,
-.rte-content h3 + h3 {
+.rte-content .tiptap p.is-editor-empty:first-child::before {
+  color: var(--admin-text-muted);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.rte-content .tiptap p + p,
+.rte-content .tiptap div + div,
+.rte-content .tiptap h3 + h3 {
   margin-top: 0.25rem;
 }
 
-.rte-content ul,
-.rte-content ol {
+.rte-content .tiptap ul,
+.rte-content .tiptap ol {
   margin: 0.5em 0;
   padding-left: 1.5em;
 }
 
-.rte-content ul li::marker {
+.rte-content .tiptap ul li::marker {
   font-size: 1.35em;
   font-weight: 800;
   color: #111111;
 }
 
-.rte-content a {
+.rte-content .tiptap a {
   color: #111111;
   text-decoration: underline;
+  cursor: pointer;
 }
 
-.rte-content em,
-.rte-content i,
-.rte-content .font-italic {
+.rte-content .tiptap em,
+.rte-content .tiptap i,
+.rte-content .tiptap .font-italic {
   font-family: 'Playfair Display', Georgia, serif;
   font-style: italic;
   font-weight: inherit;

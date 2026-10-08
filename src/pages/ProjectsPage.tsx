@@ -138,16 +138,9 @@ export const ProjectsPage: React.FC = () => {
           <Loader text="Loading projects..." />
         ) : projects.length === 0 ? (
           <div style={{ padding: '4rem 1.5rem', textAlign: 'center' }}>
-            <p style={{ color: 'var(--admin-text-muted)', marginBottom: '1rem', fontSize: '14px' }}>
+            <p style={{ color: 'var(--admin-text-muted)', fontSize: '14px' }}>
               No projects yet.
             </p>
-            <button
-              onClick={() => navigate('/projects/new')}
-              className="admin-btn primary"
-            >
-              <Plus size={14} />
-              <span>Add Project</span>
-            </button>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -188,9 +181,9 @@ export const ProjectsPage: React.FC = () => {
                       </div>
                     </td>
                     <td>
-                      {project.category && typeof project.category === 'object' && (project.category as any).name ? (
+                      {project.category ? (
                         <span style={{ fontSize: '12px', background: '#F0F0EE', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}>
-                          {(project.category as any).name}
+                          {typeof project.category === 'object' ? (project.category as any).name : project.category}
                         </span>
                       ) : (
                         <span style={{ fontSize: '11px', color: '#D84315', background: '#FBE9E7', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>

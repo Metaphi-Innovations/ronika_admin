@@ -408,7 +408,8 @@ export const GalleryPageAdmin: React.FC = () => {
         setShowIntroEditor(false);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to save intro text');
+      const isNetworkOrServer = err.message?.toLowerCase().includes('network') || err.message?.toLowerCase().includes('500') || err.message?.toLowerCase().includes('failed to fetch');
+      alert.error(isNetworkOrServer ? "We couldn't save your changes. Please try again." : "Something went wrong while saving. Please try again.");
     } finally {
       setSavingHeader(false);
     }
@@ -606,7 +607,8 @@ export const GalleryPageAdmin: React.FC = () => {
                 layouts: img.layouts,
                 title: img.title,
                 categoryName: getCategoryName(img.category),
-                published: img.published
+                published: img.published,
+                aspectRatio: img.image?.aspectRatio
               }))}
               headerContent={
                 <div

@@ -179,8 +179,13 @@ export const AboutPageEditor: React.FC = () => {
         alert.success('About page updated.');
       }
     } catch (err: any) {
-      const msg = err.message || 'Failed to save about page content';
-      alert.error(msg, 'Save Error');
+      const isNetworkOrServer = err.message?.toLowerCase().includes('network') || err.message?.toLowerCase().includes('500') || err.message?.toLowerCase().includes('failed to fetch');
+      const msg = err.message?.toLowerCase().includes('slug') 
+        ? 'This slug is already in use. Please choose another one.'
+        : isNetworkOrServer 
+        ? "We couldn't save your changes. Please try again."
+        : "Something went wrong while saving. Please try again.";
+      alert.error(msg);
       setErrorMsg(msg);
     } finally {
       setSaving(false);

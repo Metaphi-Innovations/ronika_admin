@@ -390,6 +390,17 @@ export const HomePageEditor: React.FC = () => {
       return;
     }
 
+    if (sectionName === 'E') {
+      const isValid = validate({
+        ...(settings.socialButtons || []).reduce((acc, btn, idx) => ({
+          ...acc,
+          [`social-label-${idx}`]: () => !(btn.label || '').trim() ? 'A title is required for social links.' : null,
+          [`social-url-${idx}`]: () => !(btn.url || '').trim() ? 'A link is required for social links.' : null,
+        }), {})
+      });
+      if (!isValid) return;
+    }
+
     try {
       setSavingSection(sectionName);
       const featuredIds = selectedFeaturedIds;
@@ -398,7 +409,7 @@ export const HomePageEditor: React.FC = () => {
         const { _id, __v, createdAt, updatedAt, ...cleanSettings } = settings as any;
         const settingsRes = await updateSiteSettings(cleanSettings);
         if (settingsRes.success) {
-          alert.success('Global Footer Social Links updated successfully!', 'Saved');
+          alert.success('Footer section updated successfully', 'Saved');
         }
       } else if (sectionName === 'D') {
         // Save Home Content Services Title
@@ -464,8 +475,13 @@ export const HomePageEditor: React.FC = () => {
         }
       }
     } catch (err: any) {
-      const msg = err.message || `Failed to save Section ${sectionName}.`;
-      alert.error(msg, 'Save Error');
+      const isNetworkOrServer = err.message?.toLowerCase().includes('network') || err.message?.toLowerCase().includes('500') || err.message?.toLowerCase().includes('failed to fetch');
+      const msg = err.message?.toLowerCase().includes('slug') 
+        ? 'This slug is already in use. Please choose another one.'
+        : isNetworkOrServer 
+        ? "We couldn't save your changes. Please try again."
+        : "Something went wrong while saving. Please try again.";
+      alert.error(msg);
       setErrorMsg(msg);
     } finally {
       setSavingSection(null);
@@ -623,6 +639,7 @@ export const HomePageEditor: React.FC = () => {
               onChange={(val) => setContent({ ...content, heroQuote: val })}
               label="Hero Editorial Quote (Rich Text)"
               maxChars={MAX_HERO_QUOTE_CHARS}
+              small={true}
             />
 
             <div style={{ maxWidth: '380px' }}>
@@ -1082,20 +1099,28 @@ export const HomePageEditor: React.FC = () => {
               className="admin-social-row"
             >
               <input
+                id={`field-social-label-${idx}`}
                 type="text"
                 value={btn.label}
-                onChange={(e) => handleUpdateSocialButton(idx, { label: e.target.value })}
+                onChange={(e) => {
+                  handleUpdateSocialButton(idx, { label: e.target.value });
+                  clearError(`social-label-${idx}`);
+                }}
                 placeholder="Title"
-                className="admin-form-input"
+                className={`admin-form-input ${errors[`social-label-${idx}`] ? 'has-error' : ''}`}
                 style={{ marginBottom: 0 }}
                 required
               />
               <input
+                id={`field-social-url-${idx}`}
                 type="text"
                 value={btn.url}
-                onChange={(e) => handleUpdateSocialButton(idx, { url: e.target.value })}
+                onChange={(e) => {
+                  handleUpdateSocialButton(idx, { url: e.target.value });
+                  clearError(`social-url-${idx}`);
+                }}
                 placeholder="Link"
-                className="admin-form-input"
+                className={`admin-form-input ${errors[`social-url-${idx}`] ? 'has-error' : ''}`}
                 style={{ marginBottom: 0 }}
                 required
               />

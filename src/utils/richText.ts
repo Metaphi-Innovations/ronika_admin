@@ -41,7 +41,8 @@ export function stripHtmlToText(html?: string): string {
  */
 export function countReadableChars(content?: string): number {
   if (!content) return 0;
-  return stripHtmlToText(content).length;
+  // Do not count newlines/enters as characters, only spaces and visible letters
+  return stripHtmlToText(content).replace(/[\n\r]/g, '').length;
 }
 
 /**
@@ -118,6 +119,14 @@ export function sanitizeRichText(html?: string): string {
 
     return `<${lower}>`;
   });
+
+  // 6. Clean up trailing empty paragraphs and breaks to prevent lingering vertical space on next load
+  clean = clean.replace(/(?:<p>(?:<br\s*\/?>|\s|&nbsp;)*<\/p>\s*)+$/gi, '');
+
+  // 7. If the entire content is just empty paragraphs, return empty string
+  if (clean.replace(/<[^>]*>/g, '').trim().length === 0) {
+    return '';
+  }
 
   return clean;
 }

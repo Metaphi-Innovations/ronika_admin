@@ -1189,6 +1189,18 @@ input:-webkit-autofill:active {
   background-color: #E8F5E9;
 }
 
+.admin-btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background-color: var(--admin-surface-subtle);
+}
+
+.admin-btn-icon:disabled:hover {
+  color: var(--admin-text-muted);
+  border-color: var(--admin-border);
+  background-color: var(--admin-surface-subtle);
+}
+
 /* Page Header */
 .page-header {
   display: flex;
