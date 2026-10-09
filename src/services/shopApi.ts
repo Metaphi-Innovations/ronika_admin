@@ -53,7 +53,7 @@ export interface IShopProduct {
 }
 
 export const getShopCategories = async () => {
-  const res = await api.get('/shop/categories');
+  const res = await api.get('/admin/shop/categories');
   return res.data;
 };
 
@@ -78,12 +78,12 @@ export const deleteShopCategory = async (id: string) => {
 };
 
 export const getShopProducts = async (params?: { category?: string; published?: boolean }) => {
-  const res = await api.get('/shop/products', { params });
+  const res = await api.get('/admin/shop/products', { params });
   return res.data;
 };
 
 export const getShopProductBySlug = async (slug: string) => {
-  const res = await api.get(`/shop/products/${slug}`);
+  const res = await api.get(`/admin/shop/products/${slug}`);
   return res.data;
 };
 

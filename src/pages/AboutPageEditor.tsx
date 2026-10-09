@@ -84,7 +84,7 @@ export const AboutPageEditor: React.FC = () => {
         setContent(res.data);
       }
     } catch (err: any) {
-      setErrorMsg('Failed to load about page configuration.');
+      setErrorMsg("We couldn't load about page configuration.. Please refresh and try again.");
     } finally {
       if (isInitial) setLoading(false);
     }
@@ -109,29 +109,15 @@ export const AboutPageEditor: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Strict validation: Portrait 3:4, Min 500 × 600 px (Optimal 600-1000 × 800-1250 px)
-    const validation = await validatePortraitDimensions(file, 500, 600);
-    if (!validation.valid) {
-      alert.error(
-        validation.error || 'Invalid portrait dimensions. Must be vertical 3:4 (Min 500 × 600 px).',
-        'Dimension Error'
-      );
-      e.target.value = '';
-      return;
-    }
-
     try {
       setUploadingImage(true);
       const res = await uploadAboutHeadshot(file);
       if (res.success && res.data) {
         setContent((prev) => ({ ...prev, headshotImage: res.data.headshotImage }));
-        alert.success(
-          `Portrait uploaded successfully (${validation.width} × ${validation.height} px)!`,
-          'Uploaded'
-        );
+        alert.success('Portrait uploaded successfully!', 'Uploaded');
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to upload about image', 'Upload Error');
+      alert.error(err.message || "We couldn't upload about image. Please try again.");
     } finally {
       setUploadingImage(false);
       e.target.value = '';
@@ -170,10 +156,16 @@ export const AboutPageEditor: React.FC = () => {
       setSaving(true);
       setErrorMsg('');
       const { _id, __v, createdAt, updatedAt, ...cleanContent } = content as any;
+      // Strip trailing empty paragraphs to avoid endless newlines, but keep empty lines between paragraphs
+      let paragraphs = [...(content.bioParagraphs || [])];
+      while (paragraphs.length > 0 && paragraphs[paragraphs.length - 1].trim() === '') {
+        paragraphs.pop();
+      }
+
       const res = await updateAboutContent({
         ...cleanContent,
         heading: content.heading || 'About Ronika Bhatia',
-        bioParagraphs: (content.bioParagraphs || []).filter((p) => p.trim() !== ''),
+        bioParagraphs: paragraphs,
       });
       if (res.success) {
         alert.success('About page updated.');
@@ -268,9 +260,6 @@ export const AboutPageEditor: React.FC = () => {
                     BIOGRAPHY TEXT
                   </label>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <span style={{ fontSize: '10.5px', color: 'var(--admin-text-muted)' }}>
-                      Press Enter to create new paragraphs ↘
-                    </span>
                     <span
                       style={{
                         fontSize: '10.5px',
@@ -320,9 +309,10 @@ export const AboutPageEditor: React.FC = () => {
                   padding: '0.875rem 1rem',
                   background: '#FFFFFF',
                   display: 'flex',
+                  flexDirection: 'column',
                   gap: '1.25rem',
                   alignItems: 'center',
-                  flexWrap: 'wrap',
+                  justifyContent: 'center',
                 }}
               >
                 <div
@@ -354,41 +344,11 @@ export const AboutPageEditor: React.FC = () => {
                       borderRadius: '3px',
                     }}
                   >
-                    3:4
+                    PORTRAIT
                   </span>
                 </div>
 
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                  <div
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      background: '#E8F5E9',
-                      color: '#2E7D32',
-                      marginBottom: '6px',
-                    }}
-                  >
-                    <CheckCircle2 size={13} />
-                    Portrait Active (3:4)
-                  </div>
-
-                  <p
-                    style={{
-                      margin: '0 0 10px 0',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      color: 'var(--admin-text-main)',
-                      wordBreak: 'break-all',
-                    }}
-                  >
-                    {content.headshotImage.filename || 'Profile Portrait'}
-                  </p>
-
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <label
                       className="admin-btn secondary"
@@ -450,8 +410,8 @@ export const AboutPageEditor: React.FC = () => {
                   {uploadingImage ? 'Uploading portrait...' : 'Click to upload portrait photo'}
                 </span>
                 <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
-                  <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
-                  <span>Portrait 3:4 • Min: 500 × 600 px (Optimal: 600–1000 × 800–1250 px)</span>
+                  <strong style={{ color: '#E65100', marginRight: '6px' }}>INFO:</strong>
+                  <span>All image sizes and ratios accepted</span>
                 </div>
                 <input
                   type="file"

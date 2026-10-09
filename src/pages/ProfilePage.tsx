@@ -89,7 +89,7 @@ export const ProfilePage: React.FC = () => {
     } catch (err: any) {
       const msg =
         err.message ||
-        'Failed to update profile. Please try again.';
+        "We couldn't update profile. Please try again.. Please try again.";
       setModalError(msg);
     } finally {
       setSaving(false);

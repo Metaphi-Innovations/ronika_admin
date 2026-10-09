@@ -12,6 +12,7 @@ export interface ILayoutItem {
   y: number;
   w: number;
   h: number;
+  v?: number;
 }
 
 export interface ILayouts {

@@ -78,7 +78,7 @@ export const UserManagementPage: React.FC = () => {
       const data = await userApi.getUsers();
       setUsers(data);
     } catch (err: any) {
-      const msg = err.message || 'Failed to load administrators.';
+      const msg = err.message || "We couldn't load administrators.. Please refresh and try again.";
       alert.error(msg);
     } finally {
       setLoading(false);
@@ -161,7 +161,7 @@ export const UserManagementPage: React.FC = () => {
       alert.success('Administrator account created successfully.');
       await fetchUsers();
     } catch (err: any) {
-      const msg = err.message || 'Failed to create user.';
+      const msg = err.message || "We couldn't create user.. Please try again.";
       setModalError(msg);
       alert.error(msg);
     } finally {
@@ -240,7 +240,7 @@ export const UserManagementPage: React.FC = () => {
       alert.success('Administrator account updated successfully.');
       await fetchUsers();
     } catch (err: any) {
-      const msg = err.message || 'Failed to update user.';
+      const msg = err.message || "We couldn't update user.. Please try again.";
       setModalError(msg);
       alert.error(msg);
     } finally {
@@ -273,7 +273,7 @@ export const UserManagementPage: React.FC = () => {
       alert.success(`Administrator account ${newStatus ? 'activated' : 'deactivated'} successfully.`);
       await fetchUsers();
     } catch (err: any) {
-      const msg = err.message || 'Failed to toggle status.';
+      const msg = err.message || "We couldn't update status.. Please try again.";
       alert.error(msg);
       setStatusToggleTarget(null);
     } finally {
@@ -305,7 +305,7 @@ export const UserManagementPage: React.FC = () => {
       alert.info('Administrator account permanently removed.');
       await fetchUsers();
     } catch (err: any) {
-      const msg = err.message || 'Failed to delete user.';
+      const msg = err.message || "We couldn't delete user.. Please try again.";
       alert.error(msg);
       setDeleteTarget(null);
     } finally {

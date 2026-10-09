@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { X, Edit2 } from 'lucide-react';
 import RGL from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useWidth } from '../hooks/useWidth';
-import { useDesignState } from '../hooks/useDesignState';
 
 const ReactGridLayout = RGL as any;
 
@@ -12,6 +12,7 @@ export interface ILayoutItem {
   y: number;
   w: number;
   h: number;
+  v?: number;
 }
 
 export interface ILayouts {
@@ -28,6 +29,7 @@ export interface GridMediaItem {
   title?: string;
   categoryName?: string;
   published?: boolean;
+  aspectRatio?: number;
 }
 
 interface MediaGridEditorProps {
@@ -40,74 +42,89 @@ interface MediaGridEditorProps {
   headerContent?: React.ReactNode;
 }
 
-// Convert our custom layouts format to RGL's expected layouts format
-const mapItemsToRGL = (items: GridMediaItem[]) => {
-  const rglLayouts: any = { lg: [], md: [], sm: [], xs: [] };
-  
-  items.forEach((item, index) => {
-    ['lg', 'md', 'sm', 'xs'].forEach((bp) => {
-      const bLayout = item.layouts?.[bp as keyof ILayouts];
-      if (bLayout) {
-        rglLayouts[bp].push({
-          i: item.id,
-          x: bLayout.x,
-          y: bLayout.y,
-          w: bLayout.w,
-          h: bLayout.h,
-        });
-      } else {
-        // Migration / Default layout fallback
-        rglLayouts[bp].push({
-          i: item.id,
-          x: (index * 2) % 12,
-          y: Math.floor((index * 2) / 12) * 2,
-          w: 2,
-          h: 2,
-        });
-      }
-    });
-  });
-  
-  return rglLayouts;
-};
+const COLS = 96;
+const ROW_HEIGHT = 16;
+const MARGIN: [number, number] = [8, 8];
 
 export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({ items, onChange, onDelete, onReplace, onEdit, onTogglePublish, headerContent }) => {
-  const [layouts, setLayouts] = useState<any>(mapItemsToRGL(items));
   const { width, ref } = useWidth();
-  const { breakpoint, cols } = useDesignState();
-
-  useEffect(() => {
-    setLayouts(mapItemsToRGL(items));
-  }, [items]);
-
-  const handleLayoutChange = (currentLayout: any) => {
-    const newLayouts = { ...layouts, [breakpoint]: currentLayout };
-    setLayouts(newLayouts);
-    
-    // Map back to our objects
-    const updatedItems = items.map((item) => {
-      const newItem = { ...item, layouts: { ...item.layouts } };
-      
-      const lay = currentLayout.find((l: any) => l.i === item.id);
-      if (lay) {
-        newItem.layouts![breakpoint as keyof ILayouts] = {
-          x: lay.x,
-          y: lay.y,
-          w: lay.w,
-          h: lay.h,
+  
+  const layout = useMemo(() => {
+    return items.map((item, index) => {
+      const bLayout = item.layouts?.lg;
+      if (bLayout) {
+        const isV2 = bLayout.v === 2;
+        return {
+          i: String(item.id),
+          x: isV2 ? bLayout.x : (bLayout.x * 2 || 0),
+          y: isV2 ? bLayout.y : (bLayout.y * 2 || 0),
+          w: isV2 ? bLayout.w : (bLayout.w * 2 || 32),
+          h: isV2 ? bLayout.h : (bLayout.h * 2 || 24),
+          minW: 1,
+          minH: 1
         };
       }
-      return newItem;
+      return {
+        i: String(item.id),
+        x: (index * 16) % COLS,
+        y: Math.floor((index * 16) / COLS) * 16,
+        w: 16,
+        h: 16,
+        minW: 1,
+        minH: 1
+      };
     });
-    
-    onChange(updatedItems);
+  }, [items]);
+
+  const handleDragStop = (layout: any[]) => {
+    let hasChanges = false;
+    const updatedItems = items.map(item => {
+      const l = layout.find(x => x.i === String(item.id));
+      if (l) {
+        const currentLg = item.layouts?.lg;
+        if (!currentLg || currentLg.x !== l.x || currentLg.y !== l.y || currentLg.w !== l.w || currentLg.h !== l.h) {
+          hasChanges = true;
+          return {
+            ...item,
+            layouts: {
+              ...item.layouts,
+              lg: { x: l.x, y: l.y, w: l.w, h: l.h, v: 2 }
+            }
+          };
+        }
+      }
+      return item;
+    });
+    if (hasChanges) onChange(updatedItems);
+  };
+
+  const handleResizeStop = (layout: any[]) => {
+    let hasChanges = false;
+    const updatedItems = items.map(item => {
+      const l = layout.find(x => x.i === String(item.id));
+      if (l) {
+        const currentLg = item.layouts?.lg;
+        if (!currentLg || currentLg.x !== l.x || currentLg.y !== l.y || currentLg.w !== l.w || currentLg.h !== l.h) {
+          hasChanges = true;
+          return {
+            ...item,
+            layouts: {
+              ...item.layouts,
+              lg: { x: l.x, y: l.y, w: l.w, h: l.h, v: 2 }
+            }
+          };
+        }
+      }
+      return item;
+    });
+    if (hasChanges) onChange(updatedItems);
   };
 
   return (
     <div className="media-grid-editor" ref={ref}>
       {headerContent !== undefined ? headerContent : (
         <div style={{ padding: '10px', background: '#f5f5f5', marginBottom: '10px', borderRadius: '6px' }}>
-          <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>Active Design State: {breakpoint.toUpperCase()}</p>
+          <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>Gallery Grid Layout</p>
           <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>Drag to move, resize from bottom right to stretch.</p>
         </div>
       )}
@@ -116,91 +133,78 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({ items, onChang
         <ReactGridLayout
           width={width}
           className="layout"
-          layout={layouts[breakpoint]}
-          cols={cols}
-          rowHeight={100}
-          onLayoutChange={handleLayoutChange}
+          layout={layout}
+          cols={COLS}
+          rowHeight={ROW_HEIGHT}
+          onDragStop={handleDragStop}
+          onResizeStop={handleResizeStop}
           isDraggable={true}
           isResizable={true}
+          resizeHandles={['s', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne']}
           compactType="vertical"
-          margin={[16, 16]}
+          margin={MARGIN}
+          preventCollision={false}
+          useCSSTransforms={true}
         >
-          {items.map((item) => (
-            <div key={item.id} style={{ border: '1px solid #ddd', background: '#fff', borderRadius: '4px', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: 'var(--admin-surface-subtle)' }}>
-                <img 
-                  src={item.url} 
-                  alt="Grid item" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                  draggable={false}
-                />
-                {item.categoryName && (
-                  <span style={{ position: 'absolute', top: '8px', left: '8px', backgroundColor: 'rgba(0,0,0,0.75)', color: '#FFFFFF', fontSize: '10px', fontWeight: 600, padding: '2px 7px', borderRadius: '3px', textTransform: 'uppercase' }}>
-                    {item.categoryName}
-                  </span>
-                )}
-                <div style={{ position: 'absolute', top: 5, right: 5, display: 'flex', gap: '4px' }}>
-                  {onReplace && (
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onReplace(item.id); }}
-                      style={{ background: 'white', border: '1px solid var(--admin-border-input)', borderRadius: '4px', cursor: 'pointer', padding: '0 6px', height: '26px', fontSize: '10px', fontWeight: 600 }}
-                      title="Replace Image"
-                    >
-                      Swap
-                    </button>
-                  )}
-                  {onDelete && (
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
-                      style={{ background: '#ff4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', padding: '0 6px', height: '26px', fontSize: '10px', fontWeight: 600 }}
-                      title="Delete Image"
-                    >
-                      Del
-                    </button>
-                  )}
+          {items.map((item) => {
+            return (
+              <div 
+                key={String(item.id)} 
+                className="rgl-item-container"
+                style={{ border: '1px solid #ddd', background: '#fff', borderRadius: '4px', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}
+              >
+                <div style={{ flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: 'var(--admin-surface-subtle)', width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
+                  <img 
+                    src={item.url} 
+                    alt="Grid item" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block' }} 
+                    draggable={false}
+                  />
+                  
+                  {/* Shared Overlays */}
+                  <div className="grid-item-overlays">
+                    <div className="grid-item-header">
+                      <div className="grid-item-category-wrapper">
+                        {item.categoryName && (
+                          <span className="grid-item-category" title={item.categoryName}>
+                            {item.categoryName}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Top Right Action Icons */}
+                      <div className="grid-item-actions">
+                        {onEdit && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onEdit(item.id); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            className="grid-action-btn"
+                            aria-label="Edit image"
+                            title="Edit image"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            className="grid-action-btn"
+                            aria-label="Remove image"
+                            title="Remove image"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {(item.title !== undefined || onEdit || onTogglePublish) && (
-                <div style={{ padding: '8px 10px', backgroundColor: '#FFFFFF', borderTop: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, marginRight: '8px' }}>
-                    {item.title || 'Untitled'}
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {onTogglePublish && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onTogglePublish(item.id); }}
-                        style={{
-                          background: item.published ? '#E8F5E9' : '#FFF3E0',
-                          color: item.published ? '#2E7D32' : '#E65100',
-                          border: `1px solid ${item.published ? '#81C784' : '#FFA726'}`,
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          padding: '0 6px',
-                          height: '22px',
-                          fontSize: '9px',
-                          fontWeight: 700,
-                          textTransform: 'uppercase'
-                        }}
-                      >
-                        {item.published ? 'Pub' : 'Draft'}
-                      </button>
-                    )}
-                    {onEdit && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(item.id); }}
-                        style={{ background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', padding: '0 6px', height: '22px', fontSize: '9px', fontWeight: 600 }}
-                        title="Edit Info"
-                      >
-                        Edit
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </ReactGridLayout>
       )}
     </div>

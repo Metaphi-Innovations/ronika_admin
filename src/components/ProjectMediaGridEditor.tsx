@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import RGL from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -29,8 +30,8 @@ interface ProjectMediaGridEditorProps {
   headerContent?: React.ReactNode;
 }
 
-const COLS = 48;
-const ROW_HEIGHT = 40;
+const COLS = 96;
+const ROW_HEIGHT = 16;
 const MARGIN: [number, number] = [8, 8];
 
 export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({ 
@@ -47,7 +48,9 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
     items.forEach(item => {
       const l = item.layouts?.lg;
       if (l && typeof l.y === 'number' && typeof l.h === 'number') {
-        if (l.y + l.h > nextRowY) nextRowY = l.y + l.h;
+        const yV2 = l.v === 2 ? l.y : (l.y * 2 || 0);
+        const hV2 = l.v === 2 ? l.h : (l.h * 2 || 24);
+        if (yV2 + hV2 > nextRowY) nextRowY = yV2 + hV2;
       }
     });
 
@@ -57,14 +60,15 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
     const newLayouts = items.map((item, index) => {
       const itemLayout = item.layouts?.lg;
       if (itemLayout && typeof itemLayout.w === 'number' && typeof itemLayout.h === 'number') {
+        const isV2 = itemLayout.v === 2;
         return {
           i: item.id,
-          x: isNaN(itemLayout.x) ? 0 : itemLayout.x,
-          y: isNaN(itemLayout.y) ? 0 : itemLayout.y,
-          w: itemLayout.w,
-          h: itemLayout.h,
-          minW: 2,
-          minH: 2
+          x: isV2 ? itemLayout.x : (itemLayout.x * 2 || 0),
+          y: isV2 ? itemLayout.y : (itemLayout.y * 2 || 0),
+          w: isV2 ? itemLayout.w : (itemLayout.w * 2 || 32),
+          h: isV2 ? itemLayout.h : Math.max(1, itemLayout.h * 2 || 24),
+          minW: 1,
+          minH: 1
         };
       }
 
@@ -74,7 +78,8 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
         x: currentX,
         y: nextRowY,
         w: 16,
-        h: 12
+        h: 16,
+        v: 2
       };
       
       updatedItems[index] = {
@@ -86,16 +91,16 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
       };
 
       currentX += 16;
-      if (currentX >= 48) {
+      if (currentX >= 96) {
         currentX = 0;
-        nextRowY += 12;
+        nextRowY += 16;
       }
 
       return {
         i: item.id,
         ...newLg,
-        minW: 2,
-        minH: 2
+        minW: 1,
+        minH: 1
       };
     });
 
@@ -122,7 +127,7 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
             ...item,
             layouts: {
               ...item.layouts,
-              lg: { x: l.x, y: l.y, w: l.w, h: l.h }
+              lg: { x: l.x, y: l.y, w: l.w, h: l.h, v: 2 }
             }
           };
         }
@@ -141,7 +146,7 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
             ...item,
             layouts: {
               ...item.layouts,
-              lg: { x: l.x, y: l.y, w: l.w, h: l.h }
+              lg: { x: l.x, y: l.y, w: l.w, h: l.h, v: 2 }
             }
           };
         }
@@ -180,14 +185,16 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
           onResizeStop={handleResizeStop}
           isDraggable={true}
           isResizable={true}
+          resizeHandles={['s', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne']}
           useCSSTransforms={true}
-          preventCollision={true}
-          compactType={null}
+          preventCollision={false}
+          compactType="vertical"
         >
           {items.map((item) => {
             return (
               <div 
                 key={item.id}
+                className="rgl-item-container"
                 style={{
                   boxSizing: 'border-box',
                   margin: 0,
@@ -198,7 +205,9 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
                   overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  width: '100%',
+                  height: '100%'
                 }}
               >
                 <div className="drag-handle" style={{ 
@@ -206,7 +215,11 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
                   position: 'relative', 
                   overflow: 'hidden', 
                   backgroundColor: 'var(--admin-surface-subtle)',
-                  cursor: 'move'
+                  cursor: 'move',
+                  width: '100%',
+                  height: '100%',
+                  minWidth: 0,
+                  minHeight: 0
                 }}>
                   <img 
                     src={item.url} 
@@ -214,30 +227,40 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
                     style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', display: 'block', pointerEvents: 'none' }} 
                     draggable={false}
                   />
-                  {item.categoryName && (
-                    <span style={{ position: 'absolute', top: '8px', left: '8px', backgroundColor: 'rgba(0,0,0,0.75)', color: '#FFFFFF', fontSize: '10px', fontWeight: 600, padding: '2px 7px', borderRadius: '3px', textTransform: 'uppercase' }}>
-                      {item.categoryName}
-                    </span>
-                  )}
-                  {!item.isPublished && item.isPublished !== undefined && (
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                      <span style={{ backgroundColor: '#000', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>DRAFT</span>
+                  
+                  {/* Shared Overlays */}
+                  <div className="grid-item-overlays">
+                    <div className="grid-item-header">
+                      <div className="grid-item-category-wrapper">
+                        {item.categoryName && (
+                          <span className="grid-item-category" title={item.categoryName}>
+                            {item.categoryName}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="grid-item-actions">
+                        {onDelete && (
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            className="grid-action-btn"
+                            aria-label="Remove image"
+                            title="Remove image"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div style={{ padding: '6px', display: 'flex', gap: '6px', justifyContent: 'center', background: '#fafafa', borderTop: '1px solid #eee' }} className="grid-item-actions">
-                  {onEdit && (
-                    <button type="button" onClick={() => onEdit(item.id)} style={{ padding: '4px 8px', fontSize: '11px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #ccc', background: '#fff' }}>Edit</button>
-                  )}
 
-                  {onDelete && (
-                    <button type="button" onClick={() => onDelete(item.id)} style={{ padding: '4px 8px', fontSize: '11px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #ffcdd2', color: '#d32f2f', background: '#fff' }}>Delete</button>
-                  )}
-                  {onTogglePublish && (
-                    <button type="button" onClick={() => onTogglePublish(item.id, !!item.isPublished)} style={{ padding: '4px 8px', fontSize: '11px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #ccc', background: item.isPublished ? '#e8f5e9' : '#f5f5f5', color: item.isPublished ? '#2e7d32' : '#666' }}>
-                      {item.isPublished ? 'Published' : 'Draft'}
-                    </button>
-                  )}
+                    {!item.isPublished && item.isPublished !== undefined && (
+                      <div className="grid-item-draft-overlay">
+                        <span className="grid-item-draft-badge">DRAFT</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );

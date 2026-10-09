@@ -32,10 +32,10 @@ export const ProjectsPage: React.FC = () => {
       if (res.success) {
         setProjects(res.data || []);
       } else {
-        setError('Failed to load projects');
+        setError("We couldn't load projects. Please refresh and try again.");
       }
     } catch (err: any) {
-      setError(err.message || 'Error loading projects');
+      setError(err.message || "Failed loading projects");
     } finally {
       if (isInitial) setLoading(false);
     }
@@ -78,7 +78,7 @@ export const ProjectsPage: React.FC = () => {
         );
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to update publication status.', 'Status Update Failed');
+      alert.error(err.message || "We couldn't update publication status.. Please try again.");
     } finally {
       setTogglingId(null);
     }
@@ -95,7 +95,7 @@ export const ProjectsPage: React.FC = () => {
         setDeleteTarget(null);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to delete project', 'Delete Failed');
+      alert.error(err.message || "We couldn't delete project. Please try again.");
     } finally {
       setDeleting(false);
     }

@@ -10,6 +10,7 @@ export interface ILayoutItem {
   y: number;
   w: number;
   h: number;
+  v?: number;
 }
 
 export interface ILayouts {
@@ -36,12 +37,13 @@ export interface IGalleryImage {
   displayOrder: number;
   published: boolean;
   layouts?: ILayouts;
+  layoutContexts?: Record<string, ILayouts>;
 }
 
 
 
 export const getGalleryImages = async (params?: { category?: string; published?: boolean }) => {
-  const res = await api.get('/gallery/images', { params });
+  const res = await api.get('/admin/gallery/images', { params });
   return res.data;
 };
 
@@ -64,8 +66,8 @@ export const updateGalleryImage = async (id: string, data: Partial<IGalleryImage
   return res.data;
 };
 
-export const reorderGalleryImages = async (items: Array<{ _id: string; displayOrder: number }>) => {
-  const res = await api.put('/admin/gallery/images/reorder', { items });
+export const reorderGalleryImages = async (data: { items: Array<{ _id: string; displayOrder: number; layouts?: any }>; contextKey: string }) => {
+  const res = await api.put('/admin/gallery/images/reorder', data);
   return res.data;
 };
 

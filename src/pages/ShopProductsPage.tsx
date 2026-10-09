@@ -46,24 +46,7 @@ const validateShopImage = (
       URL.revokeObjectURL(objectUrl);
       const { width, height } = img;
 
-      // Strict 1:1 Aspect Ratio Check: width and height must be identical
-      if (Math.abs(width - height) > 1) {
-        return resolve({
-          valid: false,
-          width,
-          height,
-          error: `Image must be a strict 1:1 square ratio (equal width and height). Current image is ${width} × ${height} px. Please upload a square image.`,
-        });
-      }
-
-      if (width < minWidth || height < minHeight) {
-        return resolve({
-          valid: false,
-          width,
-          height,
-          error: `Product artwork dimensions (${width} × ${height} px) are below the minimum requirement of ${minWidth} × ${minHeight} px.`,
-        });
-      }
+      // Removed Strict 1:1 Aspect Ratio Check and Dimension Check as requested
       return resolve({ valid: true, width, height });
     };
     img.onerror = () => {
@@ -147,7 +130,7 @@ export const ShopProductsPage: React.FC = () => {
       if (prodsRes.success) setProducts(prodsRes.data);
       if (settingsRes.success) setSettings(settingsRes.data);
     } catch (err: any) {
-      if (isInitial) setError(err.message || 'Error loading shop data');
+      if (isInitial) setError(err.message || "Failed loading shop data");
     } finally {
       if (isInitial) setLoading(false);
     }
@@ -167,7 +150,7 @@ export const ShopProductsPage: React.FC = () => {
         });
         alert.success('Shop header settings saved successfully!');
       } else {
-        alert.error(res.message || 'Failed to save settings.');
+        alert.error(res.message || "We couldn't save settings.. Please try again.");
       }
     } catch (err: any) {
       alert.error(err.message || 'An error occurred while saving.');
@@ -215,7 +198,7 @@ export const ShopProductsPage: React.FC = () => {
         alert.success(`Shop category "${res.data.name}" created successfully.`);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to create category');
+      alert.error(err.message || "We couldn't create category. Please try again.");
     }
   };
 
@@ -228,7 +211,7 @@ export const ShopProductsPage: React.FC = () => {
       alert.info(`Shop category "${deleteCatTarget.name}" deleted.`);
       setDeleteCatTarget(null);
     } catch (err: any) {
-      alert.error(err.message || 'Failed to delete category');
+      alert.error(err.message || "We couldn't delete category. Please try again.");
     } finally {
       setDeleting(false);
     }
@@ -240,7 +223,7 @@ export const ShopProductsPage: React.FC = () => {
 
     const validation = await validateShopImage(file, 600, 600);
     if (!validation.valid) {
-      alert.error(validation.error || 'Image resolution is too low.', 'Dimension Warning');
+      alert.error(validation.error || 'Image resolution is too low.');
       e.target.value = '';
       return;
     }
@@ -325,13 +308,28 @@ export const ShopProductsPage: React.FC = () => {
 
   const handleGalleryFilesUpload = async (productId: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
+    
+    const product = products.find(p => p._id === productId) || editingProduct;
+    const currentAdditional = product ? Math.max(0, product.images.length - 1) : 0;
+    const remainingSlots = 5 - currentAdditional;
+    
+    if (remainingSlots <= 0) {
+      alert.error('You can add up to 5 additional photos per product.');
+      return;
+    }
+
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      alert.info(`Only ${remainingSlots} photo(s) can be added. The rest were ignored.`);
+    }
+
     try {
       setUploadingGallery(true);
       const validFiles: File[] = [];
-      for (const file of Array.from(files)) {
+      for (const file of filesToProcess) {
         const val = await validateShopImage(file, 600, 600);
         if (!val.valid) {
-          alert.error(val.error || `File "${file.name}" resolution is too low.`, 'Image Rejected');
+          alert.error(val.error || `File "${file.name}" resolution is too low.`);
           return;
         }
         validFiles.push(file);
@@ -354,7 +352,7 @@ export const ShopProductsPage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to upload gallery images.');
+      alert.error(err.message || "We couldn't upload gallery images.. Please try again.");
     } finally {
       setUploadingGallery(false);
     }
@@ -374,7 +372,7 @@ export const ShopProductsPage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to remove image.');
+      alert.error(err.message || "We couldn't remove image.. Please try again.");
     }
   };
 
@@ -382,11 +380,22 @@ export const ShopProductsPage: React.FC = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const remainingSlots = 5 - galleryDrafts.length;
+    if (remainingSlots <= 0) {
+      alert.error('You can add up to 5 additional photos per product.');
+      return;
+    }
+
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      alert.info(`Only ${remainingSlots} photo(s) can be added. The rest were ignored.`);
+    }
+
     const newDrafts: { id: string; file: File; previewUrl: string; width: number; height: number; name: string }[] = [];
-    for (const file of Array.from(files)) {
+    for (const file of filesToProcess) {
       const val = await validateShopImage(file, 600, 600);
       if (!val.valid) {
-        alert.error(val.error || `File "${file.name}" rejected.`, 'Image Validation');
+        alert.error(val.error || `File "${file.name}" rejected.`);
         continue;
       }
       newDrafts.push({
@@ -484,10 +493,10 @@ export const ShopProductsPage: React.FC = () => {
         setProducts(
           products.map((p) => (p._id === prod._id ? { ...p, published: !prod.published } : p))
         );
-        alert.success(`Product is now ${!prod.published ? 'published' : 'draft'}.`);
+        alert.success(`"${prod.name}" is now ${!prod.published ? 'published' : 'draft'}.`);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to toggle status');
+      alert.error(err.message || "We couldn't update status. Please try again.");
     }
   };
 
@@ -500,7 +509,7 @@ export const ShopProductsPage: React.FC = () => {
       alert.info(`Product "${deleteProdTarget.name}" deleted.`);
       setDeleteProdTarget(null);
     } catch (err: any) {
-      alert.error(err.message || 'Failed to delete product');
+      alert.error(err.message || "We couldn't delete product. Please try again.");
     } finally {
       setDeleting(false);
     }
@@ -510,18 +519,6 @@ export const ShopProductsPage: React.FC = () => {
     <div>
       <PageHeader
         title="SHOP CATALOG"
-        actions={
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button onClick={() => setShowCatModal(true)} className="admin-btn secondary">
-              <Layers size={14} />
-              <span>Shop Category</span>
-            </button>
-            <button onClick={handleOpenCreateModal} className="admin-btn primary">
-              <Plus size={14} />
-              <span>New Product</span>
-            </button>
-          </div>
-        }
       />
 
       {error && (
@@ -540,6 +537,19 @@ export const ShopProductsPage: React.FC = () => {
           {error}
         </div>
       )}
+
+      {/* Save Button Above Header Settings */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+        <button
+          type="button"
+          onClick={handleSaveSettings}
+          disabled={savingSettings || !settings}
+          className="admin-btn primary"
+          style={{ fontSize: '12px', padding: '5px 12px' }}
+        >
+          <span>{savingSettings ? 'Saving...' : 'Save Shop Header'}</span>
+        </button>
+      </div>
 
       {/* SHOP PAGE HEADER SETTINGS */}
       <div className="admin-card" style={{ marginBottom: '20px', padding: '16px 20px' }}>
@@ -569,17 +579,18 @@ export const ShopProductsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={handleSaveSettings}
-                disabled={savingSettings || !settings}
-                className="admin-btn primary"
-              >
-                <span>{savingSettings ? 'Saving...' : 'Save Shop Header'}</span>
-              </button>
-            </div>
           </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginBottom: '1.25rem' }}>
+        <button onClick={() => setShowCatModal(true)} className="admin-btn secondary">
+          <Layers size={14} />
+          <span>Shop Category</span>
+        </button>
+        <button onClick={handleOpenCreateModal} className="admin-btn primary">
+          <Plus size={14} />
+          <span>New Product</span>
+        </button>
       </div>
 
       {/* Category Pills Filter */}
@@ -646,14 +657,11 @@ export const ShopProductsPage: React.FC = () => {
             >
               {selectedCategory === 'ALL' ? 'No products yet' : 'No products in this category'}
             </h3>
-            <p style={{ color: 'var(--admin-text-muted)', fontSize: '12.5px', margin: '0 0 1rem 0' }}>
+            <p style={{ color: 'var(--admin-text-muted)', fontSize: '12.5px', margin: 0 }}>
               {selectedCategory === 'ALL'
                 ? 'Add items to your public store catalog.'
                 : 'Switch categories or add a new product to this category.'}
             </p>
-            <button onClick={handleOpenCreateModal} className="admin-btn primary">
-              <Plus size={14} /> Add Product
-            </button>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -1037,7 +1045,7 @@ export const ShopProductsPage: React.FC = () => {
               {/* Main Artwork Image */}
               <div style={{ marginBottom: '0.875rem' }}>
                 <label className="admin-label">
-                  Product Image {editingProduct ? '' : '*'}
+                  Product Image <span className="admin-required-asterisk">*</span>
                 </label>
 
                 {imagePreview ? (
@@ -1094,18 +1102,31 @@ export const ShopProductsPage: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                    <label
-                      className="admin-btn secondary"
-                      style={{ cursor: 'pointer', padding: '3px 8px', fontSize: '11px', flexShrink: 0 }}
-                    >
-                      Change
-                      <input
-                        type="file"
-                        accept="image/jpeg, image/png, image/webp, image/avif"
-                        onChange={handleFileSelect}
-                        style={{ display: 'none' }}
-                      />
-                    </label>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <label
+                        className="admin-btn secondary"
+                        style={{ cursor: 'pointer', padding: '3px 8px', fontSize: '11px', flexShrink: 0 }}
+                      >
+                        Change
+                        <input
+                          type="file"
+                          accept="image/jpeg, image/png, image/webp, image/avif"
+                          onChange={handleFileSelect}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          setImagePreview(null);
+                        }}
+                        className="admin-btn secondary"
+                        style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--admin-danger)', flexShrink: 0 }}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <label
@@ -1133,7 +1154,7 @@ export const ShopProductsPage: React.FC = () => {
                     >
                       Click to choose product image
                     </span>
-                    <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
+                    <div style={{ display: 'none' }}>
                       <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
                       <span>Strict 1:1 Square (Min: 600 × 600 px)</span>
                     </div>
@@ -1166,37 +1187,30 @@ export const ShopProductsPage: React.FC = () => {
                       }}
                     >
                       <label className="admin-label" style={{ margin: 0, fontWeight: 600 }}>
-                        Gallery Photos ({editingProduct.images?.length || 0})
+                        GALLERY PHOTOS ({Math.max(0, (editingProduct.images?.length || 1) - 1)}/5)
                       </label>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <label
-                          className="admin-btn secondary"
-                          style={{ cursor: 'pointer', fontSize: '11px', padding: '3px 8px', gap: '4px' }}
-                        >
-                          <Plus size={12} />
-                          {uploadingGallery ? 'Uploading...' : 'Add Photos'}
-                          <input
-                            type="file"
-                            multiple
-                            accept="image/jpeg, image/png, image/webp, image/avif"
-                            onChange={(e) => handleGalleryFilesUpload(editingProduct._id, e.target.files)}
-                            disabled={uploadingGallery}
-                            style={{ display: 'none' }}
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowProdModal(false);
-                            handleOpenGalleryModal(editingProduct);
-                          }}
-                          className="admin-btn secondary"
-                          style={{ fontSize: '11px', padding: '3px 8px', gap: '4px' }}
-                          title="Open dedicated gallery manager"
-                        >
-                          <ImageIcon size={12} />
-                          Manage
-                        </button>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {Math.max(0, (editingProduct.images?.length || 1) - 1) >= 5 ? (
+                          <span style={{ fontSize: '11px', color: '#d32f2f', fontWeight: 500 }}>
+                            {Math.max(0, (editingProduct.images?.length || 1) - 1) > 5 ? 'Product exceeds image limit' : 'You can add up to 5 additional photos per product.'}
+                          </span>
+                        ) : (
+                          <label
+                            className="admin-btn secondary"
+                            style={{ cursor: 'pointer', fontSize: '11px', padding: '3px 8px', gap: '4px' }}
+                          >
+                            <Plus size={12} />
+                            {uploadingGallery ? 'Uploading...' : 'Add Photos'}
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/jpeg, image/png, image/webp, image/avif"
+                              onChange={(e) => handleGalleryFilesUpload(editingProduct._id, e.target.files)}
+                              disabled={uploadingGallery}
+                              style={{ display: 'none' }}
+                            />
+                          </label>
+                        )}
                       </div>
                     </div>
 
@@ -1229,7 +1243,6 @@ export const ShopProductsPage: React.FC = () => {
                               alt=""
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
-                            {editingProduct.images.length > 1 && (
                               <button
                                 type="button"
                                 onClick={() => handleDeleteGalleryImage(editingProduct._id, img._id)}
@@ -1253,7 +1266,6 @@ export const ShopProductsPage: React.FC = () => {
                               >
                                 <X size={9} />
                               </button>
-                            )}
                           </div>
                         ))}
                       </div>
@@ -1274,21 +1286,29 @@ export const ShopProductsPage: React.FC = () => {
                       }}
                     >
                       <label className="admin-label" style={{ margin: 0, fontWeight: 600 }}>
-                        Additional Photos ({galleryDrafts.length})
+                        GALLERY PHOTOS ({galleryDrafts.length}/5)
                       </label>
-                      <label
-                        className="admin-btn secondary"
-                        style={{ cursor: 'pointer', fontSize: '11px', padding: '3px 8px', gap: '4px' }}
-                      >
-                        <Plus size={12} /> Add Photos
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/jpeg, image/png, image/webp, image/avif"
-                          onChange={handleCreateGallerySelect}
-                          style={{ display: 'none' }}
-                        />
-                      </label>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {galleryDrafts.length >= 5 ? (
+                          <span style={{ fontSize: '11px', color: '#d32f2f', fontWeight: 500 }}>
+                            {galleryDrafts.length > 5 ? 'Product exceeds image limit' : 'You can add up to 5 additional photos per product.'}
+                          </span>
+                        ) : (
+                          <label
+                            className="admin-btn secondary"
+                            style={{ cursor: 'pointer', fontSize: '11px', padding: '3px 8px', gap: '4px' }}
+                          >
+                            <Plus size={12} /> Add Photos
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/jpeg, image/png, image/webp, image/avif"
+                              onChange={handleCreateGallerySelect}
+                              style={{ display: 'none' }}
+                            />
+                          </label>
+                        )}
+                      </div>
                     </div>
 
                     {galleryDrafts.length > 0 ? (
@@ -1348,31 +1368,39 @@ export const ShopProductsPage: React.FC = () => {
 
                       </div>
                     ) : (
-                      <label
-                        style={{
-                          border: '1px dashed var(--admin-border-strong)',
-                          borderRadius: '6px',
-                          padding: '10px 12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          cursor: 'pointer',
-                          background: 'var(--admin-surface-subtle)',
-                          fontSize: '11.5px',
-                          color: 'var(--admin-text-main)',
-                        }}
-                      >
-                        <Plus size={13} />
-                        <span>Add additional 1:1 gallery photos (Optional)</span>
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/jpeg, image/png, image/webp, image/avif"
-                          onChange={handleCreateGallerySelect}
-                          style={{ display: 'none' }}
-                        />
-                      </label>
+                      <>
+                        {galleryDrafts.length >= 5 ? (
+                          <div style={{ fontSize: '11.5px', color: '#d32f2f', fontWeight: 500 }}>
+                            {galleryDrafts.length > 5 ? 'Product exceeds image limit' : 'You can add up to 5 additional photos per product.'}
+                          </div>
+                        ) : (
+                          <label
+                            style={{
+                              border: '1px dashed var(--admin-border-strong)',
+                              borderRadius: '6px',
+                              padding: '10px 12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              cursor: 'pointer',
+                              background: 'var(--admin-surface-subtle)',
+                              fontSize: '11.5px',
+                              color: 'var(--admin-text-main)',
+                            }}
+                          >
+                            <Plus size={13} />
+                            <span>Add additional gallery photos (Optional)</span>
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/jpeg, image/png, image/webp, image/avif"
+                              onChange={handleCreateGallerySelect}
+                              style={{ display: 'none' }}
+                            />
+                          </label>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
@@ -1449,7 +1477,7 @@ export const ShopProductsPage: React.FC = () => {
             {/* Current Images Grid */}
             <div style={{ marginBottom: '1.5rem' }}>
               <label className="admin-label" style={{ marginBottom: '8px' }}>
-                Current Gallery Photos ({galleryModalProduct.images?.length || 0})
+                CURRENT GALLERY PHOTOS ({Math.max(0, (galleryModalProduct.images?.length || 1) - 1)}/5)
               </label>
               <div
                 style={{
@@ -1512,7 +1540,6 @@ export const ShopProductsPage: React.FC = () => {
                       </div>
                     ) : null}
 
-                    {galleryModalProduct.images.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleDeleteGalleryImage(galleryModalProduct._id, img._id || '')}
@@ -1537,7 +1564,6 @@ export const ShopProductsPage: React.FC = () => {
                       >
                         <Trash2 size={11} />
                       </button>
-                    )}
                   </div>
                 ))}
               </div>
@@ -1546,38 +1572,46 @@ export const ShopProductsPage: React.FC = () => {
             {/* Upload Zone */}
             <div style={{ marginBottom: '1.25rem' }}>
               <label className="admin-label">Upload Additional Photos</label>
-              <label
-                style={{
-                  border: '1px dashed var(--admin-border-strong)',
-                  borderRadius: '6px',
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  cursor: uploadingGallery ? 'wait' : 'pointer',
-                  background: 'var(--admin-surface-subtle)',
-                  textAlign: 'center',
-                }}
-              >
-                <Upload size={20} color="var(--admin-text-main)" />
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--admin-text-main)' }}>
-                  {uploadingGallery ? 'Uploading Photos...' : 'Click to select additional images (Multi-select)'}
-                </span>
-                <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
-                  <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
-                  <span>Strict 1:1 Square (Min: 600 × 600 px)</span>
+              {Math.max(0, (galleryModalProduct.images?.length || 1) - 1) >= 5 ? (
+                <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--admin-surface-subtle)', borderRadius: '6px', border: '1px dashed var(--admin-border)' }}>
+                  <span style={{ fontSize: '12px', color: '#d32f2f', fontWeight: 500 }}>
+                    {Math.max(0, (galleryModalProduct.images?.length || 1) - 1) > 5 ? 'Product exceeds image limit' : 'You can add up to 5 additional photos per product.'}
+                  </span>
                 </div>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/jpeg, image/png, image/webp, image/avif"
-                  onChange={(e) => handleGalleryFilesUpload(galleryModalProduct._id, e.target.files)}
-                  disabled={uploadingGallery}
-                  style={{ display: 'none' }}
-                />
-              </label>
+              ) : (
+                <label
+                  style={{
+                    border: '1px dashed var(--admin-border-strong)',
+                    borderRadius: '6px',
+                    padding: '1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    cursor: uploadingGallery ? 'wait' : 'pointer',
+                    background: 'var(--admin-surface-subtle)',
+                    textAlign: 'center',
+                  }}
+                >
+                  <Upload size={20} color="var(--admin-text-main)" />
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--admin-text-main)' }}>
+                    {uploadingGallery ? 'Uploading Photos...' : 'Click to select additional images (Multi-select)'}
+                  </span>
+                  <div style={{ display: 'none' }}>
+                    <strong style={{ color: '#E65100', marginRight: '6px' }}>REQUIRED:</strong>
+                    <span>Strict 1:1 Square (Min: 600 × 600 px)</span>
+                  </div>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/jpeg, image/png, image/webp, image/avif"
+                    onChange={(e) => handleGalleryFilesUpload(galleryModalProduct._id, e.target.files)}
+                    disabled={uploadingGallery}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              )}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

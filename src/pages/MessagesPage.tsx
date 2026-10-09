@@ -44,7 +44,7 @@ export const MessagesPage: React.FC = () => {
       await navigator.clipboard.writeText(text);
       alert.success(`${label} copied to clipboard!`, 'Copied');
     } catch {
-      alert.error('Failed to copy to clipboard', 'Error');
+      alert.error("We couldn't copy to clipboard. Please try again.");
     }
   };
 
@@ -56,7 +56,7 @@ export const MessagesPage: React.FC = () => {
         setEnquiries(res.data);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to load client messages', 'Error');
+      alert.error(err.message || "We couldn't load client messages. Please refresh and try again.");
     } finally {
       if (isInitial) setLoading(false);
     }
@@ -83,7 +83,7 @@ export const MessagesPage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to update message status', 'Error');
+      alert.error(err.message || "We couldn't update message status. Please try again.");
     }
   };
 
@@ -107,7 +107,7 @@ export const MessagesPage: React.FC = () => {
       }
       setDeleteTarget(null);
     } catch (err: any) {
-      alert.error(err.message || 'Failed to delete enquiry', 'Error');
+      alert.error(err.message || "We couldn't delete enquiry. Please try again.");
     } finally {
       setDeleting(false);
     }
@@ -310,38 +310,11 @@ export const MessagesPage: React.FC = () => {
                         }}
                       >
                         {enquiry.isRead ? (
-                          <span
-                            style={{
-                              fontSize: '11px',
-                              background: '#E8F5E9',
-                              color: '#2E7D32',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontWeight: 600,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
+                          <span className="status-badge read">
                             <Check size={11} /> READ
                           </span>
                         ) : (
-                          <span
-                            style={{
-                              fontSize: '11px',
-                              background: '#FFF3E0',
-                              color: '#E65100',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontWeight: 700,
-                              letterSpacing: '0.04em',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
+                          <span className="status-badge unread">
                             <span style={{ fontSize: '8px', lineHeight: 1 }}>●</span> UNREAD
                           </span>
                         )}

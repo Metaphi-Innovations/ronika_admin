@@ -65,7 +65,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const error = useCallback(
-    (message: string, title = 'Error') => showAlert(message, 'error', title),
+    (message: string, title = 'Failed') => showAlert(message, 'error', title),
     [showAlert]
   );
 

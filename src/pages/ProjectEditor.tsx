@@ -139,8 +139,8 @@ export const ProjectEditor: React.FC = () => {
           }
         }
       } catch (err: any) {
-        const msg = err.message || 'Failed to load project details.';
-        alert.error(msg, 'Load Failed');
+        const msg = err.message || "We couldn't load project details.. Please refresh and try again.";
+        alert.error(msg);
       } finally {
         setLoading(false);
       }
@@ -241,7 +241,7 @@ export const ProjectEditor: React.FC = () => {
           height,
         });
       } catch (err: any) {
-        alert.error(err.message || `Failed to process ${file.name}`, 'Processing Error');
+        alert.error(err.message || `Failed to process ${file.name}`);
       }
     }
 
@@ -367,6 +367,14 @@ export const ProjectEditor: React.FC = () => {
           el.focus({ preventScroll: true });
         }
         alert.error('This slug is already in use. Please choose another one.');
+      } else if (msg.toLowerCase().includes('project title') && msg.toLowerCase().includes('already in use')) {
+        setErrors((prev) => ({ ...prev, title: 'This project title is already in use. Please choose another title.' }));
+        const el = document.getElementById('field-title');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.focus({ preventScroll: true });
+        }
+        alert.error('This project title is already in use. Please choose another title.');
       } else if (msg.toLowerCase().includes('valid project category')) {
         setErrors((prev) => ({ ...prev, category: 'Please choose a valid category from the list.' }));
         const el = document.getElementById('field-category');
@@ -808,7 +816,7 @@ export const ProjectEditor: React.FC = () => {
                     alert.success('Image removed from gallery.', 'Removed'); 
                   } catch (err: any) { 
                     console.error('Delete failed:', err.response?.data || err);
-                    alert.error(err.response?.data?.message || err.message || 'Failed to remove image', 'Delete Failed'); 
+                    alert.error(err.response?.data?.message || err.message || "We couldn't remove image. Please try again."); 
                   }
                 }}
               />

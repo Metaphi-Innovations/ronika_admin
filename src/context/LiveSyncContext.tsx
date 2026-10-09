@@ -88,7 +88,7 @@ export const LiveSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                   try {
                     cb(res, data.id);
                   } catch (e) {
-                    console.error('Error in Admin live sync listener:', e);
+                    console.error("Failed in Admin live sync listener:", e);
                   }
                 });
               }
@@ -99,7 +99,7 @@ export const LiveSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                   try {
                     cb(res, data.id);
                   } catch (e) {
-                    console.error('Error in Admin live sync wildcard listener:', e);
+                    console.error("Failed in Admin live sync wildcard listener:", e);
                   }
                 });
               }

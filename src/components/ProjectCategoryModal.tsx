@@ -29,7 +29,7 @@ export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOp
         setCategories(res.data || []);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to load categories');
+      alert.error(err.message || "We couldn't load the content. Please refresh and try again.");
     } finally {
       setLoading(false);
     }
@@ -47,7 +47,7 @@ export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOp
         alert.success(`Category "${res.data.name}" created.`);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to create category');
+      alert.error(err.message || "We couldn't save this category. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -64,7 +64,7 @@ export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOp
         alert.success(`Category renamed to "${res.data.name}".`);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to rename category');
+      alert.error(err.message || "We couldn't update this category. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -87,7 +87,7 @@ export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOp
         alert.info(`Category "${name}" deleted.`);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to delete category');
+      alert.error(err.message || "We couldn't delete this category. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

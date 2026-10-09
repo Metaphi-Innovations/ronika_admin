@@ -77,7 +77,7 @@ export const HomePageEditor: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      setErrorMsg('Failed to load home page configuration.');
+      setErrorMsg("We couldn't load home page configuration.. Please refresh and try again.");
     } finally {
       if (isInitial) setLoading(false);
     }
@@ -141,8 +141,8 @@ export const HomePageEditor: React.FC = () => {
         alert.success('Hero artwork uploaded successfully!', 'Image Uploaded');
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to upload hero image', 'Upload Failed');
-      setErrorMsg(err.message || 'Failed to upload hero image');
+      alert.error(err.message || "We couldn't upload hero image. Please try again.");
+      setErrorMsg(err.message || "We couldn't upload hero image. Please try again.");
     } finally {
       setUploadingHero(false);
       e.target.value = '';
@@ -176,8 +176,8 @@ export const HomePageEditor: React.FC = () => {
         alert.success('Client portrait image uploaded successfully!', 'Image Uploaded');
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to upload client portrait image', 'Upload Failed');
-      setErrorMsg(err.message || 'Failed to upload client portrait image');
+      alert.error(err.message || "We couldn't upload client portrait image. Please try again.");
+      setErrorMsg(err.message || "We couldn't upload client portrait image. Please try again.");
     } finally {
       setUploadingIntro(false);
       e.target.value = '';
@@ -291,7 +291,7 @@ export const HomePageEditor: React.FC = () => {
       try {
         await deleteService(target._id);
       } catch (err: any) {
-        alert.error(err.message || 'Failed to delete service', 'Delete Failed');
+        alert.error(err.message || "We couldn't delete service. Please try again.");
         return;
       }
     }
@@ -354,12 +354,12 @@ export const HomePageEditor: React.FC = () => {
     setSuccessMsg('');
 
     if (sectionName === 'A' && isQuoteOverLimit) {
-      alert.error(`Hero quote exceeds maximum ${MAX_HERO_QUOTE_CHARS} characters limit. Please shorten the quote before saving Hero Section.`, 'Limit Exceeded');
+      alert.error(`Hero quote exceeds maximum ${MAX_HERO_QUOTE_CHARS} characters limit. Please shorten the quote before saving Hero Section.`);
       return;
     }
 
     if (sectionName === 'C' && isBioOverLimit) {
-      alert.error(`Client bio exceeds maximum ${MAX_CLIENT_BIO_CHARS} characters limit. Please shorten the bio before saving Section C.`, 'Limit Exceeded');
+      alert.error(`Client bio exceeds maximum ${MAX_CLIENT_BIO_CHARS} characters limit. Please shorten the bio before saving Section C.`);
       return;
     }
 
@@ -381,7 +381,7 @@ export const HomePageEditor: React.FC = () => {
     }
 
     if (sectionName === 'E' && (settings.footerText || '').length > MAX_FOOTER_TEXT_CHARS) {
-      alert.error(`Footer text exceeds maximum ${MAX_FOOTER_TEXT_CHARS} characters limit.`, 'Limit Exceeded');
+      alert.error(`Footer text exceeds maximum ${MAX_FOOTER_TEXT_CHARS} characters limit.`);
       return;
     }
 
@@ -550,15 +550,13 @@ export const HomePageEditor: React.FC = () => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label className="admin-form-label" style={{ marginBottom: 0, fontWeight: 600 }}>Hero Artwork</label>
-              {content.heroImage?.url && (
-                <span style={{ fontSize: '11px', color: '#2E7D32', fontWeight: 600 }}>Active</span>
-              )}
             </div>
 
             {content.heroImage?.url ? (
               <div>
                 <div
                   style={{
+                    position: 'relative',
                     width: '100%',
                     height: '140px',
                     borderRadius: '6px',
@@ -573,6 +571,21 @@ export const HomePageEditor: React.FC = () => {
                     alt="Hero Artwork"
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
+                  <span
+                    style={{
+                      position: 'absolute',
+                      bottom: '5px',
+                      right: '5px',
+                      background: 'rgba(0,0,0,0.72)',
+                      color: '#FFF',
+                      fontSize: '9.5px',
+                      fontWeight: 600,
+                      padding: '2px 5px',
+                      borderRadius: '3px',
+                    }}
+                  >
+                    LANDSCAPE
+                  </span>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <label
@@ -639,7 +652,6 @@ export const HomePageEditor: React.FC = () => {
               onChange={(val) => setContent({ ...content, heroQuote: val })}
               label="Hero Editorial Quote (Rich Text)"
               maxChars={MAX_HERO_QUOTE_CHARS}
-              small={true}
             />
 
             <div style={{ maxWidth: '380px' }}>
@@ -854,15 +866,13 @@ export const HomePageEditor: React.FC = () => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label className="admin-form-label" style={{ marginBottom: 0, fontWeight: 600 }}>Portrait Photo</label>
-              {content.introImage?.url && (
-                <span style={{ fontSize: '11px', color: '#2E7D32', fontWeight: 600 }}>Active</span>
-              )}
             </div>
 
             {content.introImage?.url ? (
               <div>
                 <div
                   style={{
+                    position: 'relative',
                     width: '100%',
                     height: '190px',
                     borderRadius: '6px',
@@ -877,6 +887,21 @@ export const HomePageEditor: React.FC = () => {
                     alt="Client Portrait"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
+                  <span
+                    style={{
+                      position: 'absolute',
+                      bottom: '5px',
+                      right: '5px',
+                      background: 'rgba(0,0,0,0.72)',
+                      color: '#FFF',
+                      fontSize: '9.5px',
+                      fontWeight: 600,
+                      padding: '2px 5px',
+                      borderRadius: '3px',
+                    }}
+                  >
+                    PORTRAIT
+                  </span>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <label

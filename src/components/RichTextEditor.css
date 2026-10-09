@@ -105,44 +105,37 @@
 }
 
 .rte-content {
-  min-height: 120px;
-  max-height: 600px;
-  overflow-y: auto;
+  min-height: 42px;
   overflow-wrap: break-word;
   padding: 12px 14px;
   font-family: var(--font-main, 'Inter', sans-serif);
   font-size: var(--admin-text-size);
-  line-height: 1.45;
+  line-height: 1.1;
   color: var(--admin-text-main, #111111);
 }
 
 .rte-content .tiptap {
   outline: none;
-  min-height: 120px;
+  min-height: 42px;
 }
 
-.rte-content.small-editor,
-.rte-container.is-small .rte-content {
-  min-height: 42px !important;
-  padding: 8px 12px !important;
-}
 
-.rte-content.small-editor .tiptap,
-.rte-container.is-small .rte-content .tiptap {
-  min-height: 22px !important;
-}
 .rte-content .tiptap div,
+.rte-content .tiptap p,
 .rte-content .tiptap h1,
 .rte-content .tiptap h2,
 .rte-content .tiptap h3,
 .rte-content .tiptap h4,
 .rte-content .tiptap h5,
 .rte-content .tiptap h6 {
-  margin: 0;
+  margin: 0 !important;
+  margin-block-start: 0 !important;
+  margin-block-end: 0 !important;
   padding: 0;
   font-size: inherit;
   font-weight: inherit;
-  line-height: 1.35;
+  line-height: 1.5;
+  min-height: 1.5em;
 }
 
 .rte-content .tiptap p.is-editor-empty:first-child::before {
@@ -156,7 +149,7 @@
 .rte-content .tiptap p + p,
 .rte-content .tiptap div + div,
 .rte-content .tiptap h3 + h3 {
-  margin-top: 0.25rem;
+  margin-top: 0.15rem;
 }
 
 .rte-content .tiptap ul,

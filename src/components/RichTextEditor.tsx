@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
+import { Slice, Fragment, Node as ProseMirrorNode } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
 import UnderlineExtension from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
@@ -19,8 +20,40 @@ export interface RichTextEditorProps {
   label?: string;
   disabled?: boolean;
   maxChars?: number;
-  small?: boolean;
 }
+
+import { Extension } from '@tiptap/core';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+
+// Custom Strict Character Limit Extension
+const StrictCharacterLimit = Extension.create({
+  name: 'strictCharacterLimit',
+  addOptions() {
+    return { limit: null };
+  },
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('strictCharacterLimit'),
+        filterTransaction: (transaction, state) => {
+          const limit = this.options.limit;
+          if (limit === null || limit === undefined) return true;
+          if (!transaction.docChanged) return true;
+
+          // If this is a paste, we allow the transaction through because 
+          // transformPasted will have already truncated it to exactly fit the limit!
+          if (transaction.getMeta('paste')) return true;
+
+          const length = transaction.doc.textBetween(0, transaction.doc.content.size, '\n').length;
+          if (length > limit) {
+            return false;
+          }
+          return true;
+        },
+      }),
+    ];
+  },
+});
 
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
@@ -28,13 +61,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   label = 'Content',
   disabled = false,
   maxChars,
-  small = false,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
-
-  const charCount = countReadableChars(value);
-  const isOverLimit = maxChars !== undefined && charCount > maxChars;
-  const isLimitReached = maxChars !== undefined && charCount >= maxChars;
 
   const editor = useEditor({
     extensions: [
@@ -46,13 +74,90 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       LinkExtension.configure({
         openOnClick: false,
       }),
-      ...(maxChars ? [CharacterCount.configure({ limit: maxChars })] : [])
+      ...(maxChars ? [StrictCharacterLimit.configure({ limit: maxChars })] : [])
     ],
     content: sanitizeRichText(value),
     editable: !disabled,
+    editorProps: {
+      transformPasted: (slice, view) => {
+        if (maxChars === undefined) return slice;
+        
+        const currentLength = view.state.doc.textBetween(0, view.state.doc.content.size, '\n').length;
+        const selectionLength = view.state.doc.textBetween(view.state.selection.from, view.state.selection.to, '\n').length;
+        
+        const available = maxChars - (currentLength - selectionLength);
+        if (available <= 0) {
+          return new Slice(Fragment.empty, 0, 0);
+        }
+
+        const capacity = { remaining: available };
+        let didTruncate = false;
+
+        function truncateFragment(fragment: Fragment): Fragment {
+          const nodes: ProseMirrorNode[] = [];
+          
+          for (let i = 0; i < fragment.childCount; i++) {
+            const child = fragment.child(i);
+            
+            if (capacity.remaining <= 0) {
+              didTruncate = true;
+              break;
+            }
+
+            if (child.isText) {
+              const text = child.text || '';
+              if (text.length <= capacity.remaining) {
+                nodes.push(child);
+                capacity.remaining -= text.length;
+              } else {
+                nodes.push(child.type.schema.text(text.substring(0, capacity.remaining), child.marks));
+                capacity.remaining = 0;
+                didTruncate = true;
+              }
+            } else if (child.isBlock) {
+              if (nodes.length > 0) {
+                if (capacity.remaining <= 0) {
+                  didTruncate = true;
+                  break;
+                }
+                capacity.remaining -= 1;
+              }
+              const truncatedContent = truncateFragment(child.content);
+              nodes.push(child.copy(truncatedContent));
+            } else {
+              if (child.type.name === 'hardBreak') {
+                if (capacity.remaining > 0) {
+                  nodes.push(child);
+                  capacity.remaining -= 1;
+                } else {
+                  didTruncate = true;
+                }
+              } else {
+                nodes.push(child);
+              }
+            }
+          }
+          return Fragment.from(nodes);
+        }
+
+        const truncated = truncateFragment(slice.content);
+
+        if (!didTruncate) {
+          return slice;
+        }
+
+        let maxOpenEnd = 0;
+        let n = truncated.lastChild;
+        while (n && !n.isText && n.content.childCount > 0) {
+          maxOpenEnd++;
+          n = n.lastChild;
+        }
+        
+        return new Slice(truncated, slice.openStart, Math.min(slice.openEnd, maxOpenEnd));
+      }
+    },
     onUpdate: ({ editor }) => {
       let rawHTML = editor.getHTML();
-      // Only keep the <p></p> tags if there's actual content. Empty tiptap usually gives <p></p>
       if (rawHTML === '<p></p>') {
         rawHTML = '';
       }
@@ -61,31 +166,19 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     },
     onFocus: () => setIsFocused(true),
     onBlur: () => setIsFocused(false),
-    editorProps: {
-      handleKeyDown: (view, event) => {
-        if (maxChars !== undefined) {
-          // Use Tiptap's internal text length which perfectly matches our updated visual counter
-          const currentChars = view.state.doc.textContent.length;
-          
-          // Allow keys that reduce text or navigate
-          const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab'];
-          
-          // If limit is reached, and no text is selected (meaning it's a pure insertion)
-          if (currentChars >= maxChars && view.state.selection.empty) {
-            // Block if it's not an allowed key and not a shortcut (Ctrl/Cmd)
-            if (!allowedKeys.includes(event.key) && !event.ctrlKey && !event.metaKey) {
-              event.preventDefault();
-              return true; // Strictly block Enter, Space, and all characters
-            }
-          }
-        }
-        return false;
-      }
-    }
   });
 
+  // Use the exact same calculation as the limit enforcement if the editor is mounted.
+  // This guarantees the counter perfectly matches the enforcement logic.
+  const charCount = (editor && !editor.isDestroyed) 
+    ? editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n').length 
+    : countReadableChars(value);
+    
+  const isOverLimit = maxChars !== undefined && charCount > maxChars;
+  const isLimitReached = maxChars !== undefined && charCount >= maxChars;
+
   useEffect(() => {
-    if (editor) {
+    if (editor && !editor.isDestroyed) {
       const currentHTML = editor.getHTML();
       // Ensure we compare the exact sanitized format that is emitted to parent
       const sanitizedCurrent = sanitizeRichText(currentHTML === '<p></p>' ? '' : currentHTML);
@@ -100,7 +193,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, [value, editor]);
 
   useEffect(() => {
-    if (editor) {
+    if (editor && !editor.isDestroyed) {
       editor.setEditable(!disabled);
     }
   }, [disabled, editor]);
@@ -111,7 +204,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }
 
   return (
-    <div className={`rte-container ${small ? 'is-small' : ''}`} style={small ? { height: 'fit-content', flex: 'none' } : {}}>
+    <div className="rte-container">
       {/* Label and Live Counter Header */}
       <div className="rte-header">
         <label className="admin-form-label" style={{ marginBottom: 0 }}>
@@ -139,10 +232,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       </div>
 
       {/* Editor Box */}
-      <div 
-        className={`rte-box ${isFocused ? 'focused' : ''} ${isOverLimit ? 'error' : ''}`}
-        style={small ? { height: 'fit-content', flex: 'none' } : {}}
-      >
+      <div className={`rte-box ${isFocused ? 'focused' : ''} ${isOverLimit ? 'error' : ''}`}>
         {/* Toolbar */}
         <div className="rte-toolbar">
           {/* Bold */}
@@ -185,8 +275,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </div>
 
         {/* ContentEditable Canvas - Tiptap wraps it automatically */}
-        <div style={small ? { minHeight: '42px' } : {}}>
-          <EditorContent editor={editor} className={`rte-content tiptap-content ${small ? 'small-editor' : ''}`} />
+        <div>
+          <EditorContent editor={editor} className="rte-content tiptap-content" />
         </div>
       </div>
     </div>

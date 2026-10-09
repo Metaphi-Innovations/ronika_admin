@@ -88,20 +88,18 @@ export const GalleryPageAdmin: React.FC = () => {
   } | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // Replace Image Modal State
-  const [replaceTarget, setReplaceTarget] = useState<IGalleryImage | null>(null);
-  const [replaceFile, setReplaceFile] = useState<File | null>(null);
-  const [replacePreview, setReplacePreview] = useState<{
-    url: string;
-    name: string;
-  } | null>(null);
-  const [replacing, setReplacing] = useState(false);
+
 
   // Edit Metadata Modal State
   const [editTarget, setEditTarget] = useState<IGalleryImage | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editCategoryId, setEditCategoryId] = useState('');
   const [editingImage, setEditingImage] = useState(false);
+  const [replaceFile, setReplaceFile] = useState<File | null>(null);
+  const [replacePreview, setReplacePreview] = useState<{
+    url: string;
+    name: string;
+  } | null>(null);
 
   // Fetch all gallery data
   const fetchData = async (isInitial = true) => {
@@ -163,17 +161,59 @@ export const GalleryPageAdmin: React.FC = () => {
 
 
 
+  // Helper to reliably resolve category name whether category is populated object or string ID
+  const getCategoryName = React.useCallback((cat: any) => {
+    if (!cat) return 'Uncategorized';
+    const catId = typeof cat === 'object' && cat ? cat._id : cat;
+    if (catId && typeof catId === 'string' && catId.trim()) {
+      const found = categories.find((c) => String(c._id) === String(catId) || c.name === String(catId));
+      if (found) return found.name;
+      // Category ID was deleted from active categories
+      return 'Uncategorized';
+    }
+    if (cat && typeof cat === 'object' && cat.name) {
+      const foundByName = categories.find((c) => c.name.toLowerCase() === cat.name.toLowerCase());
+      if (foundByName) return foundByName.name;
+    }
+    return 'Uncategorized';
+  }, [categories]);
+
+  // Compute editor items (hooks must be top-level)
+  const activeContextKey = selectedCategory === 'ALL' ? 'all' : selectedCategory;
+
+  const editorItems = React.useMemo(() => {
+    const filteredImages = selectedCategory === 'ALL' 
+      ? orderedImages 
+      : orderedImages.filter(img => {
+          const catName = img.category && typeof img.category === 'object' && 'name' in img.category 
+            ? (img.category as any).name 
+            : img.category;
+          return String(catName) === selectedCategory;
+        });
+        
+    return filteredImages.map(img => ({
+      id: img._id,
+      url: getImageUrl(img.image?.url),
+      layouts: img.layoutContexts?.[activeContextKey] || (activeContextKey === 'all' ? img.layouts : undefined),
+      title: img.title,
+      categoryName: getCategoryName(img.category),
+      published: img.published,
+      aspectRatio: img.image?.aspectRatio
+    }));
+  }, [orderedImages, selectedCategory, activeContextKey, getCategoryName]);
+
   // Save Reordered Images
   const handleSaveOrder = async () => {
     try {
       setSavingOrder(true);
+      const activeContextKey = selectedCategory === 'ALL' ? 'all' : selectedCategory;
       const items = orderedImages.map((img, index) => ({
         _id: img._id,
         displayOrder: index + 1,
-        layouts: img.layouts
+        layouts: img.layoutContexts?.[activeContextKey] || img.layouts
       }));
 
-      const res = await reorderGalleryImages(items);
+      const res = await reorderGalleryImages({ items, contextKey: activeContextKey });
       if (res.success) {
         alert.success('Changes saved.');
         setImages([...orderedImages]);
@@ -215,6 +255,8 @@ export const GalleryPageAdmin: React.FC = () => {
 
   const handleUploadImage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploading) return;
+    
     if (!categoryId) {
       alert.warning('Please select a category.');
       return;
@@ -247,7 +289,7 @@ export const GalleryPageAdmin: React.FC = () => {
         setOrderedImages(updatedImages);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to upload artwork');
+      alert.error(err.message || "We couldn't upload artwork. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -267,52 +309,7 @@ export const GalleryPageAdmin: React.FC = () => {
     });
   };
 
-  const handleReplaceSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!replaceTarget || !replaceFile) return;
 
-    try {
-      setReplacing(true);
-      const formData = new FormData();
-      formData.append('gallery_image', replaceFile);
-
-      const res = await replaceGalleryImage(replaceTarget._id, formData);
-      if (res.success) {
-        const updatedImage = res.data;
-        const updateList = (list: IGalleryImage[]) =>
-          list.map((item) => (item._id === replaceTarget._id ? updatedImage : item));
-
-        setImages(updateList(images));
-        setOrderedImages(updateList(orderedImages));
-        alert.success('Artwork replaced.');
-        setReplaceTarget(null);
-        setReplaceFile(null);
-        if (replacePreview?.url) URL.revokeObjectURL(replacePreview.url);
-        setReplacePreview(null);
-      }
-    } catch (err: any) {
-      alert.error(err.message || 'Failed to replace artwork');
-    } finally {
-      setReplacing(false);
-    }
-  };
-
-  // Helper to reliably resolve category name whether category is populated object or string ID
-  const getCategoryName = (cat: any) => {
-    if (!cat) return 'Uncategorized';
-    const catId = typeof cat === 'object' && cat ? cat._id : cat;
-    if (catId && typeof catId === 'string' && catId.trim()) {
-      const found = categories.find((c) => String(c._id) === String(catId) || c.name === String(catId));
-      if (found) return found.name;
-      // Category ID was deleted from active categories
-      return 'Uncategorized';
-    }
-    if (cat && typeof cat === 'object' && cat.name) {
-      const foundByName = categories.find((c) => c.name.toLowerCase() === cat.name.toLowerCase());
-      if (foundByName) return foundByName.name;
-    }
-    return 'Uncategorized';
-  };
 
   // Edit Image Info
   const openEditModal = (img: IGalleryImage) => {
@@ -321,6 +318,8 @@ export const GalleryPageAdmin: React.FC = () => {
     const currentCatId =
       typeof img.category === 'object' && img.category ? img.category._id : (img.category as string) || '';
     setEditCategoryId(currentCatId);
+    setReplaceFile(null);
+    setReplacePreview(null);
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -329,10 +328,19 @@ export const GalleryPageAdmin: React.FC = () => {
 
     try {
       setEditingImage(true);
-      const res = await updateGalleryImage(editTarget._id, {
-        title: editTitle.trim(),
-        category: editCategoryId,
-      });
+      let res;
+      if (replaceFile) {
+        const formData = new FormData();
+        formData.append('gallery_image', replaceFile);
+        formData.append('title', editTitle.trim());
+        formData.append('category', editCategoryId);
+        res = await replaceGalleryImage(editTarget._id, formData);
+      } else {
+        res = await updateGalleryImage(editTarget._id, {
+          title: editTitle.trim(),
+          category: editCategoryId,
+        });
+      }
 
       if (res.success) {
         let updatedImage = res.data;
@@ -340,8 +348,8 @@ export const GalleryPageAdmin: React.FC = () => {
         const catId = typeof updatedImage.category === 'object' && updatedImage.category
           ? updatedImage.category._id
           : (typeof updatedImage.category === 'string' ? updatedImage.category : editCategoryId);
-        const matchedCat = categories.find((c) => String(c._id) === String(catId));
-        updatedImage = { ...updatedImage, category: matchedCat || (null as any) };
+        const matchedCat = categories.find((c) => String(c._id) === String(catId) || c.name === String(catId));
+        updatedImage = { ...updatedImage, category: matchedCat ? matchedCat.name : (null as any) };
 
         const updateList = (list: IGalleryImage[]) =>
           list.map((item) => (item._id === editTarget._id ? updatedImage : item));
@@ -352,7 +360,7 @@ export const GalleryPageAdmin: React.FC = () => {
         setEditTarget(null);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to update artwork');
+      alert.error(err.message || "We couldn't update artwork. Please try again.");
     } finally {
       setEditingImage(false);
     }
@@ -367,10 +375,10 @@ export const GalleryPageAdmin: React.FC = () => {
           list.map((item) => (item._id === img._id ? { ...item, published: !img.published } : item));
         setImages(updateList(images));
         setOrderedImages(updateList(orderedImages));
-        alert.success(`Artwork is now ${!img.published ? 'published' : 'hidden'}.`);
+        alert.success(`"${img.title || 'Artwork'}" is now ${!img.published ? 'published' : 'draft'}.`);
       }
     } catch (err: any) {
-      alert.error(err.message || 'Failed to update visibility');
+      alert.error(err.message || "We couldn't update visibility. Please try again.");
     }
   };
 
@@ -388,7 +396,7 @@ export const GalleryPageAdmin: React.FC = () => {
       alert.info('Artwork deleted.');
       setDeleteImageTarget(null);
     } catch (err: any) {
-      alert.error(err.message || 'Failed to delete artwork');
+      alert.error(err.message || "We couldn't delete artwork. Please try again.");
     } finally {
       setDeleting(false);
     }
@@ -397,7 +405,7 @@ export const GalleryPageAdmin: React.FC = () => {
   // Save Editorial Intro
   const handleSaveHeader = async () => {
     if (countReadableChars(galleryHeader) > MAX_GALLERY_INTRO_CHARS) {
-      alert.error(`Gallery editorial introduction exceeds maximum ${MAX_GALLERY_INTRO_CHARS} characters limit.`, 'Limit Exceeded');
+      alert.error(`Gallery editorial introduction exceeds maximum ${MAX_GALLERY_INTRO_CHARS} characters limit.`);
       return;
     }
     try {
@@ -415,13 +423,14 @@ export const GalleryPageAdmin: React.FC = () => {
     }
   };
 
-  // Filtered images for Library view
   const libraryImages =
     selectedCategory === 'ALL'
       ? images
       : images.filter((img) => {
-        const catId = typeof img.category === 'object' && img.category ? img.category._id : img.category;
-        return String(catId || '') === String(selectedCategory);
+        const catName = img.category && typeof img.category === 'object' && 'name' in img.category 
+          ? (img.category as any).name 
+          : img.category;
+        return String(catName) === selectedCategory;
       });
 
   return (
@@ -429,18 +438,10 @@ export const GalleryPageAdmin: React.FC = () => {
       {/* Page Header */}
       <PageHeader
         title="GALLERY ARTWORK"
-        subtitle="Manage the images shown on your portfolio."
+        subtitle=""
         actions={
           <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
-
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="admin-btn primary"
-              style={{ fontSize: '13px' }}
-            >
-              <Plus size={14} />
-              <span>Add Images</span>
-            </button>
+            {/* Action buttons can go here in the future if needed */}
           </div>
         }
       />
@@ -477,6 +478,18 @@ export const GalleryPageAdmin: React.FC = () => {
       {/* ========================================================================= */}
       <div style={{ marginTop: '1rem' }}>
         {/* Editorial Intro Section */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+          <button
+            type="button"
+            onClick={handleSaveHeader}
+            disabled={savingHeader}
+            className="admin-btn primary"
+            style={{ fontSize: '11.5px', padding: '6px 14px' }}
+          >
+            <Save size={13} />
+            <span style={{ fontWeight: 600 }}>{savingHeader ? 'Saving...' : 'Save Intro'}</span>
+          </button>
+        </div>
         <div
           style={{
             marginBottom: '1.25rem',
@@ -491,6 +504,7 @@ export const GalleryPageAdmin: React.FC = () => {
               padding: '10px 16px',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'space-between',
               backgroundColor: 'var(--admin-surface-subtle)',
               borderBottom: '1px solid var(--admin-border)'
             }}
@@ -515,19 +529,22 @@ export const GalleryPageAdmin: React.FC = () => {
               onChange={setGalleryHeader}
               maxChars={MAX_GALLERY_INTRO_CHARS}
             />
-            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={handleSaveHeader}
-                disabled={savingHeader}
-                className="admin-btn primary"
-                style={{ fontSize: '12px' }}
-              >
-                <Save size={13} />
-                <span>{savingHeader ? 'Saving...' : 'Save Intro'}</span>
-              </button>
-            </div>
           </div>
+        </div>
+
+        {/* Gallery Controls (Add Images) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <p style={{ margin: 0, color: 'var(--admin-text-muted)', fontSize: '14px' }}>
+            Manage the images shown on your portfolio.
+          </p>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="admin-btn primary"
+            style={{ fontSize: '13px' }}
+          >
+            <Plus size={14} />
+            <span>Add Images</span>
+          </button>
         </div>
 
         {/* Unsaved Changes Banner */}
@@ -585,31 +602,10 @@ export const GalleryPageAdmin: React.FC = () => {
             >
               No artwork added yet.
             </p>
-            <button onClick={() => setShowUploadModal(true)} className="admin-btn primary">
-              <Plus size={14} /> Add Images
-            </button>
           </div>
-        ) : (() => {
-          const filteredImages = selectedCategory === 'ALL' 
-            ? orderedImages 
-            : orderedImages.filter(img => {
-                const catId = img.category && typeof img.category === 'object' && 'name' in img.category 
-                  ? (img.category as any)._id 
-                  : img.category;
-                return String(catId) === selectedCategory;
-              });
-
-          return (
-            <MediaGridEditor
-              items={filteredImages.map(img => ({
-                id: img._id,
-                url: getImageUrl(img.image?.url),
-                layouts: img.layouts,
-                title: img.title,
-                categoryName: getCategoryName(img.category),
-                published: img.published,
-                aspectRatio: img.image?.aspectRatio
-              }))}
+        ) : (
+          <MediaGridEditor
+            items={editorItems}
               headerContent={
                 <div
                   style={{
@@ -630,29 +626,50 @@ export const GalleryPageAdmin: React.FC = () => {
                   >
                     All ({orderedImages.length})
                   </button>
-                  {categories.map((cat) => (
-                    <div key={cat._id} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                      <button
-                        onClick={() => setSelectedCategory(cat._id)}
-                        className={`admin-btn ${selectedCategory === cat._id ? 'primary' : 'secondary'}`}
-                        style={{ padding: '4px 14px', fontSize: '12px', borderRadius: '16px' }}
-                      >
-                        {cat.name}
-                      </button>
-
-                    </div>
-                  ))}
+                  {categories.map((cat) => {
+                    const count = orderedImages.filter((img) => {
+                      const catName = img.category && typeof img.category === 'object' && 'name' in img.category 
+                        ? (img.category as any).name 
+                        : img.category;
+                      return String(catName) === cat.name;
+                    }).length;
+                    
+                    return (
+                      <div key={cat._id} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <button
+                          onClick={() => setSelectedCategory(cat.name)}
+                          className={`admin-btn ${selectedCategory === cat.name ? 'primary' : 'secondary'}`}
+                          style={{ padding: '4px 14px', fontSize: '12px', borderRadius: '16px' }}
+                        >
+                          {cat.name} ({count})
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               }
               onChange={(updatedItems) => {
                 const newOrdered = [...orderedImages];
                 let hasChanges = false;
+                const activeContextKey = selectedCategory === 'ALL' ? 'all' : selectedCategory;
                 
                 updatedItems.forEach(u => {
                   const imgIndex = newOrdered.findIndex(i => i._id === u.id);
-                  if (imgIndex !== -1 && JSON.stringify(newOrdered[imgIndex].layouts) !== JSON.stringify(u.layouts)) {
-                    newOrdered[imgIndex] = { ...newOrdered[imgIndex], layouts: u.layouts };
-                    hasChanges = true;
+                  if (imgIndex !== -1) {
+                    const img = newOrdered[imgIndex];
+                    const existingLayouts = img.layoutContexts?.[activeContextKey] || img.layouts;
+                    if (JSON.stringify(existingLayouts) !== JSON.stringify(u.layouts)) {
+                      newOrdered[imgIndex] = { 
+                        ...img, 
+                        layoutContexts: {
+                          ...(img.layoutContexts || {}),
+                          [activeContextKey]: u.layouts as any
+                        } as Record<string, any>,
+                        // Keep fallback legacy layout in sync for now
+                        layouts: u.layouts
+                      };
+                      hasChanges = true;
+                    }
                   }
                 });
 
@@ -667,27 +684,16 @@ export const GalleryPageAdmin: React.FC = () => {
                   setDeleteImageTarget({ id: target._id, title: target.title });
                 }
               }}
-              onReplace={(id) => {
-                const target = orderedImages.find(img => img._id === id);
-                if (target) {
-                  setReplaceTarget(target);
-                }
-              }}
+
               onEdit={(id) => {
                 const target = orderedImages.find(img => img._id === id);
                 if (target) {
                   openEditModal(target);
                 }
               }}
-              onTogglePublish={(id) => {
-                const target = orderedImages.find(img => img._id === id);
-                if (target) {
-                  handleTogglePublish(target);
-                }
-              }}
+
             />
-          );
-        })()}
+        )}
       </div>
 
 
@@ -974,129 +980,6 @@ export const GalleryPageAdmin: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 4: REPLACE IMAGE MODAL (NO DIMENSION / RATIO RESTRICTION)          */}
-      {/* ========================================================================= */}
-      {replaceTarget && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div className="admin-card" style={{ width: '440px', padding: '1.25rem' }}>
-            <h3 style={{ fontSize: '14.5px', fontWeight: 600, marginBottom: '0.5rem' }}>
-              REPLACE ARTWORK IMAGE
-            </h3>
-            <p style={{ fontSize: '12px', color: 'var(--admin-text-secondary)', marginBottom: '1rem' }}>
-              Replacing this file preserves its position and metadata.
-            </p>
-
-            <form onSubmit={handleReplaceSubmit}>
-              <div style={{ marginBottom: '1.25rem' }}>
-                {replacePreview ? (
-                  <div
-                    style={{
-                      border: '1px solid var(--admin-border)',
-                      borderRadius: '6px',
-                      padding: '8px 10px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      backgroundColor: 'var(--admin-surface-subtle)',
-                    }}
-                  >
-                    <img
-                      src={getImageUrl(replacePreview.url)}
-                      alt="New Preview"
-                      style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px' }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '12px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {replacePreview.name}
-                      </div>
-                      <span style={{ fontSize: '11px', color: '#2E7D32', fontWeight: 500 }}>
-                        <CheckCircle2 size={12} />
-                        Ready to replace
-                      </span>
-                    </div>
-                    <label
-                      className="admin-btn secondary"
-                      style={{ cursor: 'pointer', padding: '3px 8px', fontSize: '11px' }}
-                    >
-                      Change
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleReplaceFileSelect}
-                        style={{ display: 'none' }}
-                      />
-                    </label>
-                  </div>
-                ) : (
-                  <label
-                    style={{
-                      border: '2px dashed var(--admin-border-strong)',
-                      borderRadius: '6px',
-                      padding: '1.5rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      cursor: 'pointer',
-                      backgroundColor: 'var(--admin-surface-subtle)',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <Upload size={20} />
-                    <span style={{ fontSize: '13px', fontWeight: 600 }}>Select Replacement File</span>
-                    <div style={{ display: 'inline-block', padding: '6px 12px', background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '20px', fontSize: '11.5px', color: 'var(--admin-text-main)', marginTop: '8px', textAlign: 'center', lineHeight: '1.5' }}>
-                      <strong style={{ color: '#E65100', marginRight: '6px' }}>INFO:</strong>
-                      <span>All image sizes and ratios accepted</span>
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleReplaceFileSelect}
-                      style={{ display: 'none' }}
-                      required
-                    />
-                  </label>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setReplaceTarget(null);
-                    setReplaceFile(null);
-                    if (replacePreview?.url) URL.revokeObjectURL(replacePreview.url);
-                    setReplacePreview(null);
-                  }}
-                  className="admin-btn secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="admin-btn primary"
-                  disabled={replacing || !replaceFile}
-                >
-                  {replacing ? 'Replacing...' : 'Replace Artwork'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
       {/* MODAL 5: EDIT METADATA MODAL                                              */}
       {/* ========================================================================= */}
       {editTarget && (
@@ -1117,8 +1000,88 @@ export const GalleryPageAdmin: React.FC = () => {
             </h3>
 
             <form onSubmit={handleEditSubmit}>
-
-
+              <div className="admin-form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="admin-form-label">Replace Image (Optional)</label>
+                {replaceFile && replacePreview ? (
+                  <div
+                    style={{
+                      border: '1px solid var(--admin-border)',
+                      borderRadius: '6px',
+                      padding: '0.625rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: '#FFFFFF',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '4px',
+                          overflow: 'hidden',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <img
+                          src={replacePreview.url}
+                          alt="Preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {replacePreview.name}
+                      </div>
+                    </div>
+                    <label
+                      className="admin-btn secondary"
+                      style={{ cursor: 'pointer', padding: '3px 8px', fontSize: '11px' }}
+                    >
+                      Change
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleReplaceFileSelect}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <label
+                    style={{
+                      border: '2px dashed var(--admin-border-strong)',
+                      borderRadius: '6px',
+                      padding: '1rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      cursor: 'pointer',
+                      backgroundColor: 'var(--admin-surface-subtle)',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Upload size={16} />
+                    <span style={{ fontSize: '12px', fontWeight: 600 }}>Click to select a new image file</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleReplaceFileSelect}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                )}
+              </div>
               <div className="admin-form-group" style={{ marginBottom: '1.25rem' }}>
                 <label className="admin-form-label">Category <span className="admin-required-asterisk">*</span></label>
                 <select
