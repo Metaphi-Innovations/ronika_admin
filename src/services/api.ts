@@ -105,7 +105,9 @@ api.interceptors.response.use(
       // Session expired or unauthorized
       localStorage.removeItem('admin_token');
       localStorage.removeItem('admin_user');
-      window.location.href = '/admin/login';
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/admin/login') {
+        window.location.href = '/login';
+      }
     }
 
     // Automatically unpack server message so error.message is always meaningful and human-readable

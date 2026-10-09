@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -58,6 +58,9 @@ export const ProjectEditor: React.FC = () => {
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
+  const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
+  
+
 
   const [formData, setFormData] = useState<Partial<IProject>>({
     title: '',
@@ -87,6 +90,24 @@ export const ProjectEditor: React.FC = () => {
   // Pending Gallery Files State
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [pendingGallery, setPendingGallery] = useState<PendingGalleryItem[]>([]);
+
+  // Memoize grid items to prevent RGL flickering on unrelated state updates (e.g., typing in text fields)
+  const gridItems = useMemo(() => {
+    return [
+      ...(formData.images || []).map(img => ({ 
+        id: img._id, 
+        url: getImageUrl(img.url), 
+        layouts: img.layouts, 
+        aspectRatio: img.aspectRatio 
+      })),
+      ...pendingGallery.map(p => ({ 
+        id: p.id, 
+        url: p.previewUrl, 
+        layouts: p.layouts, 
+        aspectRatio: p.height > 0 ? parseFloat((p.width / p.height).toFixed(4)) : 1 
+      }))
+    ];
+  }, [formData.images, pendingGallery]);
 
   // Active Drag State for Visual Compatibility Feedback
   
@@ -311,6 +332,18 @@ export const ProjectEditor: React.FC = () => {
       // 3. Upload Gallery Images if staged
       if (pendingGallery.length > 0 && projectId) {
         await uploadGalleryImages(projectId, pendingGallery.map(p => ({ file: p.file, layouts: p.layouts })));
+      }
+
+      // Process any deferred deleted images
+      if (removedImageIds.length > 0 && projectId) {
+        for (const imgId of removedImageIds) {
+          try {
+            await deleteGalleryImage(projectId, imgId);
+          } catch (e) {
+            console.error('Failed to delete removed image', imgId, e);
+          }
+        }
+        setRemovedImageIds([]);
       }
 
       // 4. Update layouts/order for existing images if we are editing
@@ -772,10 +805,20 @@ export const ProjectEditor: React.FC = () => {
                 </p>
               )}
               <ProjectMediaGridEditor
-                items={[
-                  ...(formData.images || []).map(img => ({ id: img._id, url: getImageUrl(img.url), layouts: img.layouts, aspectRatio: img.aspectRatio })),
-                  ...pendingGallery.map(p => ({ id: p.id, url: p.previewUrl, layouts: p.layouts, aspectRatio: p.height > 0 ? parseFloat((p.width / p.height).toFixed(4)) : 1 }))
-                ]}
+                items={gridItems}
+                onDeleteAll={async () => {
+                  const confirmed = await alert.confirm({
+                    title: 'Delete All Images?',
+                    message: 'Are you sure you want to delete all images from the project gallery? This cannot be undone.',
+                    confirmLabel: 'Delete All',
+                    isDanger: true
+                  });
+                  if (!confirmed) return;
+                  
+                  setFormData({ ...formData, images: [] });
+                  setPendingGallery([]);
+                  setRemovedImageIds([...removedImageIds, ...(formData.images || []).map(img => img._id)]);
+                }}
                 onChange={(updated) => {
                    let hasChanges = false;
                    const newImages = [...(formData.images || [])];
@@ -810,14 +853,11 @@ export const ProjectEditor: React.FC = () => {
                   }
                   const confirmed = await alert.confirm({ title: 'Remove Image?', message: 'Are you sure you want to remove this image from the project gallery? This cannot be undone.', confirmLabel: 'Remove', isDanger: true }); 
                   if (!confirmed || !id) return; 
-                  try { 
-                    const res = await deleteGalleryImage(id, imgId); 
-                    if (res.data?.images) { setFormData(prev => ({ ...prev, images: res.data.images })); } 
-                    alert.success('Image removed from gallery.', 'Removed'); 
-                  } catch (err: any) { 
-                    console.error('Delete failed:', err.response?.data || err);
-                    alert.error(err.response?.data?.message || err.message || "We couldn't remove image. Please try again."); 
-                  }
+                  
+                  // Draft & Save: defer deletion until save
+                  setFormData(prev => ({ ...prev, images: (prev.images || []).filter(img => img._id !== imgId) }));
+                  setRemovedImageIds(prev => [...prev, imgId]);
+                  // alert.success('Image queued for removal.', 'Removed'); 
                 }}
               />
             </>

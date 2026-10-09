@@ -28,6 +28,7 @@ interface ProjectMediaGridEditorProps {
   onEdit?: (id: string) => void;
   onTogglePublish?: (id: string, current: boolean) => void;
   headerContent?: React.ReactNode;
+  onDeleteAll?: () => void;
 }
 
 const COLS = 96;
@@ -35,7 +36,7 @@ const ROW_HEIGHT = 16;
 const MARGIN: [number, number] = [8, 8];
 
 export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({ 
-  items, onChange, onDelete, onReplace, onEdit, onTogglePublish, headerContent
+  items, onChange, onDelete, onReplace, onEdit, onTogglePublish, headerContent, onDeleteAll
 }) => {
   const { width, ref } = useWidth();
   const [localLayouts, setLocalLayouts] = useState<any[]>([]);
@@ -114,9 +115,7 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
     }
   }, [items]);
 
-  const handleLayoutChange = (newLayout: any[]) => {
-    setLocalLayouts(newLayout);
-  };
+
 
   const handleDragStop = (layout: any[]) => {
     if (onChange) {
@@ -159,9 +158,21 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
   return (
     <div className="project-media-grid-editor" ref={ref}>
       {headerContent !== undefined ? headerContent : (
-        <div style={{ padding: '10px', background: '#f5f5f5', marginBottom: '10px', borderRadius: '6px' }}>
-          <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>Grid Layout Editor</p>
-          <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>Drag and resize images using the grid structure.</p>
+        <div style={{ padding: '10px', background: '#f5f5f5', marginBottom: '10px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>Grid Layout Editor</p>
+            <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>Drag and resize images using the grid structure.</p>
+          </div>
+          {onDeleteAll && items.length > 0 && (
+            <button
+              onClick={onDeleteAll}
+              className="admin-btn secondary danger"
+              style={{ padding: '4px 8px', fontSize: '12px', minWidth: 'auto', border: '1px solid #ff4444', color: '#ff4444', backgroundColor: 'transparent' }}
+              type="button"
+            >
+              Delete All
+            </button>
+          )}
         </div>
       )}
 
@@ -180,7 +191,6 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
           width={width}
           rowHeight={ROW_HEIGHT}
           margin={MARGIN}
-          onLayoutChange={handleLayoutChange}
           onDragStop={handleDragStop}
           onResizeStop={handleResizeStop}
           isDraggable={true}

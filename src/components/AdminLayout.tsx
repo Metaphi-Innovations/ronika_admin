@@ -151,9 +151,11 @@ export const AdminLayout: React.FC = () => {
         </div>
 
         <nav className="sidebar-nav">
-          {navSections.map((sec, secIdx) => (
-            <div key={secIdx} className="sidebar-section">
-              <div className="sidebar-section-title">{sec.title}</div>
+          {navSections.map((sec, secIdx) => {
+            if (sec.items.length === 0) return null;
+            return (
+              <div key={secIdx} className="sidebar-section">
+                <div className="sidebar-section-title">{sec.title}</div>
               {sec.items.map((item) => {
                 const IconComp = item.icon;
                 return (
@@ -170,7 +172,8 @@ export const AdminLayout: React.FC = () => {
                 );
               })}
             </div>
-          ))}
+            );
+          })}
         </nav>
       </aside>
 

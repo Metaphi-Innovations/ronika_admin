@@ -1307,7 +1307,7 @@ input:-webkit-autofill:active {
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   min-height: 80px;
-  resize: vertical;
+  resize: none;
 }
 
 .admin-input:focus,

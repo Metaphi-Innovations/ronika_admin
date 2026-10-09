@@ -391,7 +391,6 @@ export const UserManagementPage: React.FC = () => {
                   // Only Super Admin can edit other users' details; standard admin can only edit their own account.
                   const canEdit = isCurrentSuperAdmin || isSelf;
                   const canToggle = isCurrentSuperAdmin && !isSelf && !isTargetSuperAdmin && !(target.isActive && isFinalAdmin);
-                  const canDelete = isCurrentSuperAdmin && !isSelf && !isTargetSuperAdmin && !isFinalAdmin;
 
                   return (
                     <tr key={target.id}>
@@ -453,7 +452,7 @@ export const UserManagementPage: React.FC = () => {
                             }}
                           >
                             <Shield size={12} color="#5E35B1" />
-                            Super Admin
+                            Admin
                           </span>
                         ) : (
                           <span
@@ -533,18 +532,7 @@ export const UserManagementPage: React.FC = () => {
                             </button>
                           )}
 
-                          {canDelete && (
-                            <button
-                              onClick={() => setDeleteTarget(target)}
-                              className="admin-btn-icon danger"
-                              title="Delete Administrator"
-                              aria-label={`Delete ${target.name}`}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-
-                          {!canEdit && !canToggle && !canDelete && (
+                          {!canEdit && !canToggle && (
                             <span
                               style={{
                                 fontSize: '11px',
@@ -679,7 +667,7 @@ export const UserManagementPage: React.FC = () => {
 
                 {/* Password */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
-                  <label className="admin-form-label">Password * (Min. 6 characters)</label>
+                  <label className="admin-form-label">Password <span className="admin-required-asterisk">*</span> (Min. 6 characters)</label>
                   <PasswordInput
                     name="new_admin_account_password"
                     autoComplete="new-password"
@@ -876,7 +864,7 @@ export const UserManagementPage: React.FC = () => {
                       }}
                     >
                       {editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()
-                        ? 'Super Admin'
+                        ? 'Admin'
                         : editingUser.role === 'admin'
                         ? 'Administrator'
                         : 'Editor'}

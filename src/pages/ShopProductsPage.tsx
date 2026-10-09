@@ -101,6 +101,7 @@ export const ShopProductsPage: React.FC = () => {
     name: string;
   } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [removedGalleryImageIds, setRemovedGalleryImageIds] = useState<string[]>([]);
 
   const handleBulletPointChange = (index: number, val: string) => {
     const updated = [...bulletPoints];
@@ -288,6 +289,7 @@ export const ShopProductsPage: React.FC = () => {
     setSelectedFile(null);
     galleryDrafts.forEach((d) => URL.revokeObjectURL(d.previewUrl));
     setGalleryDrafts([]);
+    setRemovedGalleryImageIds([]);
     setName('');
     setCategoryId('');
     setDescription('');
@@ -309,8 +311,14 @@ export const ShopProductsPage: React.FC = () => {
   const handleGalleryFilesUpload = async (productId: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
     
-    const product = products.find(p => p._id === productId) || editingProduct;
-    const currentAdditional = product ? Math.max(0, product.images.length - 1) : 0;
+    let product = products.find(p => p._id === productId);
+    if (editingProduct && editingProduct._id === productId) product = editingProduct;
+    if (galleryModalProduct && galleryModalProduct._id === productId) product = galleryModalProduct;
+
+    const currentAdditional = product 
+      ? (product.images?.filter((img: any) => img.url !== product?.mainImage?.url).length || 0)
+      : 0;
+
     const remainingSlots = 5 - currentAdditional;
     
     if (remainingSlots <= 0) {
@@ -348,7 +356,11 @@ export const ShopProductsPage: React.FC = () => {
           setGalleryModalProduct(res.data);
         }
         if (editingProduct && editingProduct._id === productId) {
-          setEditingProduct(res.data);
+          const updatedProduct = { ...res.data };
+          if (removedGalleryImageIds.length > 0) {
+            updatedProduct.images = updatedProduct.images.filter((img: any) => !removedGalleryImageIds.includes(img._id));
+          }
+          setEditingProduct(updatedProduct);
         }
       }
     } catch (err: any) {
@@ -380,7 +392,11 @@ export const ShopProductsPage: React.FC = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const remainingSlots = 5 - galleryDrafts.length;
+    const existingCount = editingProduct 
+      ? (editingProduct.images?.filter((img: any) => img.url !== editingProduct.mainImage?.url).length || 0)
+      : 0;
+    
+    const remainingSlots = 5 - galleryDrafts.length - existingCount;
     if (remainingSlots <= 0) {
       alert.error('You can add up to 5 additional photos per product.');
       return;
@@ -452,13 +468,24 @@ export const ShopProductsPage: React.FC = () => {
       if (selectedFile) {
         formData.append('shop_main', selectedFile);
       }
-      if (!editingProduct && galleryDrafts.length > 0) {
+      if (galleryDrafts.length > 0) {
         galleryDrafts.forEach((draft) => {
           formData.append('shop_gallery', draft.file);
         });
       }
 
       if (editingProduct) {
+        // Execute deletions BEFORE update so backend limit check passes
+        if (removedGalleryImageIds.length > 0) {
+           for (const imgId of removedGalleryImageIds) {
+              try {
+                 await deleteShopProductImage(editingProduct._id, imgId);
+              } catch (e) {
+                 console.error('Failed to delete deferred gallery image', e);
+              }
+           }
+        }
+        
         const res = await updateShopProduct(editingProduct._id, formData);
         if (res.success) {
           handleCloseProdModal();
@@ -962,7 +989,7 @@ export const ShopProductsPage: React.FC = () => {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="admin-input"
-                  style={{ minHeight: '56px', height: '60px', resize: 'vertical' }}
+                  style={{ minHeight: '56px', height: '60px', resize: 'none' }}
                   rows={2}
                   placeholder="Brief description of the product artwork..."
                 />
@@ -1187,12 +1214,12 @@ export const ShopProductsPage: React.FC = () => {
                       }}
                     >
                       <label className="admin-label" style={{ margin: 0, fontWeight: 600 }}>
-                        GALLERY PHOTOS ({Math.max(0, (editingProduct.images?.length || 1) - 1)}/5)
+                        GALLERY PHOTOS ({(editingProduct.images?.filter((img: any) => img.url !== editingProduct.mainImage?.url).length || 0) + galleryDrafts.length}/5)
                       </label>
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                        {Math.max(0, (editingProduct.images?.length || 1) - 1) >= 5 ? (
+                        {((editingProduct.images?.filter((img: any) => img.url !== editingProduct.mainImage?.url).length || 0) + galleryDrafts.length) >= 5 ? (
                           <span style={{ fontSize: '11px', color: '#d32f2f', fontWeight: 500 }}>
-                            {Math.max(0, (editingProduct.images?.length || 1) - 1) > 5 ? 'Product exceeds image limit' : 'You can add up to 5 additional photos per product.'}
+                            {((editingProduct.images?.filter((img: any) => img.url !== editingProduct.mainImage?.url).length || 0) + galleryDrafts.length) > 5 ? 'Product exceeds image limit' : 'You can add up to 5 additional photos per product.'}
                           </span>
                         ) : (
                           <label
@@ -1205,7 +1232,7 @@ export const ShopProductsPage: React.FC = () => {
                               type="file"
                               multiple
                               accept="image/jpeg, image/png, image/webp, image/avif"
-                              onChange={(e) => handleGalleryFilesUpload(editingProduct._id, e.target.files)}
+                              onChange={handleCreateGallerySelect}
                               disabled={uploadingGallery}
                               style={{ display: 'none' }}
                             />
@@ -1214,7 +1241,7 @@ export const ShopProductsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {editingProduct.images && editingProduct.images.length > 0 ? (
+                    {((editingProduct.images?.filter((img: any) => img.url !== editingProduct.mainImage?.url).length || 0) > 0) || galleryDrafts.length > 0 ? (
                       <div
                         style={{
                           display: 'flex',
@@ -1224,7 +1251,7 @@ export const ShopProductsPage: React.FC = () => {
                           alignItems: 'center',
                         }}
                       >
-                        {editingProduct.images.map((img: any, idx: number) => (
+                        {editingProduct.images.filter((img: any) => img.url !== editingProduct.mainImage?.url).map((img: any, idx: number) => (
                           <div
                             key={img._id || idx}
                             style={{
@@ -1245,7 +1272,10 @@ export const ShopProductsPage: React.FC = () => {
                             />
                               <button
                                 type="button"
-                                onClick={() => handleDeleteGalleryImage(editingProduct._id, img._id)}
+                                onClick={() => {
+                                  setRemovedGalleryImageIds(prev => [...prev, img._id]);
+                                  setEditingProduct(prev => prev ? { ...prev, images: prev.images.filter(i => i._id !== img._id) } : prev);
+                                }}
                                 style={{
                                   position: 'absolute',
                                   top: '2px',
@@ -1266,6 +1296,52 @@ export const ShopProductsPage: React.FC = () => {
                               >
                                 <X size={9} />
                               </button>
+                          </div>
+                        ))}
+                        
+                        {/* New Drafts */}
+                        {galleryDrafts.map((draft) => (
+                          <div
+                            key={draft.id}
+                            style={{
+                              position: 'relative',
+                              width: '48px',
+                              height: '48px',
+                              borderRadius: '5px',
+                              overflow: 'hidden',
+                              border: '1px solid var(--admin-border)',
+                              background: 'var(--admin-surface-subtle)',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <img
+                              src={draft.previewUrl}
+                              alt={draft.name}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveGalleryDraft(draft.id)}
+                              style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: '2px',
+                                background: 'rgba(211, 47, 47, 0.9)',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '16px',
+                                height: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                padding: 0,
+                              }}
+                              title="Remove photo"
+                            >
+                              <X size={9} />
+                            </button>
                           </div>
                         ))}
                       </div>

@@ -74,6 +74,7 @@ export const AboutPageEditor: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [portraitDraft, setPortraitDraft] = useState<File | null>(null);
   const { errors, validate, clearError } = useValidation<string>();
 
   const fetchContent = async (isInitial = false) => {
@@ -82,6 +83,7 @@ export const AboutPageEditor: React.FC = () => {
       const res = await getAboutContent();
       if (res.success && res.data) {
         setContent(res.data);
+        setPortraitDraft(null);
       }
     } catch (err: any) {
       setErrorMsg("We couldn't load about page configuration.. Please refresh and try again.");
@@ -109,19 +111,10 @@ export const AboutPageEditor: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    try {
-      setUploadingImage(true);
-      const res = await uploadAboutHeadshot(file);
-      if (res.success && res.data) {
-        setContent((prev) => ({ ...prev, headshotImage: res.data.headshotImage }));
-        alert.success('Portrait uploaded successfully!', 'Uploaded');
-      }
-    } catch (err: any) {
-      alert.error(err.message || "We couldn't upload about image. Please try again.");
-    } finally {
-      setUploadingImage(false);
-      e.target.value = '';
-    }
+    const previewUrl = URL.createObjectURL(file);
+    setPortraitDraft(file);
+    setContent((prev) => ({ ...prev, headshotImage: { url: previewUrl, filename: file.name } }));
+    e.target.value = '';
   };
 
   const removeImage = async () => {
@@ -132,6 +125,7 @@ export const AboutPageEditor: React.FC = () => {
       isDanger: true,
     });
     if (!confirmed) return;
+    setPortraitDraft(null);
     setContent((prev) => ({ ...prev, headshotImage: { url: '', filename: '' } }));
     alert.info('Portrait image removed.', 'Removed');
   };
@@ -155,6 +149,20 @@ export const AboutPageEditor: React.FC = () => {
     try {
       setSaving(true);
       setErrorMsg('');
+      
+      // Upload drafted portrait if it exists
+      if (portraitDraft) {
+        try {
+          const res = await uploadAboutHeadshot(portraitDraft);
+          if (res.success && res.data) {
+            content.headshotImage = res.data.headshotImage;
+          }
+        } catch (err) {
+          console.error("Failed to upload portrait draft", err);
+          alert.error("Failed to save the portrait image, but we will save your text changes.");
+        }
+      }
+
       const { _id, __v, createdAt, updatedAt, ...cleanContent } = content as any;
       // Strip trailing empty paragraphs to avoid endless newlines, but keep empty lines between paragraphs
       let paragraphs = [...(content.bioParagraphs || [])];
@@ -285,7 +293,7 @@ export const AboutPageEditor: React.FC = () => {
                     padding: '12px 16px',
                     fontSize: '14px',
                     lineHeight: '1.6',
-                    resize: 'vertical',
+                    resize: 'none',
                   }}
                   placeholder="Write biography..."
                   aria-invalid={!!errors['bio']}

@@ -78,30 +78,36 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: 4px;
-  color: var(--admin-text-main, #222222);
+  color: #111111 !important;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.rte-btn:hover {
-  background: #FFFFFF;
-  border-color: var(--admin-border-strong);
-  color: #000000;
+.rte-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: transparent;
 }
 
-.rte-btn:active {
-  background: #EBEBE6;
+.rte-btn:active:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .rte-btn.active {
-  background: #111111;
-  color: #FFFFFF;
-  border-color: #111111;
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
-.rte-btn.active:hover {
-  background: #222222;
-  color: #FFFFFF;
+.rte-btn.active:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.rte-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.rte-btn svg {
+  stroke: currentColor;
 }
 
 .rte-content {

@@ -63,6 +63,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   maxChars,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const [, forceUpdate] = useState({});
 
   const editor = useEditor({
     extensions: [
@@ -166,6 +167,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     },
     onFocus: () => setIsFocused(true),
     onBlur: () => setIsFocused(false),
+    onTransaction: () => forceUpdate({}),
   });
 
   // Use the exact same calculation as the limit enforcement if the editor is mounted.

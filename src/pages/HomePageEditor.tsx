@@ -1057,7 +1057,7 @@ export const HomePageEditor: React.FC = () => {
                     clearError(`service-description-${idx}`);
                   }}
                   className="admin-form-textarea"
-                  style={{ marginBottom: 0, resize: 'vertical', minHeight: '80px', flex: 1 }}
+                  style={{ marginBottom: 0, resize: 'none', minHeight: '80px', flex: 1 }}
                   rows={3}
                   placeholder="Service description paragraph..."
                   aria-invalid={!!errors[`service-description-${idx}`]}
