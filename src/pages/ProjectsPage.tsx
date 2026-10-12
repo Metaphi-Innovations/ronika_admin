@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FolderKanban, Plus, Edit, Trash2, Image as ImageIcon, Eye, EyeOff, Loader2, Sparkles, Layers } from 'lucide-react';
-import { getProjects, updateProject, deleteProject, IProject } from '../services/projectApi';
+import { FolderKanban, Plus, Edit, Trash2, Image as ImageIcon, Eye, EyeOff, Loader2, Sparkles, Layers, ArrowUp, ArrowDown } from 'lucide-react';
+import { getProjects, updateProject, deleteProject, reorderProjects, IProject } from '../services/projectApi';
 import { getHomeContent } from '../services/contentApi';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ProjectCategoryModal } from '../components/ProjectCategoryModal';
@@ -22,6 +22,7 @@ export const ProjectsPage: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
 
   const navigate = useNavigate();
 
@@ -101,6 +102,37 @@ export const ProjectsPage: React.FC = () => {
     }
   };
 
+  const handleMoveProject = async (index: number, direction: 'up' | 'down') => {
+    if (isReordering) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= projects.length) return;
+
+    // Optimistically reorder in state
+    const updated = [...projects];
+    const temp = updated[index];
+    updated[index] = updated[targetIndex];
+    updated[targetIndex] = temp;
+    setProjects(updated);
+
+    const items = updated.map((p, idx) => ({
+      _id: p._id,
+      displayOrder: idx + 1,
+    }));
+
+    try {
+      setIsReordering(true);
+      const res = await reorderProjects(items);
+      if (!res.success) {
+        throw new Error(res.message || 'Failed to save project sequence');
+      }
+    } catch (err: any) {
+      alert.error(err.message || 'Failed to update project order');
+      fetchProjects(false);
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -151,11 +183,12 @@ export const ProjectsPage: React.FC = () => {
                   <th>Category</th>
                   <th>Media</th>
                   <th>Publication Status</th>
+                  <th style={{ width: '90px', textAlign: 'center' }}>Sequence</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {projects.map((project) => (
+                {projects.map((project, idx) => (
                   <tr key={project._id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -256,6 +289,28 @@ export const ProjectsPage: React.FC = () => {
                             Featured
                           </span>
                         )}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', justifyContent: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveProject(idx, 'up')}
+                          disabled={idx === 0 || isReordering}
+                          className="admin-btn-icon"
+                          title="Move Up"
+                        >
+                          <ArrowUp size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveProject(idx, 'down')}
+                          disabled={idx === projects.length - 1 || isReordering}
+                          className="admin-btn-icon"
+                          title="Move Down"
+                        >
+                          <ArrowDown size={14} />
+                        </button>
                       </div>
                     </td>
                     <td style={{ textAlign: 'right' }}>

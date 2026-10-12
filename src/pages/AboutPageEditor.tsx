@@ -140,8 +140,12 @@ export const AboutPageEditor: React.FC = () => {
     };
     
     rules['bio'] = () => {
-      const allText = (content.bioParagraphs || []).join('').trim();
-      return !allText ? 'Please write a biography.' : null;
+      const fullBioText = (content.bioParagraphs || []).join('\n');
+      if (!fullBioText.trim()) return 'Please write a biography.';
+      if (fullBioText.length > MAX_ABOUT_BIO_CHARS) {
+        return `Biography cannot exceed ${MAX_ABOUT_BIO_CHARS} characters. Currently ${fullBioText.length} characters.`;
+      }
+      return null;
     };
 
     if (!validate(rules)) return;

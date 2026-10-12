@@ -112,6 +112,11 @@ export const deleteProject = async (id: string) => {
   return response.data;
 };
 
+export const reorderProjects = async (items: { _id: string; displayOrder: number }[]) => {
+  const response = await api.put('/admin/projects/reorder', { items });
+  return response.data;
+};
+
 // ========================
 // Image Uploads (Multer Multipart)
 // ========================

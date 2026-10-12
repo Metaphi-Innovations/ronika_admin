@@ -105,12 +105,12 @@ export const ShopProductsPage: React.FC = () => {
 
   const handleBulletPointChange = (index: number, val: string) => {
     const updated = [...bulletPoints];
-    updated[index] = val;
+    updated[index] = val.slice(0, 55);
     setBulletPoints(updated);
   };
 
   const addBulletPoint = () => {
-    if (bulletPoints.length < 6) {
+    if (bulletPoints.length < 4) {
       setBulletPoints([...bulletPoints, '']);
     }
   };
@@ -260,7 +260,7 @@ export const ShopProductsPage: React.FC = () => {
     setCategoryId(catId);
     setDescription(prod.description || prod.shortDescription || '');
     const bullets = prod.details?.bulletPoints && prod.details.bulletPoints.length > 0
-      ? prod.details.bulletPoints.filter(Boolean)
+      ? prod.details.bulletPoints.filter(Boolean).slice(0, 4).map((b: string) => b.slice(0, 55))
       : [];
     setBulletPoints(bullets);
 
@@ -445,6 +445,10 @@ export const ShopProductsPage: React.FC = () => {
       alert.warning('Please provide a product description.', 'Missing Description');
       return;
     }
+    if (description.trim().length > 500) {
+      alert.warning('Product description cannot exceed 500 characters.', 'Description Too Long');
+      return;
+    }
     if (!editingProduct && !selectedFile) {
       alert.warning('Please upload a product artwork image.', 'Missing Image');
       return;
@@ -457,6 +461,18 @@ export const ShopProductsPage: React.FC = () => {
     try {
       setSubmitting(true);
       const activeBullets = bulletPoints.map((b) => b.trim()).filter(Boolean);
+      if (activeBullets.length > 4) {
+        alert.warning('You can add at most 4 bullet points.', 'Too Many Bullet Points');
+        setSubmitting(false);
+        return;
+      }
+      for (let i = 0; i < activeBullets.length; i++) {
+        if (activeBullets[i].length > 55) {
+          alert.warning(`Bullet point ${i + 1} exceeds 55 characters (${activeBullets[i].length}/55).`, 'Bullet Point Too Long');
+          setSubmitting(false);
+          return;
+        }
+      }
       const formData = new FormData();
       formData.append('name', name.trim());
       formData.append('category', categoryId);
@@ -984,14 +1000,28 @@ export const ShopProductsPage: React.FC = () => {
 
               {/* Description */}
               <div style={{ marginBottom: '0.75rem' }}>
-                <label className="admin-label">Description <span className="admin-required-asterisk">*</span></label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                  <label className="admin-label" style={{ margin: 0 }}>
+                    Description <span className="admin-required-asterisk">*</span>
+                  </label>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: description.length > 500 ? 'var(--admin-danger)' : 'var(--admin-text-muted)',
+                      fontWeight: description.length > 500 ? 600 : 400,
+                    }}
+                  >
+                    {description.length} / 500 characters
+                  </span>
+                </div>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  maxLength={500}
                   className="admin-input"
                   style={{ minHeight: '56px', height: '60px', resize: 'none' }}
                   rows={2}
-                  placeholder="Brief description of the product artwork..."
+                  placeholder="Brief description of the product artwork (max 500 characters)..."
                 />
               </div>
 
@@ -1005,10 +1035,15 @@ export const ShopProductsPage: React.FC = () => {
                     marginBottom: '4px',
                   }}
                 >
-                  <label className="admin-label" style={{ margin: 0 }}>
-                    Product Highlights (Optional)
-                  </label>
-                  {bulletPoints.length < 5 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <label className="admin-label" style={{ margin: 0 }}>
+                      Product Highlights (Optional)
+                    </label>
+                    <span style={{ fontSize: '10.5px', color: 'var(--admin-text-muted)' }}>
+                      ({bulletPoints.length}/4 max, 55 chars each)
+                    </span>
+                  </div>
+                  {bulletPoints.length < 4 && (
                     <button
                       type="button"
                       onClick={addBulletPoint}
@@ -1029,7 +1064,7 @@ export const ShopProductsPage: React.FC = () => {
                       padding: '4px 0',
                     }}
                   >
-                    No bullet points added. Click "+ Add Point" to add features (dimensions, paper stock, etc.).
+                    No bullet points added. Click "+ Add Point" to add up to 4 highlights (max 55 characters each).
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -1046,14 +1081,28 @@ export const ShopProductsPage: React.FC = () => {
                         >
                           •
                         </span>
-                        <input
-                          type="text"
-                          value={point}
-                          onChange={(e) => handleBulletPointChange(idx, e.target.value)}
-                          className="admin-input"
-                          style={{ margin: 0, fontSize: '12px', padding: '5px 8px' }}
-                          placeholder={`Highlight ${idx + 1} (e.g. 300gsm cotton rag stock)`}
-                        />
+                        <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            value={point}
+                            maxLength={55}
+                            onChange={(e) => handleBulletPointChange(idx, e.target.value)}
+                            className="admin-input"
+                            style={{ margin: 0, fontSize: '12px', padding: '5px 48px 5px 8px', width: '100%' }}
+                            placeholder={`Highlight ${idx + 1} (max 55 characters)`}
+                          />
+                          <span
+                            style={{
+                              position: 'absolute',
+                              right: '8px',
+                              fontSize: '10px',
+                              color: point.length > 55 ? 'var(--admin-danger)' : 'var(--admin-text-muted)',
+                              pointerEvents: 'none',
+                            }}
+                          >
+                            {point.length}/55
+                          </span>
+                        </div>
                         <button
                           type="button"
                           onClick={() => removeBulletPoint(idx)}

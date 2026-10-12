@@ -84,9 +84,9 @@ export const AdminLayout: React.FC = () => {
       title: 'CONTENT',
       items: [
         { label: 'Home Page', path: '/content/home', icon: Home },
+        { label: 'About / Bio', path: '/about', icon: User },
         { label: 'Portfolio Projects', path: '/projects', icon: FolderKanban },
         { label: 'Gallery Artwork', path: '/gallery', icon: ImageIcon },
-        { label: 'About / Bio', path: '/about', icon: User },
         { label: 'Contact Details', path: '/contact', icon: Mail },
       ],
     },

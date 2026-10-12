@@ -10,6 +10,17 @@ import {
   Bold,
   Italic,
   Underline,
+  Strikethrough,
+  List,
+  ListOrdered,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  Link as LinkIcon,
+  Eraser,
+  Undo,
+  Redo,
 } from 'lucide-react';
 import { countReadableChars, sanitizeRichText } from '../utils/richText';
 import './RichTextEditor.css';
@@ -201,6 +212,23 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, [disabled, editor]);
 
 
+  const handleAddLink = () => {
+    if (disabled || !editor) return;
+    const previousUrl = editor.getAttributes('link').href;
+    const url = window.prompt('Enter link URL (e.g. https://example.com):', previousUrl || '');
+    if (url === null) return;
+    if (url.trim() === '') {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      return;
+    }
+    const cleanUrl = url.trim();
+    if (!cleanUrl.toLowerCase().startsWith('javascript:')) {
+      editor.chain().focus().extendMarkRange('link').setLink({ href: cleanUrl }).run();
+    } else {
+      window.alert('Invalid or unsafe link URL.');
+    }
+  };
+
   if (!editor) {
     return null;
   }
@@ -273,7 +301,145 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <Underline size={15} />
           </button>
 
+          {/* Strikethrough */}
+          <button
+            type="button"
+            className={`rte-btn ${editor.isActive('strike') ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            disabled={disabled}
+            title="Strikethrough"
+          >
+            <Strikethrough size={15} />
+          </button>
 
+          <div className="rte-divider" />
+
+          {/* Bulleted List */}
+          <button
+            type="button"
+            className={`rte-btn ${editor.isActive('bulletList') ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            disabled={disabled}
+            title="Bulleted List"
+          >
+            <List size={15} />
+          </button>
+
+          {/* Numbered List */}
+          <button
+            type="button"
+            className={`rte-btn ${editor.isActive('orderedList') ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            disabled={disabled}
+            title="Numbered List"
+          >
+            <ListOrdered size={15} />
+          </button>
+
+          <div className="rte-divider" />
+
+          {/* Align Left */}
+          <button
+            type="button"
+            className={`rte-btn ${editor.isActive({ textAlign: 'left' }) ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            disabled={disabled}
+            title="Align Left"
+          >
+            <AlignLeft size={15} />
+          </button>
+
+          {/* Align Center */}
+          <button
+            type="button"
+            className={`rte-btn ${editor.isActive({ textAlign: 'center' }) ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            disabled={disabled}
+            title="Align Center"
+          >
+            <AlignCenter size={15} />
+          </button>
+
+          {/* Align Right */}
+          <button
+            type="button"
+            className={`rte-btn ${editor.isActive({ textAlign: 'right' }) ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            disabled={disabled}
+            title="Align Right"
+          >
+            <AlignRight size={15} />
+          </button>
+
+          {/* Justify */}
+          <button
+            type="button"
+            className={`rte-btn ${editor.isActive({ textAlign: 'justify' }) ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+            disabled={disabled}
+            title="Justify"
+          >
+            <AlignJustify size={15} />
+          </button>
+
+          <div className="rte-divider" />
+
+          {/* Link */}
+          <button
+            type="button"
+            className={`rte-btn ${editor.isActive('link') ? 'active' : ''}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleAddLink}
+            disabled={disabled}
+            title="Add Link"
+          >
+            <LinkIcon size={15} />
+          </button>
+
+          {/* Clear Formatting */}
+          <button
+            type="button"
+            className="rte-btn"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
+            disabled={disabled}
+            title="Clear Formatting"
+          >
+            <Eraser size={15} />
+          </button>
+
+          <div className="rte-divider" />
+
+          {/* Undo */}
+          <button
+            type="button"
+            className="rte-btn"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => editor.chain().focus().undo().run()}
+            disabled={disabled || !editor.can().undo()}
+            title="Undo"
+          >
+            <Undo size={15} />
+          </button>
+
+          {/* Redo */}
+          <button
+            type="button"
+            className="rte-btn"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => editor.chain().focus().redo().run()}
+            disabled={disabled || !editor.can().redo()}
+            title="Redo"
+          >
+            <Redo size={15} />
+          </button>
         </div>
 
         {/* ContentEditable Canvas - Tiptap wraps it automatically */}

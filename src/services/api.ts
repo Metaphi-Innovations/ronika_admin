@@ -73,7 +73,16 @@ export function humanizeErrorMessage(rawMsg: string): string {
   }
 
   // Duplicate key (E11000)
-  if (msg.includes('E11000') || msg.includes('duplicate key')) {
+  if (msg.includes('E11000') || msg.includes('duplicate key') || msg.toLowerCase().includes('already exists')) {
+    if (/shopcategor|projectcategor|categor/i.test(msg)) {
+      return 'A category with this name already exists. Please choose a different name.';
+    }
+    if (/product/i.test(msg)) {
+      return 'A product with this name already exists. Please choose a different name.';
+    }
+    if (/project/i.test(msg)) {
+      return 'A project with this name already exists. Please choose a different name.';
+    }
     return 'An item with this name or slug already exists. Please choose a different one.';
   }
 
@@ -111,9 +120,16 @@ api.interceptors.response.use(
     }
 
     // Automatically unpack server message so error.message is always meaningful and human-readable
+    const reqUrl = error.config?.url || '';
     const rawMsg = error.response?.data?.message || error.response?.data?.error || error.message;
     if (rawMsg && typeof rawMsg === 'string') {
-      const friendlyMsg = humanizeErrorMessage(rawMsg);
+      let friendlyMsg = humanizeErrorMessage(rawMsg);
+      if (
+        (rawMsg.includes('E11000') || rawMsg.includes('duplicate key') || rawMsg.toLowerCase().includes('already exist')) &&
+        reqUrl.includes('categor')
+      ) {
+        friendlyMsg = 'A category with this name already exists. Please choose a different name.';
+      }
       error.message = friendlyMsg;
       if (error.response?.data) {
         error.response.data.message = friendlyMsg;
