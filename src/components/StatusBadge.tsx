@@ -27,14 +27,14 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label, style }
       );
     case 'active':
       return (
-        <span className="status-badge published" style={style}>
+        <span className="status-badge active" style={style}>
           <Activity size={12} style={{ marginRight: '4px' }} />
           {label || 'Active'}
         </span>
       );
     case 'inactive':
       return (
-        <span className="status-badge draft" style={style}>
+        <span className="status-badge inactive" style={style}>
           <MinusCircle size={12} style={{ marginRight: '4px' }} />
           {label || 'Inactive'}
         </span>

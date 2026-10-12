@@ -22,14 +22,14 @@ import { Loader } from '../components/Loader';
 import { PasswordInput } from '../components/PasswordInput';
 import { useAlert } from '../context/AlertContext';
 
-export const SUPERADMIN_EMAIL = 'admin@ronikabhatia.com';
+export const SUPERADMIN_ID = '6aa27176fb25419a90d3f561';
 
 export const UserManagementPage: React.FC = () => {
   const alert = useAlert();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, updateUser: updateAuthUser } = useAuth();
 
   const isCurrentSuperAdmin =
-    Boolean(currentUser?.email && currentUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase());
+    Boolean(currentUser?.role === 'super_admin' || currentUser?.id === SUPERADMIN_ID);
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +57,7 @@ export const UserManagementPage: React.FC = () => {
   const [editFormData, setEditFormData] = useState<{
     name: string;
     email: string;
-    role: 'admin' | 'editor';
+    role: 'super_admin' | 'admin' | 'editor';
     isActive: boolean;
     changePassword: boolean;
     newPassword: string;
@@ -171,7 +171,7 @@ export const UserManagementPage: React.FC = () => {
 
   // --- EDIT USER HANDLERS ---
   const handleOpenEditModal = (target: AdminUser) => {
-    const isTargetRonika = target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+    const isTargetRonika = target.id === SUPERADMIN_ID || target.role === 'super_admin';
     const isSelf = currentUser?.id === target.id;
 
     if (!isCurrentSuperAdmin && !isSelf) {
@@ -235,9 +235,12 @@ export const UserManagementPage: React.FC = () => {
 
     try {
       setSubmitting(true);
-      await userApi.updateUser(editingUser.id, payload);
+      const updated = await userApi.updateUser(editingUser.id, payload);
       setEditingUser(null);
       alert.success('Administrator account updated successfully.');
+      if (editingUser.id === currentUser?.id) {
+        updateAuthUser(updated);
+      }
       await fetchUsers();
     } catch (err: any) {
       const msg = err.message || "We couldn't update user.. Please try again.";
@@ -258,7 +261,7 @@ export const UserManagementPage: React.FC = () => {
       return;
     }
 
-    const isTargetRonika = statusToggleTarget.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+    const isTargetRonika = statusToggleTarget.id === SUPERADMIN_ID || statusToggleTarget.role === 'super_admin';
     if (isTargetRonika) {
       alert.error('Protected account: The primary administrator account cannot be deactivated.');
       setStatusToggleTarget(null);
@@ -291,7 +294,7 @@ export const UserManagementPage: React.FC = () => {
       return;
     }
 
-    const isTargetRonika = deleteTarget.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+    const isTargetRonika = deleteTarget.id === SUPERADMIN_ID || deleteTarget.role === 'super_admin';
     if (isTargetRonika) {
       alert.error('Protected account: The primary administrator account cannot be deleted.');
       setDeleteTarget(null);
@@ -383,14 +386,13 @@ export const UserManagementPage: React.FC = () => {
               <tbody>
                 {users.map((target) => {
                   const isSelf = currentUser?.id === target.id;
-                  const isFullAdmin = target.role === 'admin';
-                  const isFinalAdmin = isFullAdmin && target.isActive && activeAdminsCount <= 1;
-                  const isTargetSuperAdmin = target.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+                  const isTargetSuperAdmin = target.id === SUPERADMIN_ID || target.role === 'super_admin';
 
                   // Permission flags:
-                  // Only Super Admin can edit other users' details; standard admin can only edit their own account.
+                  // Super Admin can edit other users' details and activate or deactivate any administrator or editor.
+                  // Only self and the primary Super Admin are protected against deactivation.
                   const canEdit = isCurrentSuperAdmin || isSelf;
-                  const canToggle = isCurrentSuperAdmin && !isSelf && !isTargetSuperAdmin && !(target.isActive && isFinalAdmin);
+                  const canToggle = isCurrentSuperAdmin && !isSelf && !isTargetSuperAdmin;
 
                   return (
                     <tr key={target.id}>
@@ -434,45 +436,35 @@ export const UserManagementPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Role Badge - Explicit Distinction for Super Admin vs Admin vs Editor */}
+                      {/* Role Badge - Display Super Admin as Super Admin, Admin as Admin, Editor as Editor */}
                       <td>
-                        {isTargetSuperAdmin ? (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              padding: '3px 8px',
-                              borderRadius: '4px',
-                              background: '#EDE7F6',
-                              color: '#4527A0',
-                              letterSpacing: '0.02em',
-                            }}
-                          >
-                            <Shield size={12} color="#5E35B1" />
-                            Admin
-                          </span>
-                        ) : (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              padding: '3px 8px',
-                              borderRadius: '4px',
-                              background: target.role === 'admin' ? '#E8EAF6' : 'var(--admin-surface-subtle)',
-                              color: target.role === 'admin' ? '#283593' : '#616161',
-                              textTransform: 'capitalize',
-                            }}
-                          >
-                            <Shield size={12} />
-                            {target.role === 'admin' ? 'Admin' : 'Editor'}
-                          </span>
-                        )}
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background:
+                              target.role === 'super_admin'
+                                ? '#EDE9FE'
+                                : target.role === 'editor'
+                                ? 'var(--admin-surface-subtle)'
+                                : '#E8EAF6',
+                            color:
+                              target.role === 'super_admin'
+                                ? '#6D28D9'
+                                : target.role === 'editor'
+                                ? '#616161'
+                                : '#283593',
+                            textTransform: 'none',
+                          }}
+                        >
+                          <Shield size={12} />
+                          {target.role === 'super_admin' ? 'Super Admin' : target.role === 'editor' ? 'Editor' : 'Admin'}
+                        </span>
                       </td>
 
                       {/* Status */}
@@ -591,12 +583,12 @@ export const UserManagementPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} autoComplete="off">
+            <form onSubmit={handleCreateUser} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {/* Dummy hidden inputs to intercept aggressive browser credential autofill */}
               <input type="text" name="fake_username_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
               <input type="password" name="fake_password_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="new-password" />
 
-              <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 {modalError && (
                   <div
                     style={{
@@ -721,6 +713,8 @@ export const UserManagementPage: React.FC = () => {
                   justifyContent: 'flex-end',
                   gap: '0.75rem',
                   borderTop: '1px solid var(--admin-border)',
+                  backgroundColor: '#FFFFFF',
+                  flexShrink: 0,
                 }}
               >
                 <button
@@ -772,7 +766,7 @@ export const UserManagementPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleUpdateUser} autoComplete="off">
+            <form onSubmit={handleUpdateUser} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {/* Dummy hidden inputs to intercept aggressive browser credential autofill */}
               <input type="text" name="fake_edit_username_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
               <input type="password" name="fake_edit_password_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="new-password" />
@@ -784,7 +778,8 @@ export const UserManagementPage: React.FC = () => {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '1rem',
-                  maxHeight: '75vh',
+                  flex: 1,
+                  minHeight: 0,
                   overflowY: 'auto',
                 }}
               >
@@ -838,9 +833,9 @@ export const UserManagementPage: React.FC = () => {
                 {/* Role */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
                   <label className="admin-form-label">Role</label>
-                  {isCurrentSuperAdmin && editingUser.email.toLowerCase() !== SUPERADMIN_EMAIL.toLowerCase() ? (
+                  {isCurrentSuperAdmin && editingUser.id !== SUPERADMIN_ID && editingUser.role !== 'super_admin' ? (
                     <select
-                      value={editFormData.role}
+                      value={editFormData.role === 'editor' ? 'editor' : 'admin'}
                       onChange={(e) =>
                         setEditFormData((prev) => ({
                           ...prev,
@@ -863,18 +858,15 @@ export const UserManagementPage: React.FC = () => {
                         fontWeight: 500,
                       }}
                     >
-                      {editingUser.email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase()
-                        ? 'Admin'
-                        : editingUser.role === 'admin'
-                        ? 'Administrator'
-                        : 'Editor'}
+                      {editingUser.role === 'super_admin' ? 'Super Admin' : editingUser.role === 'editor' ? 'Editor' : 'Admin'}
                     </div>
                   )}
                 </div>
 
                 {/* Status Toggle - Only visible & editable for Super Admin editing other accounts */}
                 {isCurrentSuperAdmin &&
-                  editingUser.email.toLowerCase() !== SUPERADMIN_EMAIL.toLowerCase() &&
+                  editingUser.id !== SUPERADMIN_ID &&
+                  editingUser.role !== 'super_admin' &&
                   currentUser?.id !== editingUser.id && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                       <input
@@ -984,6 +976,8 @@ export const UserManagementPage: React.FC = () => {
                   justifyContent: 'flex-end',
                   gap: '0.75rem',
                   borderTop: '1px solid var(--admin-border)',
+                  backgroundColor: '#FFFFFF',
+                  flexShrink: 0,
                 }}
               >
                 <button

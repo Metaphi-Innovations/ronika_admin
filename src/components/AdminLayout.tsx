@@ -69,7 +69,8 @@ export const AdminLayout: React.FC = () => {
     navigate('/login');
   };
 
-  const isFullAdmin = user?.role === 'admin';
+  const isFullAdmin =
+    user?.role === 'admin' || user?.role === 'super_admin' || user?.id === '6aa27176fb25419a90d3f561';
 
   const navSections = [
     {
@@ -204,6 +205,31 @@ export const AdminLayout: React.FC = () => {
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
               </span>
               <span className="topbar-user-name">{user?.name || user?.email || 'Admin'}</span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '2px 7px',
+                  borderRadius: '10px',
+                  backgroundColor:
+                    user?.role === 'super_admin'
+                      ? '#EDE9FE'
+                      : user?.role === 'editor'
+                      ? '#F3F4F6'
+                      : '#E8EAF6',
+                  color:
+                    user?.role === 'super_admin'
+                      ? '#6D28D9'
+                      : user?.role === 'editor'
+                      ? '#4B5563'
+                      : '#283593',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  lineHeight: '1.2',
+                }}
+              >
+                {user?.role === 'super_admin' ? 'Super Admin' : user?.role === 'editor' ? 'Editor' : 'Admin'}
+              </span>
             </div>
             <button
               type="button"

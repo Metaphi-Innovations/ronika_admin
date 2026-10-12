@@ -257,12 +257,12 @@ export const GalleryPageAdmin: React.FC = () => {
     e.preventDefault();
     if (uploading) return;
     
-    if (!categoryId) {
-      alert.warning('Please select a category.');
+    if (!categoryId || !categoryId.trim()) {
+      alert.error('Please select a category. Category is a mandatory field.', 'Category Required');
       return;
     }
     if (!selectedFile) {
-      alert.warning('Please choose an artwork image file.');
+      alert.error('Please choose an artwork image file. Image upload is a mandatory field.', 'Image Required');
       return;
     }
 
@@ -325,6 +325,11 @@ export const GalleryPageAdmin: React.FC = () => {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
+
+    if (!editCategoryId || !editCategoryId.trim()) {
+      alert.error('Please select a category. Category is a mandatory field.', 'Category Required');
+      return;
+    }
 
     try {
       setEditingImage(true);
@@ -832,14 +837,13 @@ export const GalleryPageAdmin: React.FC = () => {
               ADD ARTWORK
             </h3>
 
-            <form onSubmit={handleUploadImage}>
+            <form onSubmit={handleUploadImage} noValidate>
               <div className="admin-form-group" style={{ marginBottom: '0.875rem' }}>
                 <label className="admin-form-label">Category <span className="admin-required-asterisk">*</span></label>
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                   className="admin-form-select"
-                  required
                 >
                   <option value="">Select Category</option>
                   {categories.map((c) => (
@@ -947,7 +951,6 @@ export const GalleryPageAdmin: React.FC = () => {
                       accept="image/*"
                       onChange={handleFileSelect}
                       style={{ display: 'none' }}
-                      required
                     />
                   </label>
                 )}
@@ -969,7 +972,7 @@ export const GalleryPageAdmin: React.FC = () => {
                 <button
                   type="submit"
                   className="admin-btn primary"
-                  disabled={uploading || !selectedFile}
+                  disabled={uploading}
                 >
                   {uploading ? 'Adding...' : 'Add Artwork'}
                 </button>
@@ -999,7 +1002,7 @@ export const GalleryPageAdmin: React.FC = () => {
               EDIT ARTWORK INFORMATION
             </h3>
 
-            <form onSubmit={handleEditSubmit}>
+            <form onSubmit={handleEditSubmit} noValidate>
               <div className="admin-form-group" style={{ marginBottom: '1.25rem' }}>
                 <label className="admin-form-label">Replace Image (Optional)</label>
                 {replaceFile && replacePreview ? (
@@ -1088,7 +1091,6 @@ export const GalleryPageAdmin: React.FC = () => {
                   value={editCategoryId}
                   onChange={(e) => setEditCategoryId(e.target.value)}
                   className="admin-form-select"
-                  required
                 >
                   <option value="">Select Category</option>
                   {categories.map((c) => (

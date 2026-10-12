@@ -1078,9 +1078,15 @@ input:-webkit-autofill:active {
   letter-spacing: 0.05em;
 }
 
-.status-badge.published {
+.status-badge.published,
+.status-badge.active {
   background-color: #E8F5E9;
   color: var(--admin-success);
+}
+
+.status-badge.inactive {
+  background-color: #FFEBEE;
+  color: var(--admin-danger);
 }
 
 .status-badge.draft {
@@ -1405,10 +1411,18 @@ input:-webkit-autofill:active {
   overflow: hidden;
   animation: slideUp 0.2s ease-out;
   width: min(94vw, 540px);
-  max-height: 90vh;
-  max-height: 90dvh;
+  max-height: calc(100vh - 3rem);
+  max-height: calc(100dvh - 3rem);
   display: flex;
   flex-direction: column;
+}
+
+.modal-container form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .modal-header {
@@ -1840,29 +1854,22 @@ input:-webkit-autofill:active {
   border-color: #ffffff;
 }
 
-.react-resizable-handle-se { bottom: 6px !important; right: 6px !important; cursor: se-resize !important; }
-.react-resizable-handle-se::after { bottom: 0; right: 0; }
+.react-resizable-handle-se { 
+  bottom: 6px !important; 
+  right: 6px !important; 
+  cursor: se-resize !important; 
+  z-index: 20 !important;
+}
+.react-resizable-handle-se::after { 
+  bottom: 0; 
+  right: 0; 
+}
 
-.react-resizable-handle-sw { bottom: 6px !important; left: 6px !important; cursor: sw-resize !important; }
-.react-resizable-handle-sw::after { bottom: 0; left: 0; }
-
-.react-resizable-handle-ne { top: 6px !important; right: 6px !important; cursor: ne-resize !important; }
-.react-resizable-handle-ne::after { top: 0; right: 0; }
-
-.react-resizable-handle-nw { top: 6px !important; left: 6px !important; cursor: nw-resize !important; }
-.react-resizable-handle-nw::after { top: 0; left: 0; }
-
-.react-resizable-handle-e { right: 6px !important; top: 50% !important; margin-top: -8px !important; cursor: e-resize !important; }
-.react-resizable-handle-e::after { right: 0; top: 0; }
-
-.react-resizable-handle-w { left: 6px !important; top: 50% !important; margin-top: -8px !important; cursor: w-resize !important; }
-.react-resizable-handle-w::after { left: 0; top: 0; }
-
-.react-resizable-handle-n { top: 6px !important; left: 50% !important; margin-left: -8px !important; cursor: n-resize !important; }
-.react-resizable-handle-n::after { top: 0; left: 0; }
-
-.react-resizable-handle-s { bottom: 6px !important; left: 50% !important; margin-left: -8px !important; cursor: s-resize !important; }
-.react-resizable-handle-s::after { bottom: 0; left: 0; }
+/* Strictly hide any handles other than right-bottom corner */
+.react-resizable-handle:not(.react-resizable-handle-se) {
+  display: none !important;
+  pointer-events: none !important;
+}
 
 /* Shared RGL Grid Item Overlays */
 .rgl-item-container {
@@ -1916,6 +1923,8 @@ input:-webkit-autofill:active {
   gap: 4px;
   pointer-events: auto;
   flex-shrink: 0;
+  position: relative;
+  z-index: 30;
 }
 
 .grid-action-btn {

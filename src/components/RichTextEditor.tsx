@@ -17,7 +17,6 @@ import {
   AlignCenter,
   AlignRight,
   AlignJustify,
-  Link as LinkIcon,
   Eraser,
   Undo,
   Redo,
@@ -212,22 +211,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, [disabled, editor]);
 
 
-  const handleAddLink = () => {
-    if (disabled || !editor) return;
-    const previousUrl = editor.getAttributes('link').href;
-    const url = window.prompt('Enter link URL (e.g. https://example.com):', previousUrl || '');
-    if (url === null) return;
-    if (url.trim() === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
-    }
-    const cleanUrl = url.trim();
-    if (!cleanUrl.toLowerCase().startsWith('javascript:')) {
-      editor.chain().focus().extendMarkRange('link').setLink({ href: cleanUrl }).run();
-    } else {
-      window.alert('Invalid or unsafe link URL.');
-    }
-  };
 
   if (!editor) {
     return null;
@@ -391,17 +374,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
           <div className="rte-divider" />
 
-          {/* Link */}
-          <button
-            type="button"
-            className={`rte-btn ${editor.isActive('link') ? 'active' : ''}`}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={handleAddLink}
-            disabled={disabled}
-            title="Add Link"
-          >
-            <LinkIcon size={15} />
-          </button>
 
           {/* Clear Formatting */}
           <button

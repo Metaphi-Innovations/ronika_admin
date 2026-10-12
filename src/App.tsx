@@ -31,7 +31,8 @@ const PageLoader: React.FC = () => (
 
 const FallbackRedirect: React.FC = () => {
   const { user } = useAuth();
-  return <Navigate to={user?.role === 'admin' ? '/users' : '/content/home'} replace />;
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  return <Navigate to={isAdmin ? '/users' : '/content/home'} replace />;
 };
 
 export const App: React.FC = () => {
@@ -50,7 +51,7 @@ export const App: React.FC = () => {
                 {/* Protected Admin Routes */}
                 <Route element={<ProtectedRoute />}>
                   <Route element={<AdminLayout />}>
-                    <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                    <Route element={<ProtectedRoute allowedRoles={['admin', 'super_admin']} />}>
                       <Route path="/users" element={<UserManagementPage />} />
                     </Route>
                     <Route path="/content/home" element={<HomePageEditor />} />

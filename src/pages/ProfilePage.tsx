@@ -116,7 +116,12 @@ export const ProfilePage: React.FC = () => {
   if (!user) return null;
 
   const initial = user.name ? user.name.charAt(0).toUpperCase() : 'A';
-  const roleTitle = user.role === 'admin' ? 'Administrator' : 'Editor';
+  const roleTitle =
+    user.role === 'super_admin'
+      ? 'Super Admin'
+      : user.role === 'editor'
+      ? 'Editor'
+      : 'Administrator';
 
   return (
     <div style={{ maxWidth: '850px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -176,8 +181,12 @@ export const ProfilePage: React.FC = () => {
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
                     padding: '2px 7px',
-                    borderRadius: '4px',
-                    backgroundColor: user.role === 'admin' ? '#283593' : '#616161',
+                    backgroundColor:
+                      user.role === 'super_admin'
+                        ? '#6D28D9'
+                        : user.role === 'admin'
+                        ? '#283593'
+                        : '#616161',
                     color: '#FFFFFF',
                   }}
                 >
@@ -275,7 +284,11 @@ export const ProfilePage: React.FC = () => {
               </span>
             </div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>
-              {user.role === 'admin' ? 'Administrator (Full Access)' : 'Editor (Content Only)'}
+              {user.role === 'super_admin'
+                ? 'Super Administrator (Full System Control)'
+                : user.role === 'editor'
+                ? 'Editor (Content Only)'
+                : 'Administrator (Full Access)'}
             </div>
           </div>
 
@@ -367,12 +380,12 @@ export const ProfilePage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} autoComplete="off">
+            <form onSubmit={handleSaveProfile} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {/* Dummy hidden inputs to intercept aggressive browser credential autofill */}
               <input type="text" name="fake_username_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
               <input type="password" name="fake_password_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="new-password" />
 
-              <div className="modal-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="modal-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 {modalError && (
                   <div
                     style={{
@@ -467,7 +480,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ padding: '0.875rem 1.25rem', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <div className="modal-footer" style={{ padding: '0.875rem 1.25rem', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexShrink: 0, backgroundColor: '#FFFFFF' }}>
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}

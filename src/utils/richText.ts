@@ -121,7 +121,7 @@ export function sanitizeRichText(html?: string): string {
   });
 
   // Removed step 6 as per user requirement: Do NOT collapse whitespace or paragraph structure during save/HTML serialization.
-  
+
   // 7. If the entire content is just empty paragraphs, return empty string
   if (clean.replace(/<[^>]*>/g, '').trim().length === 0) {
     return '';

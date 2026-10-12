@@ -155,7 +155,7 @@
 .rte-content .tiptap p + p,
 .rte-content .tiptap div + div,
 .rte-content .tiptap h3 + h3 {
-  margin-top: 0.15rem;
+  margin-top: 0 !important;
 }
 
 .rte-content .tiptap ul,

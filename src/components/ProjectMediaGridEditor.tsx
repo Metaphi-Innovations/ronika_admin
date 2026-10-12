@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import RGL from 'react-grid-layout';
+import RGL from 'react-grid-layout/legacy';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useWidth } from '../hooks/useWidth';
@@ -31,9 +31,11 @@ interface ProjectMediaGridEditorProps {
   onDeleteAll?: () => void;
 }
 
-const COLS = 96;
-const ROW_HEIGHT = 16;
-const MARGIN: [number, number] = [8, 8];
+const COLS = 12;
+const ROW_HEIGHT = 150;
+const MARGIN: [number, number] = [10, 10];
+const DEFAULT_THUMBNAIL_W = 2;
+const DEFAULT_THUMBNAIL_H = 1;
 
 export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({ 
   items, onChange, onDelete, onReplace, onEdit, onTogglePublish, headerContent, onDeleteAll
@@ -45,41 +47,48 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
     let hasMissingLayouts = false;
     let nextRowY = 0;
     
-    // First pass: find max Y from items that ALREADY have layouts
+    // First pass: find max bottom (Y + H) from items that ALREADY have valid layouts
     items.forEach(item => {
       const l = item.layouts?.lg;
       if (l && typeof l.y === 'number' && typeof l.h === 'number') {
-        const yV2 = l.v === 2 ? l.y : (l.y * 2 || 0);
-        const hV2 = l.v === 2 ? l.h : (l.h * 2 || 24);
-        if (yV2 + hV2 > nextRowY) nextRowY = yV2 + hV2;
+        const isLegacy96 = l.w > COLS || l.h > 8;
+        const h = isLegacy96 ? Math.max(1, Math.round(l.h / 16)) : l.h;
+        const y = isLegacy96 ? Math.round((l.y || 0) / 16) : l.y;
+        const bottom = (y || 0) + (h || 1);
+        if (bottom > nextRowY) nextRowY = bottom;
       }
     });
 
     let currentX = 0;
+    let currentY = nextRowY;
     const updatedItems = [...items];
 
     const newLayouts = items.map((item, index) => {
       const itemLayout = item.layouts?.lg;
       if (itemLayout && typeof itemLayout.w === 'number' && typeof itemLayout.h === 'number') {
-        const isV2 = itemLayout.v === 2;
+        const isLegacy96 = itemLayout.w > COLS || itemLayout.h > 8;
+        const safeW = isLegacy96 ? Math.max(1, Math.min(COLS, Math.round(itemLayout.w / 8))) : Math.min(COLS, Math.max(1, itemLayout.w));
+        const safeH = isLegacy96 ? Math.max(1, Math.round(itemLayout.h / 16)) : Math.min(20, Math.max(1, itemLayout.h));
+        const safeX = isLegacy96 ? Math.round((itemLayout.x || 0) / 8) % COLS : Math.max(0, itemLayout.x || 0);
+        const safeY = isLegacy96 ? Math.round((itemLayout.y || 0) / 16) : Math.max(0, itemLayout.y || 0);
         return {
-          i: item.id,
-          x: isV2 ? itemLayout.x : (itemLayout.x * 2 || 0),
-          y: isV2 ? itemLayout.y : (itemLayout.y * 2 || 0),
-          w: isV2 ? itemLayout.w : (itemLayout.w * 2 || 32),
-          h: isV2 ? itemLayout.h : Math.max(1, itemLayout.h * 2 || 24),
+          i: String(item.id),
+          x: safeX,
+          y: safeY,
+          w: safeW,
+          h: safeH,
           minW: 1,
           minH: 1
         };
       }
 
-      // Generate layout for new image
+      // Generate compact thumbnail layout for new/pending image
       hasMissingLayouts = true;
       const newLg = {
         x: currentX,
-        y: nextRowY,
-        w: 16,
-        h: 16,
+        y: currentY,
+        w: DEFAULT_THUMBNAIL_W,
+        h: DEFAULT_THUMBNAIL_H,
         v: 2
       };
       
@@ -91,14 +100,14 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
         }
       };
 
-      currentX += 16;
-      if (currentX >= 96) {
+      currentX += DEFAULT_THUMBNAIL_W;
+      if (currentX + DEFAULT_THUMBNAIL_W > COLS) {
         currentX = 0;
-        nextRowY += 16;
+        currentY += DEFAULT_THUMBNAIL_H;
       }
 
       return {
-        i: item.id,
+        i: String(item.id),
         ...newLg,
         minW: 1,
         minH: 1
@@ -108,19 +117,16 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
     setLocalLayouts(newLayouts);
 
     if (hasMissingLayouts && onChange) {
-      // We wrap in setTimeout to avoid updating parent state during child render
       setTimeout(() => {
         onChange(updatedItems);
       }, 0);
     }
   }, [items]);
 
-
-
   const handleDragStop = (layout: any[]) => {
     if (onChange) {
       const updatedItems = items.map(item => {
-        const l = layout.find(x => x.i === item.id);
+        const l = layout.find(x => String(x.i) === String(item.id));
         if (l) {
           return {
             ...item,
@@ -139,7 +145,7 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
   const handleResizeStop = (layout: any[]) => {
     if (onChange) {
       const updatedItems = items.map(item => {
-        const l = layout.find(x => x.i === item.id);
+        const l = layout.find(x => String(x.i) === String(item.id));
         if (l) {
           return {
             ...item,
@@ -191,11 +197,12 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
           width={width}
           rowHeight={ROW_HEIGHT}
           margin={MARGIN}
+          gridConfig={{ cols: COLS, rowHeight: ROW_HEIGHT, margin: MARGIN }}
           onDragStop={handleDragStop}
           onResizeStop={handleResizeStop}
           isDraggable={true}
           isResizable={true}
-          resizeHandles={['s', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne']}
+          resizeHandles={['se']}
           useCSSTransforms={true}
           preventCollision={false}
           compactType="vertical"
@@ -203,7 +210,8 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
           {items.map((item) => {
             return (
               <div 
-                key={item.id}
+                key={String(item.id)}
+                data-grid={localLayouts.find(l => l.i === String(item.id))}
                 className="rgl-item-container"
                 style={{
                   boxSizing: 'border-box',
