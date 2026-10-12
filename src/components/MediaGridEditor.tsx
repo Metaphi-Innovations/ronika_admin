@@ -42,69 +42,90 @@ interface MediaGridEditorProps {
   headerContent?: React.ReactNode;
 }
 
-const COLS = 12;
-const ROW_HEIGHT = 150;
-const MARGIN: [number, number] = [10, 10];
-const DEFAULT_THUMBNAIL_W = 2;
-const DEFAULT_THUMBNAIL_H = 1;
+import {
+  RGL_COLS,
+  RGL_ROW_HEIGHT,
+  RGL_MARGIN,
+  DEFAULT_ITEM_W,
+  DEFAULT_ITEM_H,
+  normalizeLayoutItem,
+  findNextAvailableSlot,
+  compactLayout
+} from '../utils/gridLayout';
 
 export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({ items, onChange, onDelete, onReplace, onEdit, onTogglePublish, headerContent }) => {
   const { width, ref } = useWidth();
+  const [localLayouts, setLocalLayouts] = useState<any[]>([]);
   
-  const layout = useMemo(() => {
-    let nextRowY = 0;
-    items.forEach(item => {
-      const l = item.layouts?.lg;
-      if (l && typeof l.y === 'number' && typeof l.h === 'number') {
-        const isLegacy96 = l.w > COLS || l.h > 8;
-        const h = isLegacy96 ? Math.max(1, Math.round(l.h / 16)) : l.h;
-        const y = isLegacy96 ? Math.round((l.y || 0) / 16) : l.y;
-        const bottom = (y || 0) + (h || 1);
-        if (bottom > nextRowY) nextRowY = bottom;
-      }
-    });
+  useEffect(() => {
+    // 1. Collect all valid normalized rectangles
+    const existingRects: { x: number; y: number; w: number; h: number }[] = [];
+    const initialElements: any[] = [];
 
-    let currentX = 0;
-    let currentY = nextRowY;
+    items.forEach((item) => {
+      const norm = normalizeLayoutItem(item.layouts?.lg);
+      const itemId = String(item.id);
 
-    return items.map((item) => {
-      const bLayout = item.layouts?.lg;
-      if (bLayout && typeof bLayout.w === 'number' && typeof bLayout.h === 'number') {
-        const isLegacy96 = bLayout.w > COLS || bLayout.h > 8;
-        const safeW = isLegacy96 ? Math.max(1, Math.min(COLS, Math.round(bLayout.w / 8))) : Math.min(COLS, Math.max(1, bLayout.w));
-        const safeH = isLegacy96 ? Math.max(1, Math.round(bLayout.h / 16)) : Math.min(20, Math.max(1, bLayout.h));
-        const safeX = isLegacy96 ? Math.round((bLayout.x || 0) / 8) % COLS : Math.max(0, bLayout.x || 0);
-        const safeY = isLegacy96 ? Math.round((bLayout.y || 0) / 16) : Math.max(0, bLayout.y || 0);
-        return {
-          i: String(item.id),
-          x: safeX,
-          y: safeY,
-          w: safeW,
-          h: safeH,
+      if (norm) {
+        existingRects.push(norm);
+        initialElements.push({
+          i: itemId,
+          x: norm.x,
+          y: norm.y,
+          w: norm.w,
+          h: norm.h,
           minW: 1,
           minH: 1
+        });
+      } else {
+        const slot = findNextAvailableSlot(existingRects, DEFAULT_ITEM_W, DEFAULT_ITEM_H, RGL_COLS);
+        const newLayout = {
+          x: slot.x,
+          y: slot.y,
+          w: DEFAULT_ITEM_W,
+          h: DEFAULT_ITEM_H
+        };
+        existingRects.push(newLayout);
+        initialElements.push({
+          i: itemId,
+          ...newLayout,
+          minW: 1,
+          minH: 1
+        });
+      }
+    });
+
+    // 2. Compact vertically to match canonical RGL vertical compaction
+    const compacted = compactLayout(initialElements, RGL_COLS);
+    setLocalLayouts(compacted);
+
+    // 3. If any item's layout in props was missing or different from compacted, sync parent
+    let hasChanges = false;
+    const updatedItems = items.map(item => {
+      const l = compacted.find(c => c.i === String(item.id));
+      if (!l) return item;
+      const currentLg = item.layouts?.lg;
+      const isDiff = !currentLg || 
+        currentLg.x !== l.x || 
+        currentLg.y !== l.y || 
+        currentLg.w !== l.w || 
+        currentLg.h !== l.h;
+      if (isDiff) {
+        hasChanges = true;
+        return {
+          ...item,
+          layouts: {
+            ...item.layouts,
+            lg: { x: l.x, y: l.y, w: l.w, h: l.h, v: 2 }
+          }
         };
       }
-
-      const itemX = currentX;
-      const itemY = currentY;
-
-      currentX += DEFAULT_THUMBNAIL_W;
-      if (currentX + DEFAULT_THUMBNAIL_W > COLS) {
-        currentX = 0;
-        currentY += DEFAULT_THUMBNAIL_H;
-      }
-
-      return {
-        i: String(item.id),
-        x: itemX,
-        y: itemY,
-        w: DEFAULT_THUMBNAIL_W,
-        h: DEFAULT_THUMBNAIL_H,
-        minW: 1,
-        minH: 1
-      };
+      return item;
     });
+
+    if (hasChanges && onChange) {
+      onChange(updatedItems);
+    }
   }, [items]);
 
   const handleDragStop = (layout: any[]) => {
@@ -164,11 +185,11 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({ items, onChang
         <ReactGridLayout
           width={width}
           className="layout"
-          layout={layout}
-          cols={COLS}
-          rowHeight={ROW_HEIGHT}
-          margin={MARGIN}
-          gridConfig={{ cols: COLS, rowHeight: ROW_HEIGHT, margin: MARGIN }}
+          layout={localLayouts}
+          cols={RGL_COLS}
+          rowHeight={RGL_ROW_HEIGHT}
+          margin={RGL_MARGIN}
+          gridConfig={{ cols: RGL_COLS, rowHeight: RGL_ROW_HEIGHT, margin: RGL_MARGIN }}
           onDragStop={handleDragStop}
           onResizeStop={handleResizeStop}
           isDraggable={true}
@@ -182,7 +203,7 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({ items, onChang
             return (
               <div 
                 key={String(item.id)} 
-                data-grid={layout.find(l => l.i === String(item.id))}
+                data-grid={localLayouts.find(l => l.i === String(item.id))}
                 className="rgl-item-container"
                 style={{ border: '1px solid #ddd', background: '#fff', borderRadius: '4px', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}
               >

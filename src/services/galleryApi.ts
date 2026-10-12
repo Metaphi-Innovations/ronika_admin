@@ -36,11 +36,10 @@ export interface IGalleryImage {
   caption?: string;
   displayOrder: number;
   published: boolean;
+  isDraft?: boolean;
   layouts?: ILayouts;
   layoutContexts?: Record<string, ILayouts>;
 }
-
-
 
 export const getGalleryImages = async (params?: { category?: string; published?: boolean }) => {
   const res = await api.get('/admin/gallery/images', { params });
@@ -66,12 +65,17 @@ export const updateGalleryImage = async (id: string, data: Partial<IGalleryImage
   return res.data;
 };
 
-export const reorderGalleryImages = async (data: { items: Array<{ _id: string; displayOrder: number; layouts?: any }>; contextKey: string }) => {
+export const reorderGalleryImages = async (data: { items: Array<{ _id: string; displayOrder: number; layouts?: any }>; contextKey: string; contextCatId?: string }) => {
   const res = await api.put('/admin/gallery/images/reorder', data);
   return res.data;
 };
 
 export const deleteGalleryImage = async (id: string) => {
   const res = await api.delete(`/admin/gallery/images/${id}`);
+  return res.data;
+};
+
+export const discardDraftImages = async (ids?: string[]) => {
+  const res = await api.post('/admin/gallery/images/discard-drafts', { ids });
   return res.data;
 };

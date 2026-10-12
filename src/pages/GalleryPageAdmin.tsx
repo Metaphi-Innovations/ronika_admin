@@ -27,6 +27,7 @@ import {
   replaceGalleryImage,
   reorderGalleryImages,
   deleteGalleryImage,
+  discardDraftImages,
   IGalleryImage,
 } from '../services/galleryApi';
 import { getCategories, ICategory } from '../services/projectApi';
@@ -41,6 +42,13 @@ import { countReadableChars, MAX_GALLERY_INTRO_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import { useLiveResource } from '../context/LiveSyncContext';
 import { getImageUrl } from '../utils/imageUrl';
+import {
+  findNextAvailableSlot,
+  normalizeLayoutItem,
+  DEFAULT_ITEM_W,
+  DEFAULT_ITEM_H,
+  RGL_COLS
+} from '../utils/gridLayout';
 import './GalleryAdmin.css';
 
 export const GalleryPageAdmin: React.FC = () => {
@@ -57,6 +65,9 @@ export const GalleryPageAdmin: React.FC = () => {
 
   // Reorder local state (for Arrange view)
   const [orderedImages, setOrderedImages] = useState<IGalleryImage[]>([]);
+  const [draftImageIds, setDraftImageIds] = useState<string[]>([]);
+  const draftImageIdsRef = React.useRef<string[]>([]);
+  draftImageIdsRef.current = draftImageIds;
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
   const [arrangeViewport, setArrangeViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
@@ -134,14 +145,25 @@ export const GalleryPageAdmin: React.FC = () => {
 
   useEffect(() => {
     fetchData(true);
+
+    return () => {
+      // Cleanup any unsaved drafts if navigating away
+      if (draftImageIdsRef.current.length > 0) {
+        discardDraftImages(draftImageIdsRef.current).catch(() => {});
+      }
+    };
   }, []);
 
   useLiveResource('gallery', () => {
-    fetchData(false);
+    if (!hasUnsavedChanges) {
+      fetchData(false);
+    }
   });
 
   useLiveResource('galleryCategories', () => {
-    fetchData(false);
+    if (!hasUnsavedChanges) {
+      fetchData(false);
+    }
   });
 
   // Browser navigation warning when unsaved changes exist
@@ -178,58 +200,116 @@ export const GalleryPageAdmin: React.FC = () => {
     return 'Uncategorized';
   }, [categories]);
 
+  // Helper to reliably check if an image belongs to the specified category
+  const isImageInCategory = React.useCallback((img: IGalleryImage, targetCategory: string) => {
+    if (targetCategory === 'ALL') return true;
+    const catName = getCategoryName(img.category);
+    if (catName.toLowerCase() === targetCategory.toLowerCase()) return true;
+    const catObj = categories.find(c => c.name.toLowerCase() === targetCategory.toLowerCase());
+    if (catObj) {
+      const imgCatId = typeof img.category === 'object' && img.category ? (img.category as any)._id : img.category;
+      if (String(imgCatId) === String(catObj._id)) return true;
+    }
+    return false;
+  }, [categories, getCategoryName]);
+
   // Compute editor items (hooks must be top-level)
   const activeContextKey = selectedCategory === 'ALL' ? 'all' : selectedCategory;
+  const currentCategoryObj = React.useMemo(() => {
+    if (selectedCategory === 'ALL') return null;
+    return categories.find(c => c.name.toLowerCase() === selectedCategory.toLowerCase());
+  }, [categories, selectedCategory]);
+  const catIdKey = currentCategoryObj ? String(currentCategoryObj._id) : '';
 
   const editorItems = React.useMemo(() => {
     const filteredImages = selectedCategory === 'ALL' 
       ? orderedImages 
-      : orderedImages.filter(img => {
-          const catName = img.category && typeof img.category === 'object' && 'name' in img.category 
-            ? (img.category as any).name 
-            : img.category;
-          return String(catName) === selectedCategory;
-        });
+      : orderedImages.filter(img => isImageInCategory(img, selectedCategory));
         
-    return filteredImages.map(img => ({
-      id: img._id,
-      url: getImageUrl(img.image?.url),
-      layouts: img.layoutContexts?.[activeContextKey] || (activeContextKey === 'all' ? img.layouts : undefined),
-      title: img.title,
-      categoryName: getCategoryName(img.category),
-      published: img.published,
-      aspectRatio: img.image?.aspectRatio
-    }));
-  }, [orderedImages, selectedCategory, activeContextKey, getCategoryName]);
+    return filteredImages.map(img => {
+      let resolvedLayout = undefined;
+      if (activeContextKey === 'all') {
+        resolvedLayout = img.layoutContexts?.['all'] || img.layouts;
+      } else {
+        // Look up category layout by category name or category ID
+        resolvedLayout = img.layoutContexts?.[activeContextKey] 
+          || (catIdKey ? img.layoutContexts?.[catIdKey] : undefined);
+      }
+
+      return {
+        id: img._id,
+        url: getImageUrl(img.image?.url),
+        layouts: resolvedLayout,
+        title: img.title,
+        categoryName: getCategoryName(img.category),
+        published: img.published,
+        aspectRatio: img.image?.aspectRatio
+      };
+    });
+  }, [orderedImages, selectedCategory, activeContextKey, catIdKey, isImageInCategory, getCategoryName]);
 
   // Save Reordered Images
   const handleSaveOrder = async () => {
     try {
       setSavingOrder(true);
       const activeContextKey = selectedCategory === 'ALL' ? 'all' : selectedCategory;
-      const items = orderedImages.map((img, index) => ({
-        _id: img._id,
-        displayOrder: index + 1,
-        layouts: img.layoutContexts?.[activeContextKey] || img.layouts
-      }));
+      const catObj = selectedCategory === 'ALL' ? null : categories.find(c => c.name.toLowerCase() === selectedCategory.toLowerCase());
+      const catIdKey = catObj ? String(catObj._id) : '';
 
-      const res = await reorderGalleryImages({ items, contextKey: activeContextKey });
+      let itemsToSave: Array<{ _id: string; displayOrder: number; layouts: any }> = [];
+
+      if (activeContextKey === 'all') {
+        itemsToSave = orderedImages.map((img, index) => ({
+          _id: img._id,
+          displayOrder: index + 1,
+          layouts: img.layoutContexts?.['all'] || img.layouts
+        }));
+      } else {
+        // Individual category: only send images belonging to this category, preserving independent layouts
+        const categoryImages = orderedImages.filter(img => isImageInCategory(img, selectedCategory));
+        itemsToSave = categoryImages.map((img, index) => {
+          const catLayout = img.layoutContexts?.[activeContextKey] 
+            || (catIdKey ? img.layoutContexts?.[catIdKey] : undefined)
+            || img.layouts;
+          return {
+            _id: img._id,
+            displayOrder: img.displayOrder ?? (index + 1),
+            layouts: catLayout
+          };
+        });
+      }
+
+      const res = await reorderGalleryImages({ 
+        items: itemsToSave, 
+        contextKey: activeContextKey,
+        contextCatId: catIdKey || undefined
+      });
+
       if (res.success) {
         alert.success('Changes saved.');
         setImages([...orderedImages]);
+        setDraftImageIds([]); // Cleared because newly added images are now officially saved & published
         setHasUnsavedChanges(false);
       } else {
-        alert.error("Couldn't save changes.");
+        alert.error(res.message || "Couldn't save changes.");
       }
     } catch (err: any) {
-      alert.error("Couldn't save changes.");
+      alert.error(err.response?.data?.message || err.message || "Couldn't save changes.");
     } finally {
       setSavingOrder(false);
     }
   };
 
   // Discard Unsaved Changes
-  const handleDiscardOrder = () => {
+  const handleDiscardOrder = async () => {
+    if (draftImageIds.length > 0) {
+      try {
+        await discardDraftImages(draftImageIds);
+      } catch (e) {
+        console.error('Failed to cleanup drafts:', e);
+      }
+      setDraftImageIds([]);
+    }
     setOrderedImages([...images]);
     setHasUnsavedChanges(false);
   };
@@ -277,16 +357,58 @@ export const GalleryPageAdmin: React.FC = () => {
       const res = await createGalleryImage(formData);
       if (res.success) {
         setShowUploadModal(false);
+        const uploadedCategory = categories.find(c => String(c._id) === String(categoryId));
         setCategoryId('');
         setArtworkTitle('');
         if (filePreview?.url) URL.revokeObjectURL(filePreview.url);
         setSelectedFile(null);
         setFilePreview(null);
-        alert.success('Artwork added.');
+        alert.success('Artwork added as draft. Remember to click Save Changes to publish.');
 
-        const updatedImages = [...images, res.data];
-        setImages(updatedImages);
+        const activeContextKey = selectedCategory === 'ALL' ? 'all' : selectedCategory;
+        const newImg = { ...res.data };
+        if (!newImg.layoutContexts) newImg.layoutContexts = {};
+        
+        // Calculate non-overlapping compact slot in 'all' context
+        const allExistingRects: { x: number; y: number; w: number; h: number }[] = [];
+        orderedImages.forEach(img => {
+          const norm = normalizeLayoutItem(img.layoutContexts?.['all']?.lg || img.layouts?.lg);
+          if (norm) allExistingRects.push(norm);
+        });
+        const slotAll = findNextAvailableSlot(allExistingRects, DEFAULT_ITEM_W, DEFAULT_ITEM_H, RGL_COLS);
+        const layoutAll = { x: slotAll.x, y: slotAll.y, w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H, v: 2 };
+
+        newImg.layoutContexts['all'] = { lg: layoutAll };
+        newImg.layouts = { lg: layoutAll };
+
+        // Calculate non-overlapping compact slot in category context
+        if (uploadedCategory?.name) {
+          const catExistingRects: { x: number; y: number; w: number; h: number }[] = [];
+          orderedImages
+            .filter(img => getCategoryName(img.category) === uploadedCategory.name)
+            .forEach(img => {
+              const norm = normalizeLayoutItem(img.layoutContexts?.[uploadedCategory.name]?.lg);
+              if (norm) catExistingRects.push(norm);
+            });
+          const slotCat = findNextAvailableSlot(catExistingRects, DEFAULT_ITEM_W, DEFAULT_ITEM_H, RGL_COLS);
+          const layoutCat = { x: slotCat.x, y: slotCat.y, w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H, v: 2 };
+          newImg.layoutContexts[uploadedCategory.name] = { lg: layoutCat };
+        }
+
+        if (activeContextKey !== 'all' && uploadedCategory?.name && activeContextKey !== uploadedCategory.name) {
+          newImg.layoutContexts[activeContextKey] = { lg: layoutAll };
+        }
+
+        const updatedImages = [...orderedImages, newImg];
+        // Keep saved images snapshot unchanged, only update draft working list
+        setDraftImageIds(prev => [...prev, newImg._id]);
         setOrderedImages(updatedImages);
+        setHasUnsavedChanges(true);
+
+        // If user is currently filtering a different specific category, switch to the new artwork's category
+        if (selectedCategory !== 'ALL' && uploadedCategory && selectedCategory !== uploadedCategory.name) {
+          setSelectedCategory(uploadedCategory.name);
+        }
       }
     } catch (err: any) {
       alert.error(err.message || "We couldn't upload artwork. Please try again.");
@@ -395,7 +517,7 @@ export const GalleryPageAdmin: React.FC = () => {
       await deleteGalleryImage(deleteImageTarget.id);
       const filtered = images.filter((i) => i._id !== deleteImageTarget.id);
       const filteredOrdered = orderedImages.filter((i) => i._id !== deleteImageTarget.id);
-
+      setDraftImageIds(prev => prev.filter((id) => id !== deleteImageTarget.id));
       setImages(filtered);
       setOrderedImages(filteredOrdered);
       alert.info('Artwork deleted.');
@@ -556,7 +678,7 @@ export const GalleryPageAdmin: React.FC = () => {
         {hasUnsavedChanges && (
           <div className="unsaved-banner" style={{ marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontWeight: 600 }}>Unsaved changes</span>
+              <span style={{ fontWeight: 600 }}>Unsaved changes ({selectedCategory === 'ALL' ? 'All' : selectedCategory})</span>
               <span style={{ opacity: 0.85 }}>— Remember to save your new layout.</span>
             </div>
             <div className="unsaved-banner-actions">
@@ -615,42 +737,59 @@ export const GalleryPageAdmin: React.FC = () => {
                 <div
                   style={{
                     display: 'flex',
-                    gap: '6px',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     marginBottom: '10px',
                     flexWrap: 'wrap',
-                    alignItems: 'center',
                     background: 'var(--admin-surface-subtle)',
-                    padding: '10px 14px',
-                    borderRadius: '6px'
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    gap: '10px'
                   }}
                 >
-                  <button
-                    onClick={() => setSelectedCategory('ALL')}
-                    className={`admin-btn ${selectedCategory === 'ALL' ? 'primary' : 'secondary'}`}
-                    style={{ padding: '4px 14px', fontSize: '12px', borderRadius: '16px' }}
-                  >
-                    All ({orderedImages.length})
-                  </button>
-                  {categories.map((cat) => {
-                    const count = orderedImages.filter((img) => {
-                      const catName = img.category && typeof img.category === 'object' && 'name' in img.category 
-                        ? (img.category as any).name 
-                        : img.category;
-                      return String(catName) === cat.name;
-                    }).length;
-                    
-                    return (
-                      <div key={cat._id} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <button
-                          onClick={() => setSelectedCategory(cat.name)}
-                          className={`admin-btn ${selectedCategory === cat.name ? 'primary' : 'secondary'}`}
-                          style={{ padding: '4px 14px', fontSize: '12px', borderRadius: '16px' }}
-                        >
-                          {cat.name} ({count})
-                        </button>
-                      </div>
-                    );
-                  })}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button
+                      onClick={() => setSelectedCategory('ALL')}
+                      className={`admin-btn ${selectedCategory === 'ALL' ? 'primary' : 'secondary'}`}
+                      style={{ padding: '4px 14px', fontSize: '12px', borderRadius: '16px' }}
+                    >
+                      All ({orderedImages.length})
+                    </button>
+                    {categories.map((cat) => {
+                      const count = orderedImages.filter((img) => isImageInCategory(img, cat.name)).length;
+                      
+                      return (
+                        <div key={cat._id} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <button
+                            onClick={() => setSelectedCategory(cat.name)}
+                            className={`admin-btn ${selectedCategory === cat.name ? 'primary' : 'secondary'}`}
+                            style={{ padding: '4px 14px', fontSize: '12px', borderRadius: '16px' }}
+                          >
+                            {cat.name} ({count})
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Category-specific Save Changes action button in header toolbar */}
+                  {hasUnsavedChanges && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#e67e22', fontWeight: 600 }}>
+                        Unsaved changes ({selectedCategory === 'ALL' ? 'All' : selectedCategory})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleSaveOrder}
+                        disabled={savingOrder}
+                        className="admin-btn primary"
+                        style={{ fontSize: '12px', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                      >
+                        <Save size={13} />
+                        <span>{savingOrder ? 'Saving...' : 'Save Changes'}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               }
               onChange={(updatedItems) => {
@@ -662,16 +801,20 @@ export const GalleryPageAdmin: React.FC = () => {
                   const imgIndex = newOrdered.findIndex(i => i._id === u.id);
                   if (imgIndex !== -1) {
                     const img = newOrdered[imgIndex];
-                    const existingLayouts = img.layoutContexts?.[activeContextKey] || img.layouts;
+                    const existingLayouts = activeContextKey === 'all'
+                      ? (img.layoutContexts?.['all'] || img.layouts)
+                      : (img.layoutContexts?.[activeContextKey] || (catIdKey ? img.layoutContexts?.[catIdKey] : undefined));
+
                     if (JSON.stringify(existingLayouts) !== JSON.stringify(u.layouts)) {
                       newOrdered[imgIndex] = { 
                         ...img, 
                         layoutContexts: {
                           ...(img.layoutContexts || {}),
-                          [activeContextKey]: u.layouts as any
+                          [activeContextKey]: u.layouts as any,
+                          ...(catIdKey ? { [catIdKey]: u.layouts as any } : {})
                         } as Record<string, any>,
-                        // Keep fallback legacy layout in sync for now
-                        layouts: u.layouts
+                        // CRITICAL: NEVER overwrite img.layouts unless activeContextKey === 'all'
+                        ...(activeContextKey === 'all' ? { layouts: u.layouts } : {})
                       };
                       hasChanges = true;
                     }

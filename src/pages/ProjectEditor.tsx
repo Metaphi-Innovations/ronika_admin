@@ -36,6 +36,13 @@ import { useAlert } from '../context/AlertContext';
 import { getImageUrl } from '../utils/imageUrl';
 import { useValidation } from '../hooks/useValidation';
 import { InlineError } from '../components/InlineError';
+import {
+  findNextAvailableSlot,
+  normalizeLayoutItem,
+  DEFAULT_ITEM_W,
+  DEFAULT_ITEM_H,
+  RGL_COLS
+} from '../utils/gridLayout';
 
 interface PendingGalleryItem {
   id: string;
@@ -247,6 +254,17 @@ export const ProjectEditor: React.FC = () => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    // Collect all existing rectangles from both saved images and pending images
+    const existingRects: { x: number; y: number; w: number; h: number }[] = [];
+    (formData.images || []).forEach(img => {
+      const norm = normalizeLayoutItem(img.layouts?.lg);
+      if (norm) existingRects.push(norm);
+    });
+    pendingGallery.forEach(p => {
+      const norm = normalizeLayoutItem(p.layouts?.lg);
+      if (norm) existingRects.push(norm);
+    });
+
     const newPending: PendingGalleryItem[] = [];
 
     for (const file of files) {
@@ -254,12 +272,25 @@ export const ProjectEditor: React.FC = () => {
         const { width, height } = await readImageDimensions(file);
         const previewUrl = URL.createObjectURL(file);
         
+        const slot = findNextAvailableSlot(existingRects, DEFAULT_ITEM_W, DEFAULT_ITEM_H, RGL_COLS);
+        const layoutItem = {
+          x: slot.x,
+          y: slot.y,
+          w: DEFAULT_ITEM_W,
+          h: DEFAULT_ITEM_H,
+          v: 2
+        };
+        existingRects.push(layoutItem);
+
         newPending.push({
           id: `pending-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
           file,
           previewUrl,
           width,
           height,
+          layouts: {
+            lg: layoutItem
+          }
         });
       } catch (err: any) {
         alert.error(err.message || `Failed to process ${file.name}`);
