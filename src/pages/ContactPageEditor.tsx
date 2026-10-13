@@ -46,8 +46,8 @@ export const ContactPageEditor: React.FC = () => {
     fetchContent(false);
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     
     const isValid = validate({
       heading: () => !content.heading?.trim() ? 'Please enter a contact heading.' : null,
@@ -80,18 +80,25 @@ export const ContactPageEditor: React.FC = () => {
 
   return (
     <div className="admin-page-container">
-      <form onSubmit={handleSubmit}>
+      <form
+        onSubmit={(e) => e.preventDefault()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+            e.preventDefault();
+          }
+        }}
+      >
         <PageHeader
           title="CONTACT DETAILS"
           actions={
             <button
-              type="submit"
+              type="button"
+              onClick={() => handleSubmit()}
               disabled={saving}
-              className="admin-btn primary"
-              style={{ fontSize: '13px', padding: '0.55rem 1.4rem' }}
+              className="admin-btn primary admin-btn-save"
             >
               <Save size={14} />
-              {saving ? 'Saving...' : 'Save Changes'}
+              <span>{saving ? 'Saving...' : 'Save Changes'}</span>
             </button>
           }
         />
@@ -130,6 +137,11 @@ export const ContactPageEditor: React.FC = () => {
                   onChange={(e) => {
                     setContent({ ...content, heading: e.target.value });
                     clearError('heading');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                    }
                   }}
                   className={`admin-form-input ${errors.heading ? 'has-error' : ''}`}
                   placeholder="e.g. LET'S CREATE TOGETHER"

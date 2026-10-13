@@ -10,6 +10,7 @@ import {
   X,
   Image as ImageIcon,
   ChevronDown,
+  Save,
 } from 'lucide-react';
 import {
   getShopCategories,
@@ -127,7 +128,12 @@ export const ShopProductsPage: React.FC = () => {
         getShopProducts(), // Fetch all products so category product counts are always 100% accurate
         getSiteSettings(),
       ]);
-      if (catsRes.success) setCategories(catsRes.data);
+      if (catsRes.success) {
+        const sortedCats = [...(catsRes.data || [])].sort((a: any, b: any) =>
+          (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+        );
+        setCategories(sortedCats);
+      }
       if (prodsRes.success) setProducts(prodsRes.data);
       if (settingsRes.success) setSettings(settingsRes.data);
     } catch (err: any) {
@@ -193,7 +199,11 @@ export const ShopProductsPage: React.FC = () => {
     try {
       const res = await createShopCategory({ name: newCatName.trim() });
       if (res.success) {
-        setCategories([...categories, res.data]);
+        setCategories((prev) =>
+          [...prev, res.data].sort((a: any, b: any) =>
+            (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+          )
+        );
         setNewCatName('');
         setShowCatModal(false);
         alert.success(`Shop category "${res.data.name}" created successfully.`);
@@ -209,7 +219,7 @@ export const ShopProductsPage: React.FC = () => {
       setDeleting(true);
       await deleteShopCategory(deleteCatTarget.id);
       setCategories(categories.filter((c) => c._id !== deleteCatTarget.id));
-      alert.info(`Shop category "${deleteCatTarget.name}" deleted.`);
+      alert.error(`Shop category "${deleteCatTarget.name}" deleted.`, 'Deleted');
       setDeleteCatTarget(null);
     } catch (err: any) {
       alert.error(err.message || "We couldn't delete category. Please try again.");
@@ -587,9 +597,9 @@ export const ShopProductsPage: React.FC = () => {
           type="button"
           onClick={handleSaveSettings}
           disabled={savingSettings || !settings}
-          className="admin-btn primary"
-          style={{ fontSize: '12px', padding: '5px 12px' }}
+          className="admin-btn primary admin-btn-save"
         >
+          <Save size={13} />
           <span>{savingSettings ? 'Saving...' : 'Save Shop Header'}</span>
         </button>
       </div>
@@ -897,8 +907,9 @@ export const ShopProductsPage: React.FC = () => {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="admin-btn primary">
-                  Save Category
+                <button type="submit" className="admin-btn primary admin-btn-save">
+                  <Save size={13} />
+                  <span>Save Category</span>
                 </button>
               </div>
             </form>
@@ -1550,12 +1561,15 @@ export const ShopProductsPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="admin-btn primary"
+                  className="admin-btn primary admin-btn-save"
                   disabled={submitting}
                 >
-                  {submitting
-                    ? (editingProduct ? 'Saving...' : 'Creating...')
-                    : (editingProduct ? 'Update Product' : 'Save Product')}
+                  <Save size={13} />
+                  <span>
+                    {submitting
+                      ? (editingProduct ? 'Saving...' : 'Creating...')
+                      : (editingProduct ? 'Update Product' : 'Save Product')}
+                  </span>
                 </button>
               </div>
             </form>

@@ -130,8 +130,8 @@ export const AboutPageEditor: React.FC = () => {
     alert.info('Portrait image removed.', 'Removed');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     
     const rules: Record<string, () => string | null> = {};
     rules['heading'] = () => {
@@ -206,18 +206,25 @@ export const AboutPageEditor: React.FC = () => {
 
   return (
     <div className="admin-page-container">
-      <form onSubmit={handleSubmit}>
+      <form
+        onSubmit={(e) => e.preventDefault()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+            e.preventDefault();
+          }
+        }}
+      >
         <PageHeader
           title="ABOUT & BIO"
           actions={
             <button
-              type="submit"
+              type="button"
+              onClick={() => handleSubmit()}
               disabled={saving}
-              className="admin-btn primary"
-              style={{ fontSize: '13px', padding: '0.55rem 1.4rem' }}
+              className="admin-btn primary admin-btn-save"
             >
               <Save size={14} />
-              {saving ? 'Saving...' : 'Save Changes'}
+              <span>{saving ? 'Saving...' : 'Save Changes'}</span>
             </button>
           }
         />

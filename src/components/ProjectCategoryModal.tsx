@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Plus, Edit2, Trash2, Check, Loader2 } from 'lucide-react';
 import { getCategories, createCategory, updateCategory, deleteCategory, ICategory } from '../services/projectApi';
 import { useAlert } from '../context/AlertContext';
@@ -7,6 +7,12 @@ interface ProjectCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+const sortCategoriesList = (list: ICategory[]): ICategory[] => {
+  return [...list].sort((a, b) =>
+    (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+  );
+};
 
 export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOpen, onClose }) => {
   const alert = useAlert();
@@ -26,7 +32,7 @@ export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOp
       setLoading(true);
       const res = await getCategories();
       if (res.success) {
-        setCategories(res.data || []);
+        setCategories(sortCategoriesList(res.data || []));
       }
     } catch (err: any) {
       alert.error(err.message || "We couldn't load the content. Please refresh and try again.");
@@ -42,7 +48,7 @@ export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOp
       setIsSubmitting(true);
       const res = await createCategory(newCategory.trim());
       if (res.success) {
-        setCategories([...categories, res.data]);
+        setCategories((prev) => sortCategoriesList([...prev, res.data]));
         setNewCategory('');
         alert.success(`Category "${res.data.name}" created.`);
       }
@@ -59,7 +65,9 @@ export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOp
       setIsSubmitting(true);
       const res = await updateCategory(id, editName.trim());
       if (res.success) {
-        setCategories(categories.map(c => c._id === id ? res.data : c));
+        setCategories((prev) =>
+          sortCategoriesList(prev.map((c) => (c._id === id ? res.data : c)))
+        );
         setEditingId(null);
         alert.success(`Category renamed to "${res.data.name}".`);
       }
@@ -83,8 +91,8 @@ export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOp
       setIsSubmitting(true);
       const res = await deleteCategory(id);
       if (res.success) {
-        setCategories(categories.filter(c => c._id !== id));
-        alert.info(`Category "${name}" deleted.`);
+        setCategories((prev) => prev.filter((c) => c._id !== id));
+        alert.error(`Category "${name}" deleted.`, 'Deleted');
       }
     } catch (err: any) {
       alert.error(err.message || "We couldn't delete this category. Please try again.");
@@ -92,6 +100,10 @@ export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOp
       setIsSubmitting(false);
     }
   };
+
+  const sortedCategories = useMemo(() => {
+    return sortCategoriesList(categories);
+  }, [categories]);
 
   if (!isOpen) return null;
 
@@ -126,7 +138,7 @@ export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOp
             <p style={{ textAlign: 'center', color: '#666', fontSize: '14px' }}>No categories yet.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {categories.map(cat => (
+              {sortedCategories.map(cat => (
                 <div key={cat._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: '#f9f9f9', borderRadius: '6px', border: '1px solid #eee' }}>
                   {editingId === cat._id ? (
                     <div style={{ display: 'flex', gap: '8px', flex: 1, marginRight: '16px' }}>

@@ -522,7 +522,7 @@ export const HomePageEditor: React.FC = () => {
             type="button"
             onClick={() => handleSaveSection('A')}
             disabled={savingSection === 'A' || isQuoteOverLimit}
-            className="admin-btn primary"
+            className="admin-btn primary admin-btn-save"
           >
             <Save size={14} />
             <span>{savingSection === 'A' ? 'Saving...' : 'Save Hero'}</span>
@@ -677,7 +677,7 @@ export const HomePageEditor: React.FC = () => {
             type="button"
             onClick={() => handleSaveSection('B')}
             disabled={savingSection === 'B' || !isFeaturedValid}
-            className="admin-btn primary"
+            className="admin-btn primary admin-btn-save"
           >
             <Save size={14} />
             <span>{savingSection === 'B' ? 'Saving...' : 'Save Featured'}</span>
@@ -829,7 +829,7 @@ export const HomePageEditor: React.FC = () => {
             type="button"
             onClick={() => handleSaveSection('C')}
             disabled={savingSection === 'C' || isBioOverLimit}
-            className="admin-btn primary"
+            className="admin-btn primary admin-btn-save"
           >
             <Save size={14} />
             <span>{savingSection === 'C' ? 'Saving...' : 'Save Bio'}</span>
@@ -971,7 +971,7 @@ export const HomePageEditor: React.FC = () => {
             type="button"
             onClick={() => handleSaveSection('D')}
             disabled={savingSection === 'D'}
-            className="admin-btn primary"
+            className="admin-btn primary admin-btn-save"
           >
             <Save size={14} />
             <span>{savingSection === 'D' ? 'Saving...' : 'Save Services'}</span>
@@ -1088,7 +1088,7 @@ export const HomePageEditor: React.FC = () => {
               type="button"
               onClick={() => handleSaveSection('E')}
               disabled={savingSection === 'E'}
-              className="admin-btn primary"
+              className="admin-btn primary admin-btn-save"
             >
               <Save size={14} />
               <span>{savingSection === 'E' ? 'Saving...' : 'Save Footer'}</span>

@@ -171,6 +171,15 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
     }
   };
 
+  useEffect(() => {
+    const handles = document.querySelectorAll('.project-media-grid-editor .react-resizable-handle-se');
+    handles.forEach((h) => {
+      h.setAttribute('title', 'Resize image');
+      h.setAttribute('aria-label', 'Resize image');
+      h.setAttribute('role', 'button');
+    });
+  }, [items, localLayouts]);
+
   return (
     <div className="project-media-grid-editor" ref={ref}>
       {headerContent !== undefined ? headerContent : (

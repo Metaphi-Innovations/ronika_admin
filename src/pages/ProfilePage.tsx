@@ -10,6 +10,7 @@ import {
   X,
   Eye,
   EyeOff,
+  Save,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { userApi } from '../services/userApi';
@@ -492,9 +493,10 @@ export const ProfilePage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="admin-btn primary"
+                  className="admin-btn primary admin-btn-save"
                 >
-                  {saving ? 'Saving Changes...' : 'Save Profile'}
+                  <Save size={13} />
+                  <span>{saving ? 'Saving Changes...' : 'Save Profile'}</span>
                 </button>
               </div>
             </form>

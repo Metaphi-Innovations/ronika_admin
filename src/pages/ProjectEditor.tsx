@@ -143,7 +143,12 @@ export const ProjectEditor: React.FC = () => {
     const init = async () => {
       try {
         const catRes = await getCategories();
-        if (catRes.success) setCategories(catRes.data);
+        if (catRes.success) {
+          const sortedCats = [...(catRes.data || [])].sort((a: any, b: any) =>
+            (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+          );
+          setCategories(sortedCats);
+        }
 
         if (isEditing && id) {
           const projRes = await getProject(id);
@@ -486,11 +491,10 @@ export const ProjectEditor: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="admin-btn primary"
-              style={{ fontSize: '13px', padding: '0.55rem 1.4rem' }}
+              className="admin-btn primary admin-btn-save"
             >
-              <Save size={15} />
-              {saving ? 'Saving...' : 'Save Project'}
+              <Save size={14} />
+              <span>{saving ? 'Saving...' : 'Save Project'}</span>
             </button>
           </div>
         }

@@ -112,14 +112,15 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       <div
         style={{
           position: 'fixed',
-          top: '24px',
-          right: '24px',
+          top: '20px',
+          right: '20px',
           zIndex: 999999,
           display: 'flex',
           flexDirection: 'column',
-          gap: '10px',
-          maxWidth: '420px',
-          width: 'calc(100% - 48px)',
+          alignItems: 'flex-end',
+          gap: '8px',
+          maxWidth: '320px',
+          width: 'calc(100% - 40px)',
           pointerEvents: 'none',
         }}
         aria-live="polite"
@@ -127,28 +128,28 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         {alerts.map((item) => {
           const config = {
             success: {
-              icon: <CheckCircle2 size={19} color="#2E7D32" style={{ flexShrink: 0 }} />,
+              icon: <CheckCircle2 size={15} color="#2E7D32" style={{ flexShrink: 0 }} />,
               bg: '#FFFFFF',
               border: '#C8E6C9',
               accent: '#2E7D32',
               titleColor: '#1B5E20',
             },
             error: {
-              icon: <XCircle size={19} color="#D32F2F" style={{ flexShrink: 0 }} />,
+              icon: <XCircle size={15} color="#D32F2F" style={{ flexShrink: 0 }} />,
               bg: '#FFFFFF',
               border: '#FFCDD2',
               accent: '#D32F2F',
               titleColor: '#B71C1C',
             },
             warning: {
-              icon: <AlertTriangle size={19} color="#E65100" style={{ flexShrink: 0 }} />,
+              icon: <AlertTriangle size={15} color="#E65100" style={{ flexShrink: 0 }} />,
               bg: '#FFFFFF',
               border: '#FFE0B2',
               accent: '#E65100',
               titleColor: '#BF360C',
             },
             info: {
-              icon: <Info size={19} color="#1565C0" style={{ flexShrink: 0 }} />,
+              icon: <Info size={15} color="#1565C0" style={{ flexShrink: 0 }} />,
               bg: '#FFFFFF',
               border: '#BBDEFB',
               accent: '#1565C0',
@@ -163,27 +164,31 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 pointerEvents: 'auto',
                 background: config.bg,
                 border: `1px solid ${config.border}`,
-                borderLeft: `4px solid ${config.accent}`,
-                borderRadius: '8px',
-                padding: '12px 14px',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08)',
+                borderLeft: `3px solid ${config.accent}`,
+                borderRadius: '6px',
+                padding: '7px 10px',
+                boxShadow: '0 4px 14px -2px rgba(0, 0, 0, 0.08), 0 2px 5px -1px rgba(0, 0, 0, 0.04)',
                 display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px',
-                animation: 'adminAlertSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-                transition: 'all 0.2s ease',
+                alignItems: item.title ? 'flex-start' : 'center',
+                gap: '8px',
+                width: '100%',
+                boxSizing: 'border-box',
+                animation: 'adminAlertSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                transition: 'all 0.15s ease',
               }}
             >
-              <div style={{ marginTop: '1px' }}>{config.icon}</div>
+              <div style={{ marginTop: item.title ? '1px' : '0', display: 'flex', alignItems: 'center' }}>
+                {config.icon}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {item.title && (
                   <div
                     style={{
-                      fontSize: '13.5px',
+                      fontSize: '12px',
                       fontWeight: 600,
                       color: config.titleColor,
-                      marginBottom: '2px',
-                      lineHeight: 1.3,
+                      marginBottom: '1px',
+                      lineHeight: 1.25,
                     }}
                   >
                     {item.title}
@@ -191,9 +196,9 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 )}
                 <div
                   style={{
-                    fontSize: '13px',
-                    color: '#333333',
-                    lineHeight: 1.45,
+                    fontSize: '11.5px',
+                    color: '#374151',
+                    lineHeight: 1.35,
                     wordBreak: 'break-word',
                   }}
                 >
@@ -208,24 +213,26 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   border: 'none',
                   cursor: 'pointer',
                   padding: '2px',
-                  color: '#888888',
+                  color: '#9CA3AF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: '4px',
+                  borderRadius: '3px',
+                  flexShrink: 0,
+                  alignSelf: item.title ? 'flex-start' : 'center',
                   transition: 'color 0.15s ease, background 0.15s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#111111';
-                  e.currentTarget.style.background = '#F0F0EE';
+                  e.currentTarget.style.color = '#111827';
+                  e.currentTarget.style.background = '#F3F4F6';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#888888';
+                  e.currentTarget.style.color = '#9CA3AF';
                   e.currentTarget.style.background = 'transparent';
                 }}
                 title="Dismiss"
               >
-                <X size={15} />
+                <X size={13} />
               </button>
             </div>
           );

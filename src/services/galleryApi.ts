@@ -79,3 +79,26 @@ export const discardDraftImages = async (ids?: string[]) => {
   const res = await api.post('/admin/gallery/images/discard-drafts', { ids });
   return res.data;
 };
+
+export const getCategoryImages = async (categoryId: string) => {
+  const res = await api.get(`/admin/gallery/categories/${categoryId}/images/admin?includeDrafts=true`);
+  return res.data;
+};
+
+export const uploadCategoryImages = async (categoryId: string, formData: FormData) => {
+  const res = await api.post(`/admin/gallery/categories/${categoryId}/images/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+};
+
+export const saveCategoryImages = async (
+  categoryId: string,
+  data: {
+    items: Array<{ _id: string; displayOrder: number; layouts?: any }>;
+    deletedImageIds?: string[];
+  }
+) => {
+  const res = await api.put(`/admin/gallery/categories/${categoryId}/images`, data);
+  return res.data;
+};

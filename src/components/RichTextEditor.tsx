@@ -218,31 +218,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   return (
     <div className="rte-container">
-      {/* Label and Live Counter Header */}
-      <div className="rte-header">
+      {/* Label (if provided) */}
+      {label ? (
         <label className="admin-form-label" style={{ marginBottom: 0 }}>
           {label}
         </label>
-        {maxChars !== undefined ? (
-          <div
-            className={`rte-word-counter ${isOverLimit ? 'over-limit' : ''} ${
-              isLimitReached ? 'limit-reached' : ''
-            }`}
-            style={
-              isLimitReached
-                ? { borderColor: '#E65100', color: '#E65100', background: '#FFF3E0' }
-                : undefined
-            }
-          >
-            <span className="font-mono">{charCount}</span> / {maxChars} characters{' '}
-            {isLimitReached ? '• Limit reached' : ''}
-          </div>
-        ) : (
-          <div className="rte-word-counter">
-            <span className="font-mono">{charCount}</span> characters
-          </div>
-        )}
-      </div>
+      ) : null}
 
       {/* Editor Box */}
       <div className={`rte-box ${isFocused ? 'focused' : ''} ${isOverLimit ? 'error' : ''}`}>
@@ -412,6 +393,27 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           >
             <Redo size={15} />
           </button>
+
+          {/* Right Corner Character Counter */}
+          <div
+            className="rte-toolbar-counter"
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', paddingLeft: '8px', flexShrink: 0 }}
+          >
+            {maxChars !== undefined ? (
+              <div
+                className={`rte-word-counter ${isOverLimit ? 'over-limit' : ''} ${
+                  isLimitReached ? 'limit-reached' : ''
+                }`}
+                title={isLimitReached ? 'Character limit reached' : undefined}
+              >
+                <span className="font-mono">{charCount}</span> / {maxChars} characters
+              </div>
+            ) : (
+              <div className="rte-word-counter">
+                <span className="font-mono">{charCount}</span> characters
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ContentEditable Canvas - Tiptap wraps it automatically */}

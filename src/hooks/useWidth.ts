@@ -1,8 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 
 export const useWidth = () => {
   const [width, setWidth] = useState(1200); // Default to lg
   const ref = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    const initialWidth = Math.floor(ref.current.getBoundingClientRect().width || ref.current.offsetWidth || 0);
+    if (initialWidth > 0 && Math.abs(initialWidth - width) > 1) {
+      setWidth(initialWidth);
+    }
+  }, []);
 
   useEffect(() => {
     if (!ref.current) return;

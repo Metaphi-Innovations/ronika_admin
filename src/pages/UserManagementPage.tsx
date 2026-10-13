@@ -11,6 +11,7 @@ import {
   Power,
   RefreshCw,
   Lock,
+  Save,
 } from 'lucide-react';
 import { userApi, CreateUserData, UpdateUserData } from '../services/userApi';
 import { AdminUser } from '../types/auth';
@@ -988,8 +989,9 @@ export const UserManagementPage: React.FC = () => {
                 >
                   Cancel
                 </button>
-                <button type="submit" disabled={submitting} className="admin-btn primary">
-                  {submitting ? 'Saving Changes...' : 'Save Changes'}
+                <button type="submit" disabled={submitting} className="admin-btn primary admin-btn-save">
+                  <Save size={13} />
+                  <span>{submitting ? 'Saving Changes...' : 'Save Changes'}</span>
                 </button>
               </div>
             </form>
