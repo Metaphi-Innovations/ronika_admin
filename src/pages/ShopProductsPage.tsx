@@ -522,14 +522,14 @@ export const ShopProductsPage: React.FC = () => {
         const res = await updateShopProduct(editingProduct._id, formData);
         if (res.success) {
           handleCloseProdModal();
-          alert.success(`Product "${res.data?.name || name}" updated successfully.`);
+          alert.success('Product updated successfully.');
           fetchData();
         }
       } else {
         const res = await createShopProduct(formData);
         if (res.success) {
           handleCloseProdModal();
-          alert.success(`Product "${res.data?.name || name}" created successfully.`);
+          alert.success('Product created successfully.');
           fetchData();
         }
       }
@@ -577,21 +577,6 @@ export const ShopProductsPage: React.FC = () => {
 
   return (
     <div>
-      <PageHeader
-        title="SHOP CATALOG"
-        actions={
-          <button
-            type="button"
-            onClick={handleSaveSettings}
-            disabled={savingSettings || !settings}
-            className="admin-btn primary admin-btn-save"
-          >
-            <Save size={13} />
-            <span>{savingSettings ? 'Saving...' : 'Save Shop Header'}</span>
-          </button>
-        }
-      />
-
       {error && (
         <div
           style={{
@@ -613,9 +598,20 @@ export const ShopProductsPage: React.FC = () => {
       <AdminSection
         title="SHOP PAGE HEADER"
         style={{ marginBottom: '20px' }}
+        actions={
+          <button
+            type="button"
+            onClick={handleSaveSettings}
+            disabled={savingSettings || !settings}
+            className="admin-btn primary admin-btn-save"
+          >
+            <Save size={13} />
+            <span>{savingSettings ? 'Saving...' : 'Save Shop Header'}</span>
+          </button>
+        }
       >
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 300px', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <RichTextEditor
                 label="Title"
@@ -625,7 +621,7 @@ export const ShopProductsPage: React.FC = () => {
               />
             </div>
           </div>
-          <div style={{ flex: '2 1 400px', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: '2 1 320px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <RichTextEditor
                 label="Subtitle"
@@ -639,7 +635,13 @@ export const ShopProductsPage: React.FC = () => {
       </AdminSection>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        <button onClick={() => setShowCatModal(true)} className="admin-btn secondary">
+        <button
+          onClick={() => {
+            setNewCatName('');
+            setShowCatModal(true);
+          }}
+          className="admin-btn secondary"
+        >
           <Layers size={14} />
           <span>Shop Category</span>
         </button>
@@ -904,7 +906,10 @@ export const ShopProductsPage: React.FC = () => {
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  onClick={() => setShowCatModal(false)}
+                  onClick={() => {
+                    setNewCatName('');
+                    setShowCatModal(false);
+                  }}
                   className="admin-btn secondary admin-btn-save"
                 >
                   Cancel

@@ -180,11 +180,11 @@ export const ProjectsPage: React.FC = () => {
               <thead>
                 <tr>
                   <th>Project</th>
-                  <th>Category</th>
-                  <th>Media</th>
-                  <th>Publication Status</th>
-                  <th style={{ width: '90px', textAlign: 'center' }}>Sequence</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th style={{ whiteSpace: 'nowrap' }}>Category</th>
+                  <th style={{ whiteSpace: 'nowrap' }}>Media</th>
+                  <th style={{ whiteSpace: 'nowrap' }}>Publication Status</th>
+                  <th style={{ width: '90px', textAlign: 'center', whiteSpace: 'nowrap' }}>Sequence</th>
+                  <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -224,8 +224,8 @@ export const ProjectsPage: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td>
-                      <span style={{ fontSize: '12px', background: 'var(--admin-surface-subtle)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--admin-border)' }}>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '12px', background: 'var(--admin-surface-subtle)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--admin-border)', whiteSpace: 'nowrap', display: 'inline-block' }}>
                         {project.images?.length || 0} images
                       </span>
                     </td>

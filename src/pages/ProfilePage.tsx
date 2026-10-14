@@ -47,22 +47,26 @@ export const ProfilePage: React.FC = () => {
     if (!user) return;
 
     if (!editName.trim()) {
-      setModalError('Full name cannot be empty.');
+      alert.error('Full name is required.');
       return;
     }
-
     if (!editEmail.trim()) {
-      setModalError('Email address cannot be empty.');
+      alert.error('Email address is required.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editEmail.trim())) {
+      alert.error('Please enter a valid email address.');
       return;
     }
 
     if (changePassword) {
       if (!newPassword || newPassword.length < 6) {
-        setModalError('New password must be at least 6 characters long.');
+        alert.error('New password must be at least 6 characters long.');
         return;
       }
       if (newPassword !== confirmPassword) {
-        setModalError('Passwords do not match.');
+        alert.error('Passwords do not match.');
         return;
       }
     }
@@ -90,8 +94,8 @@ export const ProfilePage: React.FC = () => {
     } catch (err: any) {
       const msg =
         err.message ||
-        "We couldn't update profile. Please try again.. Please try again.";
-      setModalError(msg);
+        "We couldn't update profile. Please try again.";
+      alert.error(msg);
     } finally {
       setSaving(false);
     }
@@ -121,8 +125,8 @@ export const ProfilePage: React.FC = () => {
     user.role === 'super_admin'
       ? 'Super Admin'
       : user.role === 'editor'
-      ? 'Editor'
-      : 'Administrator';
+        ? 'Editor'
+        : 'Administrator';
 
   return (
     <div style={{ maxWidth: '850px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -186,8 +190,8 @@ export const ProfilePage: React.FC = () => {
                       user.role === 'super_admin'
                         ? '#6D28D9'
                         : user.role === 'admin'
-                        ? '#283593'
-                        : '#616161',
+                          ? '#283593'
+                          : '#616161',
                     color: '#FFFFFF',
                   }}
                 >
@@ -288,8 +292,8 @@ export const ProfilePage: React.FC = () => {
               {user.role === 'super_admin'
                 ? 'Super Administrator (Full System Control)'
                 : user.role === 'editor'
-                ? 'Editor (Content Only)'
-                : 'Administrator (Full Access)'}
+                  ? 'Editor (Content Only)'
+                  : 'Administrator (Full Access)'}
             </div>
           </div>
 
@@ -381,27 +385,12 @@ export const ProfilePage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <form onSubmit={handleSaveProfile} noValidate autoComplete="off" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {/* Dummy hidden inputs to intercept aggressive browser credential autofill */}
               <input type="text" name="fake_username_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
               <input type="password" name="fake_password_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="new-password" />
 
               <div className="modal-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                {modalError && (
-                  <div
-                    style={{
-                      padding: '0.75rem 1rem',
-                      background: '#FFEBEE',
-                      color: 'var(--admin-danger, #E53935)',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      border: '1px solid #FFCDD2',
-                    }}
-                  >
-                    {modalError}
-                  </div>
-                )}
-
                 {/* Name */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
                   <label className="admin-form-label">Full Name <span className="admin-required-asterisk">*</span></label>

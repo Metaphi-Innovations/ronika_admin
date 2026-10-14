@@ -24,7 +24,16 @@ export const ProjectCategoryModal: React.FC<ProjectCategoryModalProps> = ({ isOp
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isOpen) fetchCategories();
+    if (isOpen) {
+      setNewCategory('');
+      setEditingId(null);
+      setEditName('');
+      fetchCategories();
+    } else {
+      setNewCategory('');
+      setEditingId(null);
+      setEditName('');
+    }
   }, [isOpen]);
 
   const fetchCategories = async () => {

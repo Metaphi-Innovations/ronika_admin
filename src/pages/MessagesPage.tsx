@@ -183,7 +183,7 @@ export const MessagesPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div style={{ overflow: 'visible' }}>
+          <div style={{ overflowX: 'auto', width: '100%' }}>
             <table className="admin-data-grid">
               <thead>
                 <tr>

@@ -136,19 +136,24 @@ export const UserManagementPage: React.FC = () => {
     setModalError(null);
 
     if (!newUserData.name.trim()) {
-      setModalError('Full name is required.');
+      alert.error('Full name is required.');
       return;
     }
     if (!newUserData.email.trim()) {
-      setModalError('Valid email address is required.');
+      alert.error('Email address is required.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newUserData.email.trim())) {
+      alert.error('Please enter a valid email address.');
       return;
     }
     if (newUserData.password.length < 6) {
-      setModalError('Password must be at least 6 characters.');
+      alert.error('Password must be at least 6 characters.');
       return;
     }
     if (newUserData.password !== confirmPassword) {
-      setModalError('Passwords do not match.');
+      alert.error('Passwords do not match.');
       return;
     }
 
@@ -204,21 +209,26 @@ export const UserManagementPage: React.FC = () => {
     setModalError(null);
 
     if (!editFormData.name.trim()) {
-      setModalError('Full name cannot be empty.');
+      alert.error('Full name is required.');
       return;
     }
     if (!editFormData.email.trim()) {
-      setModalError('Email address cannot be empty.');
+      alert.error('Email address is required.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editFormData.email.trim())) {
+      alert.error('Please enter a valid email address.');
       return;
     }
 
     if (editFormData.changePassword) {
       if (editFormData.newPassword.length < 6) {
-        setModalError('New password must be at least 6 characters.');
+        alert.error('New password must be at least 6 characters.');
         return;
       }
       if (editFormData.newPassword !== editFormData.confirmNewPassword) {
-        setModalError('New passwords do not match.');
+        alert.error('New passwords do not match.');
         return;
       }
     }
@@ -245,7 +255,6 @@ export const UserManagementPage: React.FC = () => {
       await fetchUsers();
     } catch (err: any) {
       const msg = err.message || "We couldn't update user.. Please try again.";
-      setModalError(msg);
       alert.error(msg);
     } finally {
       setSubmitting(false);
@@ -583,27 +592,12 @@ export const UserManagementPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <form onSubmit={handleCreateUser} noValidate autoComplete="off" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {/* Dummy hidden inputs to intercept aggressive browser credential autofill */}
               <input type="text" name="fake_username_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
               <input type="password" name="fake_password_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="new-password" />
 
               <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                {modalError && (
-                  <div
-                    style={{
-                      padding: '0.75rem 1rem',
-                      background: '#FFEBEE',
-                      color: 'var(--admin-danger)',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      border: '1px solid #FFCDD2',
-                    }}
-                  >
-                    {modalError}
-                  </div>
-                )}
-
                 {/* Name */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
                   <label className="admin-form-label">Full Name <span className="admin-required-asterisk">*</span></label>
@@ -766,7 +760,7 @@ export const UserManagementPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleUpdateUser} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <form onSubmit={handleUpdateUser} noValidate autoComplete="off" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {/* Dummy hidden inputs to intercept aggressive browser credential autofill */}
               <input type="text" name="fake_edit_username_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
               <input type="password" name="fake_edit_password_remembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="new-password" />
@@ -783,21 +777,6 @@ export const UserManagementPage: React.FC = () => {
                   overflowY: 'auto',
                 }}
               >
-                {modalError && (
-                  <div
-                    style={{
-                      padding: '0.75rem 1rem',
-                      background: '#FFEBEE',
-                      color: 'var(--admin-danger)',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      border: '1px solid #FFCDD2',
-                    }}
-                  >
-                    {modalError}
-                  </div>
-                )}
-
                 {/* Name */}
                 <div className="admin-form-group" style={{ margin: 0 }}>
                   <label className="admin-form-label">Full Name <span className="admin-required-asterisk">*</span></label>

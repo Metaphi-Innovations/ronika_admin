@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -7,6 +7,7 @@ export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,9 +24,9 @@ export const ForgotPasswordPage: React.FC = () => {
       );
     } catch (err: any) {
       setStatus('error');
-      setMessage(
-        err.message || 'Password reset could not be completed. Please verify your email or contact support.'
-      );
+      const errorMsg =
+        err.message || 'Password reset could not be completed. Please verify your email or contact support.';
+      setMessage(errorMsg);
     }
   };
 
@@ -115,7 +116,7 @@ export const ForgotPasswordPage: React.FC = () => {
                       id="email"
                       type="email"
                       className="form-input"
-                      placeholder="admin@ronikabhatia.com"
+                      placeholder="Enter your email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required

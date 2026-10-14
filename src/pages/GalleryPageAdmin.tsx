@@ -42,6 +42,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { MediaGridEditor } from '../components/MediaGridEditor';
 import { StatusBadge } from '../components/StatusBadge';
 import { Loader } from '../components/Loader';
+import { AdminSection } from '../components/AdminSection';
 import { countReadableChars, MAX_GALLERY_INTRO_CHARS } from '../utils/richText';
 import { useAlert } from '../context/AlertContext';
 import { useLiveResource } from '../context/LiveSyncContext';
@@ -489,11 +490,16 @@ export const GalleryPageAdmin: React.FC = () => {
   // Submit Staged Images to Active Category API (Append-Only Order)
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (uploading || stagedFiles.length === 0) return;
+    if (uploading) return;
 
     const targetCatId = uploadDestinationCatId || activeCatId;
     if (!targetCatId) {
       alert.error('Please select a destination category.', 'Category Required');
+      return;
+    }
+
+    if (stagedFiles.length === 0) {
+      alert.error('Please select at least one artwork image.', 'Image Required');
       return;
     }
 
@@ -890,59 +896,28 @@ export const GalleryPageAdmin: React.FC = () => {
       {/* ========================================================================= */}
       <div>
         {/* Editorial Intro Section */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
-          <button
-            type="button"
-            onClick={handleSaveHeader}
-            disabled={savingHeader}
-            className="admin-btn primary admin-btn-save"
-          >
-            <Save size={13} />
-            <span>{savingHeader ? 'Saving...' : 'Save Intro'}</span>
-          </button>
-        </div>
-        <div
-          style={{
-            marginBottom: '1.25rem',
-            border: '1px solid var(--admin-border)',
-            borderRadius: '6px',
-            backgroundColor: '#FFFFFF',
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              padding: '10px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              backgroundColor: 'var(--admin-surface-subtle)',
-              borderBottom: '1px solid var(--admin-border)',
-            }}
-          >
-            <span
-              className="admin-section-title"
-              style={{
-                fontSize: '12px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                color: 'var(--admin-text-main, #111)',
-              }}
+        <AdminSection
+          title="EDITORIAL INTRO TEXT"
+          style={{ marginBottom: '1.25rem' }}
+          actions={
+            <button
+              type="button"
+              onClick={handleSaveHeader}
+              disabled={savingHeader}
+              className="admin-btn primary admin-btn-save"
             >
-              Editorial Intro Text
-            </span>
-          </div>
-
-          <div style={{ padding: '16px' }}>
-            <RichTextEditor
-              label="Gallery Title"
-              value={galleryHeader}
-              onChange={setGalleryHeader}
-              maxChars={MAX_GALLERY_INTRO_CHARS}
-            />
-          </div>
-        </div>
+              <Save size={13} />
+              <span>{savingHeader ? 'Saving...' : 'Save Intro'}</span>
+            </button>
+          }
+        >
+          <RichTextEditor
+            label="Gallery Title"
+            value={galleryHeader}
+            onChange={setGalleryHeader}
+            maxChars={MAX_GALLERY_INTRO_CHARS}
+          />
+        </AdminSection>
 
         {/* Action Controls: Add Images Button bound to active category */}
         <div
@@ -1519,7 +1494,7 @@ export const GalleryPageAdmin: React.FC = () => {
                 <button
                   type="submit"
                   className="admin-btn primary"
-                  disabled={uploading || stagedFiles.length === 0}
+                  disabled={uploading}
                 >
                   {uploading
                     ? 'Adding Artworks...'

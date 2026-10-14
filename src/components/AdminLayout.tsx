@@ -15,11 +15,14 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { ConfirmModal } from './ConfirmModal';
 
 export const AdminLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem('admin_sidebar_collapsed') === 'true';
@@ -64,9 +67,15 @@ export const AdminLayout: React.FC = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+  const handleConfirmLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await logout();
+      setShowLogoutConfirm(false);
+      navigate('/login');
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const isFullAdmin =
@@ -233,7 +242,7 @@ export const AdminLayout: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={() => setShowLogoutConfirm(true)}
               className="admin-btn-icon"
               title="Sign out of CMS"
               aria-label="Logout"
@@ -247,6 +256,19 @@ export const AdminLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        title="Log Out?"
+        message="Are you sure you want to log out of the admin panel?"
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        isDanger={true}
+        isLoading={loggingOut}
+        onConfirm={handleConfirmLogout}
+        onClose={() => setShowLogoutConfirm(false)}
+      />
     </div>
   );
 };

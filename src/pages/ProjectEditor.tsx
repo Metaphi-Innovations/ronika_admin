@@ -235,10 +235,12 @@ export const ProjectEditor: React.FC = () => {
     });
     clearError('heroImage');
 
-    alert.success(
-      'Cover image updated successfully.',
-      'Cover Image'
-    );
+    if (isEditing) {
+      alert.success(
+        'Cover image updated successfully.',
+        'Cover Image'
+      );
+    }
     e.target.value = '';
   };
   const removeHeroImage = async () => {
