@@ -605,6 +605,28 @@ export const GalleryPageAdmin: React.FC = () => {
         if (res.success) {
           alert.success('Changes saved.');
 
+          // Synchronize savedImages immediately with the saved draft
+          // This prevents any pre-position flicker/flash before or during background fetch
+          setSavedImages((prevSaved) => {
+            const currentDraftMap = new Map(currentDraft.map((d) => [String(d._id), d]));
+            const deletedSet = new Set(dels.map(String));
+            const updated = prevSaved
+              .filter((img) => !deletedSet.has(String(img._id)))
+              .map((img) => {
+                const draftVer = currentDraftMap.get(String(img._id));
+                if (draftVer) {
+                  return {
+                    ...img,
+                    ...draftVer,
+                    published: true,
+                    isDraft: false,
+                  };
+                }
+                return img;
+              });
+            return updated;
+          });
+
           // Clear pending deletions for this category
           setPendingDeletions((prev) => {
             const next = { ...prev };
@@ -624,7 +646,7 @@ export const GalleryPageAdmin: React.FC = () => {
           dels.forEach((id) => savedIds.add(id));
           setStagedDraftImageIds((prev) => prev.filter((id) => !savedIds.has(id)));
 
-          // Authoritative synchronization with backend
+          // Authoritative synchronization with backend in background
           await fetchData(false);
         } else {
           alert.error(res.message || "Couldn't save changes.");
@@ -674,6 +696,28 @@ export const GalleryPageAdmin: React.FC = () => {
 
         if (res.success) {
           alert.success('Changes saved.');
+
+          // Synchronize savedImages immediately with the saved draft
+          setSavedImages((prevSaved) => {
+            const currentDraftMap = new Map(currentDraft.map((d) => [String(d._id), d]));
+            const deletedSet = new Set(dels.map(String));
+            const updated = prevSaved
+              .filter((img) => !deletedSet.has(String(img._id)))
+              .map((img) => {
+                const draftVer = currentDraftMap.get(String(img._id));
+                if (draftVer) {
+                  return {
+                    ...img,
+                    ...draftVer,
+                    published: true,
+                    isDraft: false,
+                  };
+                }
+                return img;
+              });
+            return updated;
+          });
+
           setPendingDeletions((prev) => {
             const next = { ...prev };
             delete next['all'];

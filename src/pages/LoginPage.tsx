@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 import {
   ArrowRight,
-  AlertCircle,
   ExternalLink,
 } from 'lucide-react';
 import { PasswordInput } from '../components/PasswordInput';
@@ -23,16 +23,18 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(() => {
     return localStorage.getItem('admin_remember_me') === 'true';
   });
-  const [error, setError] = useState<string | null>(() => {
-    if (searchParams.get('deactivated') === 'true') {
-      return 'Your account has been deactivated. Please contact Super Admin.';
-    }
-    return null;
-  });
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
+  const alert = useAlert();
   const navigate = useNavigate();
+
+  // Show toast if deactivated
+  useEffect(() => {
+    if (searchParams.get('deactivated') === 'true') {
+      alert.error('Your account has been deactivated. Please contact Super Admin.', 'Session Ended');
+    }
+  }, [searchParams]);
 
   // Prefill remembered email if saved
   useEffect(() => {
@@ -44,13 +46,23 @@ export const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
-      setError('Please provide both email and password.');
+
+    if (!email.trim() && !password) {
+      alert.error('Please enter the email and password.', 'Required Fields');
+      return;
+    }
+
+    if (!email.trim()) {
+      alert.error('Please enter the email.', 'Required Field');
+      return;
+    }
+
+    if (!password) {
+      alert.error('Please enter the password.', 'Required Field');
       return;
     }
 
     try {
-      setError(null);
       setLoading(true);
 
       await login(email.trim(), password);
@@ -65,10 +77,8 @@ export const LoginPage: React.FC = () => {
 
       navigate('/');
     } catch (err: any) {
-      setError(
-        err.message ||
-        'Invalid login credentials. Please try again.'
-      );
+      const msg = err.message || 'Invalid login credentials. Please try again.';
+      alert.error(msg, 'Login Failed');
     } finally {
       setLoading(false);
     }
@@ -118,14 +128,7 @@ export const LoginPage: React.FC = () => {
             <h1 className="auth-heading">Welcome back.</h1>
             <p className="auth-subheading">Sign in to manage your portfolio.</p>
 
-            {error && (
-              <div className="alert-error" style={{ marginBottom: '24px' }}>
-                <AlertCircle size={16} />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="auth-form">
+            <form onSubmit={handleSubmit} className="auth-form" noValidate>
               <div className="form-group">
                 <label className="form-label" htmlFor="email">
                   Admin Email
@@ -137,7 +140,6 @@ export const LoginPage: React.FC = () => {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required
                   disabled={loading}
                   autoComplete="email"
                 />
@@ -153,7 +155,6 @@ export const LoginPage: React.FC = () => {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required
                   disabled={loading}
                   autoComplete="current-password"
                 />

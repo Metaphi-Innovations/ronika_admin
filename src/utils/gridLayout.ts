@@ -113,3 +113,47 @@ export function compactLayout<T extends { i: string; x: number; y: number; w: nu
   // Restore original ordering
   return items.map(original => compacted.find(c => c.i === original.i) || original);
 }
+
+/**
+ * Synchronously computes the canonical compacted layout for an array of items.
+ * Normalizes existing valid coordinates or assigns non-colliding default slots.
+ */
+export function computeCanonicalLayout(items: { id: string | number; layouts?: any }[]): any[] {
+  const existingRects: { x: number; y: number; w: number; h: number }[] = [];
+  const initialElements: any[] = [];
+
+  items.forEach((item) => {
+    const norm = normalizeLayoutItem(item.layouts?.lg);
+    const itemId = String(item.id);
+
+    if (norm) {
+      existingRects.push(norm);
+      initialElements.push({
+        i: itemId,
+        x: norm.x,
+        y: norm.y,
+        w: norm.w,
+        h: norm.h,
+        minW: 1,
+        minH: 1,
+      });
+    } else {
+      const slot = findNextAvailableSlot(existingRects, DEFAULT_ITEM_W, DEFAULT_ITEM_H, RGL_COLS);
+      const newLayout = {
+        x: slot.x,
+        y: slot.y,
+        w: DEFAULT_ITEM_W,
+        h: DEFAULT_ITEM_H,
+      };
+      existingRects.push(newLayout);
+      initialElements.push({
+        i: itemId,
+        ...newLayout,
+        minW: 1,
+        minH: 1,
+      });
+    }
+  });
+
+  return compactLayout(initialElements, RGL_COLS);
+}

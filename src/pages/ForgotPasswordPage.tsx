@@ -2,16 +2,21 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { api } from '../services/api';
+import { useAlert } from '../context/AlertContext';
 
 export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
+  const alert = useAlert();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim()) {
+      alert.error('Please enter the email.', 'Required Field');
+      return;
+    }
 
     try {
       setStatus('loading');
@@ -22,11 +27,13 @@ export const ForgotPasswordPage: React.FC = () => {
         res.data.message ||
         "If an account exists for this email, we've sent instructions to reset your password."
       );
+      alert.success('Password reset link sent to your email.', 'Check Your Inbox');
     } catch (err: any) {
       setStatus('error');
       const errorMsg =
         err.message || 'Password reset could not be completed. Please verify your email or contact support.';
       setMessage(errorMsg);
+      alert.error(errorMsg, 'Reset Failed');
     }
   };
 
@@ -107,7 +114,7 @@ export const ForgotPasswordPage: React.FC = () => {
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="auth-form">
+                <form onSubmit={handleSubmit} className="auth-form" noValidate>
                   <div className="form-group">
                     <label className="form-label" htmlFor="email">
                       Admin Email
@@ -119,7 +126,6 @@ export const ForgotPasswordPage: React.FC = () => {
                       placeholder="Enter your email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      required
                       disabled={status === 'loading'}
                       autoComplete="email"
                     />

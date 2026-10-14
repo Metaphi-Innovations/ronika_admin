@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Edit2 } from 'lucide-react';
 import RGL from 'react-grid-layout/legacy';
 import 'react-grid-layout/css/styles.css';
@@ -50,61 +50,37 @@ import {
   DEFAULT_ITEM_H,
   normalizeLayoutItem,
   findNextAvailableSlot,
-  compactLayout
+  compactLayout,
+  computeCanonicalLayout
 } from '../utils/gridLayout';
 
 export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({ 
   items, onChange, onDelete, onReplace, onEdit, onTogglePublish, headerContent 
 }) => {
   const { width, ref } = useWidth();
-  const [localLayouts, setLocalLayouts] = useState<any[]>([]);
+  const [dragLayout, setDragLayout] = useState<{ itemsRef: GridMediaItem[]; layout: any[] } | null>(null);
 
+  // Synchronously compute canonical compacted layout from incoming items
+  const synchronousLayout = useMemo(() => {
+    return computeCanonicalLayout(items);
+  }, [items]);
+
+  // Use active drag override if it matches current items instance; otherwise use synchronousLayout
+  const currentLayout = useMemo(() => {
+    if (dragLayout && dragLayout.itemsRef === items) {
+      return dragLayout.layout;
+    }
+    return synchronousLayout;
+  }, [dragLayout, items, synchronousLayout]);
+
+  // Only sync to parent if an item was missing a layout (e.g. brand new upload)
   useEffect(() => {
-    // 1. Collect all valid normalized rectangles
-    const existingRects: { x: number; y: number; w: number; h: number }[] = [];
-    const initialElements: any[] = [];
+    const hasMissing = items.some((item) => !normalizeLayoutItem(item.layouts?.lg));
+    if (!hasMissing || !onChange) return;
 
-    items.forEach((item) => {
-      const norm = normalizeLayoutItem(item.layouts?.lg);
-      const itemId = String(item.id);
-
-      if (norm) {
-        existingRects.push(norm);
-        initialElements.push({
-          i: itemId,
-          x: norm.x,
-          y: norm.y,
-          w: norm.w,
-          h: norm.h,
-          minW: 1,
-          minH: 1,
-        });
-      } else {
-        const slot = findNextAvailableSlot(existingRects, DEFAULT_ITEM_W, DEFAULT_ITEM_H, RGL_COLS);
-        const newLayout = {
-          x: slot.x,
-          y: slot.y,
-          w: DEFAULT_ITEM_W,
-          h: DEFAULT_ITEM_H,
-        };
-        existingRects.push(newLayout);
-        initialElements.push({
-          i: itemId,
-          ...newLayout,
-          minW: 1,
-          minH: 1,
-        });
-      }
-    });
-
-    // 2. Compact vertically to match canonical RGL vertical compaction
-    const compacted = compactLayout(initialElements, RGL_COLS);
-    setLocalLayouts(compacted);
-
-    // 3. If any item's layout in props was missing or different from compacted, sync parent
     let hasChanges = false;
     const updatedItems = items.map((item) => {
-      const l = compacted.find((c) => c.i === String(item.id));
+      const l = synchronousLayout.find((c: any) => c.i === String(item.id));
       if (!l) return item;
       const currentLg = item.layouts?.lg;
       const isDiff =
@@ -126,12 +102,13 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({
       return item;
     });
 
-    if (hasChanges && onChange) {
+    if (hasChanges) {
       onChange(updatedItems);
     }
-  }, [items]);
+  }, [items, synchronousLayout, onChange]);
 
   const handleDragStop = (layout: any[]) => {
+    setDragLayout({ itemsRef: items, layout });
     if (onChange) {
       let hasChanges = false;
       const updatedItems = items.map((item) => {
@@ -158,6 +135,7 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({
   };
 
   const handleResizeStop = (layout: any[]) => {
+    setDragLayout({ itemsRef: items, layout });
     if (onChange) {
       let hasChanges = false;
       const updatedItems = items.map((item) => {
@@ -190,7 +168,7 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({
       h.setAttribute('aria-label', 'Resize image');
       h.setAttribute('role', 'button');
     });
-  }, [items, localLayouts]);
+  }, [items, currentLayout]);
 
   return (
     <div className="media-grid-editor gallery-media-grid-editor" ref={ref}>
@@ -211,7 +189,7 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({
         {width > 0 && (
         <ReactGridLayout
           className="layout"
-          layout={localLayouts}
+          layout={currentLayout}
           cols={RGL_COLS}
           width={width}
           rowHeight={RGL_ROW_HEIGHT}
@@ -230,7 +208,7 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({
             return (
               <div
                 key={String(item.id)}
-                data-grid={localLayouts.find((l) => l.i === String(item.id))}
+                data-grid={currentLayout.find((l: any) => l.i === String(item.id))}
                 className="rgl-item-container"
                 style={{
                   boxSizing: 'border-box',

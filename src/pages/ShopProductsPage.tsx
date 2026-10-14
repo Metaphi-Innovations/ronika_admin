@@ -7,6 +7,7 @@ import {
   Upload,
   CheckCircle2,
   Edit2,
+  RefreshCw,
   X,
   Image as ImageIcon,
   ChevronDown,
@@ -1218,9 +1219,9 @@ export const ShopProductsPage: React.FC = () => {
                       <label
                         className="admin-btn-icon"
                         style={{ cursor: 'pointer', padding: '6px' }}
-                        title="Change Product Image"
+                        title="Replace Product Image"
                       >
-                        <Edit2 size={14} />
+                        <RefreshCw size={14} />
                         <input
                           type="file"
                           accept="image/jpeg, image/png, image/webp, image/avif"

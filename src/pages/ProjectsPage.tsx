@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FolderKanban, Plus, Edit, Trash2, Image as ImageIcon, Eye, EyeOff, Loader2, Sparkles, Layers, ArrowUp, ArrowDown } from 'lucide-react';
+import { FolderKanban, Plus, Edit2, Trash2, Image as ImageIcon, Eye, EyeOff, Loader2, Sparkles, Layers, ArrowUp, ArrowDown } from 'lucide-react';
 import { getProjects, updateProject, deleteProject, reorderProjects, IProject } from '../services/projectApi';
 import { getHomeContent } from '../services/contentApi';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -320,14 +320,14 @@ export const ProjectsPage: React.FC = () => {
                           className="admin-btn-icon"
                           title="Edit Project"
                         >
-                          <Edit size={16} />
+                          <Edit2 size={15} />
                         </Link>
                         <button
                           onClick={() => setDeleteTarget({ id: project._id!, title: project.title })}
                           className="admin-btn-icon danger"
                           title="Delete Project"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={15} />
                         </button>
                       </div>
                     </td>

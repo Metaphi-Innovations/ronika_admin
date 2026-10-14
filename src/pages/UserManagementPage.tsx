@@ -9,7 +9,6 @@ import {
   Eye,
   EyeOff,
   Power,
-  RefreshCw,
   Lock,
   Save,
 } from 'lucide-react';
@@ -332,23 +331,12 @@ export const UserManagementPage: React.FC = () => {
       <PageHeader
         title="USER MANAGEMENT"
         actions={
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <button
-              onClick={fetchUsers}
-              disabled={loading}
-              className="admin-btn secondary"
-              title="Refresh Users"
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              <span>Refresh</span>
+          isCurrentSuperAdmin ? (
+            <button onClick={handleOpenAddModal} className="admin-btn primary">
+              <Plus size={15} />
+              <span>Add User</span>
             </button>
-            {isCurrentSuperAdmin && (
-              <button onClick={handleOpenAddModal} className="admin-btn primary">
-                <Plus size={15} />
-                <span>Add Administrator</span>
-              </button>
-            )}
-          </div>
+          ) : undefined
         }
       />
 
