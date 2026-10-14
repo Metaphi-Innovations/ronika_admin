@@ -1010,8 +1010,8 @@ export const UserManagementPage: React.FC = () => {
         }
         message={
           statusToggleTarget?.isActive
-            ? `Are you sure you want to deactivate "${statusToggleTarget?.name}"?`
-            : `Are you sure you want to activate "${statusToggleTarget?.name}"?`
+            ? `Are you sure you want to deactivate "${statusToggleTarget?.email}"?`
+            : `Are you sure you want to activate "${statusToggleTarget?.email}"?`
         }
         confirmLabel={
           statusToggleTarget?.isActive ? 'Deactivate' : 'Activate'
@@ -1028,7 +1028,7 @@ export const UserManagementPage: React.FC = () => {
       <ConfirmModal
         isOpen={Boolean(deleteTarget)}
         title="Delete User?"
-        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete "${deleteTarget?.email}"? This action cannot be undone.`}
         confirmLabel="Delete User"
         isDanger={true}
         isLoading={submitting}

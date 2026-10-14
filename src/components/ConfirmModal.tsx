@@ -83,7 +83,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           </button>
         </div>
 
-        <div className="modal-body" style={{ padding: '1.25rem 1.5rem', fontSize: '14px', color: 'var(--admin-text-muted)', lineHeight: '1.5' }}>
+        <div className="modal-body" style={{ padding: '1.25rem 1.5rem', fontSize: '14px', color: 'var(--admin-text-muted)', lineHeight: '1.5', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
           {message}
         </div>
 

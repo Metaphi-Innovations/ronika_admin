@@ -16,6 +16,7 @@ import {
   Eye,
   RotateCcw,
   Edit2,
+  RefreshCw,
   Monitor,
   Tablet,
   Smartphone,
@@ -767,9 +768,20 @@ export const GalleryPageAdmin: React.FC = () => {
   const openEditModal = (img: IGalleryImage) => {
     setEditTarget(img);
     setEditTitle(img.title || '');
-    const currentCatId =
-      typeof img.category === 'object' && img.category ? img.category._id : (img.category as string) || '';
-    setEditCategoryId(currentCatId);
+
+    // Accurately resolve category ID whether img.category is an object, ID string, or name string
+    let resolvedCatId = '';
+    if (typeof img.category === 'object' && img.category && (img.category as any)._id) {
+      resolvedCatId = String((img.category as any)._id);
+    } else if (typeof img.category === 'string' && img.category.trim()) {
+      const catStr = img.category.trim();
+      const matchedCat = categories.find(
+        (c) => String(c._id) === catStr || c.name.toLowerCase() === catStr.toLowerCase()
+      );
+      resolvedCatId = matchedCat ? String(matchedCat._id) : catStr;
+    }
+
+    setEditCategoryId(resolvedCatId);
     setReplaceFile(null);
     setReplacePreview(null);
   };
@@ -778,10 +790,7 @@ export const GalleryPageAdmin: React.FC = () => {
     e.preventDefault();
     if (!editTarget) return;
 
-    if (!editCategoryId || !editCategoryId.trim()) {
-      alert.error('Please select a category. Category is a mandatory field.', 'Category Required');
-      return;
-    }
+    const chosenCatId = editCategoryId || (categories.length > 0 ? String(categories[0]._id) : '');
 
     try {
       setEditingImage(true);
@@ -790,12 +799,12 @@ export const GalleryPageAdmin: React.FC = () => {
         const formData = new FormData();
         formData.append('gallery_image', replaceFile);
         formData.append('title', editTitle.trim());
-        formData.append('category', editCategoryId);
+        if (chosenCatId) formData.append('category', chosenCatId);
         res = await replaceGalleryImage(editTarget._id, formData);
       } else {
         res = await updateGalleryImage(editTarget._id, {
           title: editTitle.trim(),
-          category: editCategoryId,
+          ...(chosenCatId ? { category: chosenCatId } : {}),
         });
       }
 
@@ -961,13 +970,9 @@ export const GalleryPageAdmin: React.FC = () => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '1rem',
+            marginBottom: '1.25rem',
             flexWrap: 'wrap',
-            background: 'var(--admin-surface-subtle)',
-            padding: '8px 14px',
-            borderRadius: '6px',
             gap: '10px',
-            border: '1px solid var(--admin-border)',
           }}
         >
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1548,90 +1553,74 @@ export const GalleryPageAdmin: React.FC = () => {
             </h3>
 
             <form onSubmit={handleEditSubmit} noValidate>
-              <div className="admin-form-group" style={{ marginBottom: '1rem' }}>
-                <label className="admin-form-label">Artwork Title</label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="admin-form-input"
-                  placeholder="Artwork Title"
-                />
-              </div>
 
               <div className="admin-form-group" style={{ marginBottom: '1.25rem' }}>
                 <label className="admin-form-label">Replace Image (Optional)</label>
-                {replaceFile && replacePreview ? (
-                  <div
-                    style={{
-                      border: '1px solid var(--admin-border)',
-                      borderRadius: '6px',
-                      padding: '0.625rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      background: '#FFFFFF',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, overflow: 'hidden' }}>
-                      <div
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '4px',
-                          overflow: 'hidden',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <img
-                          src={replacePreview.url}
-                          alt="Preview"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      </div>
+                <div
+                  style={{
+                    border: '1px solid var(--admin-border)',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'var(--admin-surface-subtle)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                    <img
+                      src={replacePreview ? replacePreview.url : getImageUrl(editTarget?.image?.url)}
+                      alt="Artwork Preview"
+                      style={{
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '4px',
+                        objectFit: 'cover',
+                        border: '1px solid var(--admin-border)',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ minWidth: 0, flex: 1 }}>
                       <div
                         style={{
                           fontSize: '12px',
                           fontWeight: 600,
+                          color: 'var(--admin-text-main)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
+                          maxWidth: '220px',
                         }}
                       >
-                        {replacePreview.name}
+                        {replacePreview ? replacePreview.name : editTarget?.image?.filename || 'Current Artwork Image'}
                       </div>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '10.5px',
+                          color: replacePreview ? '#2E7D32' : 'var(--admin-text-muted)',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {replacePreview ? (
+                          <>
+                            <CheckCircle2 size={11} />
+                            Ready to replace
+                          </>
+                        ) : (
+                          'Current Image'
+                        )}
+                      </span>
                     </div>
-                    <label
-                      className="admin-btn secondary"
-                      style={{ cursor: 'pointer', padding: '3px 8px', fontSize: '11px' }}
-                    >
-                      Change
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleReplaceFileSelect}
-                        style={{ display: 'none' }}
-                      />
-                    </label>
                   </div>
-                ) : (
                   <label
-                    style={{
-                      border: '2px dashed var(--admin-border-strong)',
-                      borderRadius: '6px',
-                      padding: '1rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '4px',
-                      cursor: 'pointer',
-                      backgroundColor: 'var(--admin-surface-subtle)',
-                      textAlign: 'center',
-                    }}
+                    className="admin-btn-icon"
+                    style={{ cursor: 'pointer', padding: '7px', flexShrink: 0 }}
+                    title="Replace Artwork Image"
                   >
-                    <Upload size={16} />
-                    <span style={{ fontSize: '12px', fontWeight: 600 }}>Click to select a new image file</span>
+                    <RefreshCw size={14} />
                     <input
                       type="file"
                       accept="image/*"
@@ -1639,19 +1628,18 @@ export const GalleryPageAdmin: React.FC = () => {
                       style={{ display: 'none' }}
                     />
                   </label>
-                )}
+                </div>
               </div>
 
               <div className="admin-form-group" style={{ marginBottom: '1.25rem' }}>
                 <label className="admin-form-label">
-                  Category <span className="admin-required-asterisk">*</span>
+                  Category
                 </label>
                 <select
                   value={editCategoryId}
                   onChange={(e) => setEditCategoryId(e.target.value)}
                   className="admin-form-select"
                 >
-                  <option value="">Select Category</option>
                   {categories.map((c) => (
                     <option key={c._id} value={c._id}>
                       {c.name}
@@ -1680,7 +1668,7 @@ export const GalleryPageAdmin: React.FC = () => {
       <ConfirmModal
         isOpen={Boolean(deleteImageTarget)}
         title="Remove Artwork from Draft?"
-        message={`Are you sure you want to remove "${deleteImageTarget?.title}" from this draft? It will remain on the public site until you click "Save Changes".`}
+        message="Are you sure you want to remove this Artwork from this draft? It will remain on the public site until you click &quot;Save Changes&quot;."
         confirmLabel="Remove from Draft"
         isLoading={false}
         onConfirm={confirmDeleteImage}

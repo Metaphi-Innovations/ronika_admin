@@ -155,7 +155,7 @@ export const ShopProductsPage: React.FC = () => {
           shopHeaderTitle: res.data.shopHeaderTitle ?? cleanSettings.shopHeaderTitle,
           shopHeaderSubtitle: res.data.shopHeaderSubtitle ?? cleanSettings.shopHeaderSubtitle
         });
-        alert.success('Shop header settings saved successfully!');
+        alert.success('Shop header saved successfully!');
       } else {
         alert.error(res.message || "We couldn't save settings.. Please try again.");
       }
@@ -450,6 +450,10 @@ export const ShopProductsPage: React.FC = () => {
       alert.warning('Please enter a product title.', 'Missing Title');
       return;
     }
+    if (name.trim().length > 50) {
+      alert.warning('Product name cannot exceed 50 characters.', 'Name Too Long');
+      return;
+    }
     if (!categoryId) {
       alert.warning('Please select a category.', 'Missing Category');
       return;
@@ -562,7 +566,7 @@ export const ShopProductsPage: React.FC = () => {
       setDeleting(true);
       await deleteShopProduct(deleteProdTarget.id);
       setProducts(products.filter((p) => p._id !== deleteProdTarget.id));
-      alert.info(`Product "${deleteProdTarget.name}" deleted.`);
+      alert.error('Product deleted successfully', 'Deleted');
       setDeleteProdTarget(null);
     } catch (err: any) {
       alert.error(err.message || "We couldn't delete product. Please try again.");
@@ -575,6 +579,17 @@ export const ShopProductsPage: React.FC = () => {
     <div>
       <PageHeader
         title="SHOP CATALOG"
+        actions={
+          <button
+            type="button"
+            onClick={handleSaveSettings}
+            disabled={savingSettings || !settings}
+            className="admin-btn primary admin-btn-save"
+          >
+            <Save size={13} />
+            <span>{savingSettings ? 'Saving...' : 'Save Shop Header'}</span>
+          </button>
+        }
       />
 
       {error && (
@@ -598,17 +613,6 @@ export const ShopProductsPage: React.FC = () => {
       <AdminSection
         title="SHOP PAGE HEADER"
         style={{ marginBottom: '20px' }}
-        actions={
-          <button
-            type="button"
-            onClick={handleSaveSettings}
-            disabled={savingSettings || !settings}
-            className="admin-btn primary admin-btn-save"
-          >
-            <Save size={13} />
-            <span>{savingSettings ? 'Saving...' : 'Save Shop Header'}</span>
-          </button>
-        }
       >
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 300px', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
@@ -862,7 +866,7 @@ export const ShopProductsPage: React.FC = () => {
       <ConfirmModal
         isOpen={Boolean(deleteProdTarget)}
         title="Delete Product?"
-        message={`Are you sure you want to delete "${deleteProdTarget?.name}"? This action cannot be undone.`}
+        message="Are you sure you want to delete this Product ? This action cannot be undone."
         confirmLabel="Delete Product"
         isLoading={deleting}
         onConfirm={confirmDeleteProduct}
@@ -886,7 +890,7 @@ export const ShopProductsPage: React.FC = () => {
             <h3 style={{ fontSize: '14.5px', fontWeight: 600, marginBottom: '0.875rem' }}>
               CREATE SHOP CATEGORY
             </h3>
-            <form onSubmit={handleCreateCategory}>
+            <form onSubmit={handleCreateCategory} noValidate>
               <div style={{ marginBottom: '1rem' }}>
                 <label className="admin-label">Category Name <span className="admin-required-asterisk">*</span></label>
                 <input
@@ -895,14 +899,13 @@ export const ShopProductsPage: React.FC = () => {
                   onChange={(e) => setNewCatName(e.target.value)}
                   className="admin-input"
                   placeholder="e.g. Prints, Artworks, Objects"
-                  required
                 />
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={() => setShowCatModal(false)}
-                  className="admin-btn secondary"
+                  className="admin-btn secondary admin-btn-save"
                 >
                   Cancel
                 </button>
@@ -982,11 +985,29 @@ export const ShopProductsPage: React.FC = () => {
                 }}
               >
                 <div>
-                  <label className="admin-label">Product Name <span className="admin-required-asterisk">*</span></label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                    <label className="admin-label" style={{ margin: 0 }}>
+                      Product <span className="admin-required-asterisk">*</span>
+                    </label>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        color: name.length > 50 ? 'var(--admin-danger)' : 'var(--admin-text-muted)',
+                        fontWeight: name.length >= 50 ? 600 : 400,
+                      }}
+                    >
+                      {name.length} / 50 characters
+                    </span>
+                  </div>
                   <input
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    maxLength={50}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 50) {
+                        setName(e.target.value);
+                      }
+                    }}
                     className="admin-input"
                     placeholder="e.g. Bombay Textures Print"
                   />
@@ -1190,10 +1211,11 @@ export const ShopProductsPage: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', gap: '6px' }}>
                       <label
-                        className="admin-btn secondary"
-                        style={{ cursor: 'pointer', padding: '3px 8px', fontSize: '11px', flexShrink: 0 }}
+                        className="admin-btn-icon"
+                        style={{ cursor: 'pointer', padding: '6px' }}
+                        title="Change Product Image"
                       >
-                        Change
+                        <Edit2 size={14} />
                         <input
                           type="file"
                           accept="image/jpeg, image/png, image/webp, image/avif"
@@ -1201,17 +1223,6 @@ export const ShopProductsPage: React.FC = () => {
                           style={{ display: 'none' }}
                         />
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedFile(null);
-                          setImagePreview(null);
-                        }}
-                        className="admin-btn secondary"
-                        style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--admin-danger)', flexShrink: 0 }}
-                      >
-                        Remove
-                      </button>
                     </div>
                   </div>
                 ) : (
@@ -1503,39 +1514,9 @@ export const ShopProductsPage: React.FC = () => {
 
                       </div>
                     ) : (
-                      <>
-                        {galleryDrafts.length >= 5 ? (
-                          <div style={{ fontSize: '11.5px', color: '#d32f2f', fontWeight: 500 }}>
-                            {galleryDrafts.length > 5 ? 'Product exceeds image limit' : 'You can add up to 5 additional photos per product.'}
-                          </div>
-                        ) : (
-                          <label
-                            style={{
-                              border: '1px dashed var(--admin-border-strong)',
-                              borderRadius: '6px',
-                              padding: '10px 12px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px',
-                              cursor: 'pointer',
-                              background: 'var(--admin-surface-subtle)',
-                              fontSize: '11.5px',
-                              color: 'var(--admin-text-main)',
-                            }}
-                          >
-                            <Plus size={13} />
-                            <span>Add additional gallery photos (Optional)</span>
-                            <input
-                              type="file"
-                              multiple
-                              accept="image/jpeg, image/png, image/webp, image/avif"
-                              onChange={handleCreateGallerySelect}
-                              style={{ display: 'none' }}
-                            />
-                          </label>
-                        )}
-                      </>
+                      <div style={{ fontSize: '11.5px', color: 'var(--admin-text-muted)', fontStyle: 'italic' }}>
+                        No additional photos yet. Click "+ Add Photos" to add.
+                      </div>
                     )}
                   </div>
                 )}
@@ -1554,7 +1535,7 @@ export const ShopProductsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleCloseProdModal}
-                  className="admin-btn secondary"
+                  className="admin-btn secondary admin-btn-save"
                 >
                   Cancel
                 </button>

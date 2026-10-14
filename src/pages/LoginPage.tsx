@@ -25,7 +25,7 @@ export const LoginPage: React.FC = () => {
   });
   const [error, setError] = useState<string | null>(() => {
     if (searchParams.get('deactivated') === 'true') {
-      return 'Your account has been deactivated. Please contact Owner.';
+      return 'Your account has been deactivated. Please contact Super Admin.';
     }
     return null;
   });

@@ -444,7 +444,7 @@ export const HomePageEditor: React.FC = () => {
         if (homeRes.success) {
           fetchData(false);
           alert.success(
-            `Featured Projects updated successfully! (${featuredIds.length} projects are now active in the homepage showcase).`,
+            'Featured Projects updated successfully!',
             'Saved'
           );
         }

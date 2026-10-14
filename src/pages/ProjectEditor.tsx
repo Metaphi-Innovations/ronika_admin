@@ -236,8 +236,8 @@ export const ProjectEditor: React.FC = () => {
     clearError('heroImage');
 
     alert.success(
-      `Cover image verified (${dims.width} × ${dims.height} px). Click Save Project to apply.`,
-      'Cover Ready'
+      'Cover image updated successfully.',
+      'Cover Image'
     );
     e.target.value = '';
   };
@@ -422,16 +422,14 @@ export const ProjectEditor: React.FC = () => {
       pendingGallery.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       setPendingGallery([]);
 
-      // Seamlessly transition URL if created new project, staying on Edit Project without leaving
-      if (!isEditing && projectId) {
-        navigate(`/projects/${projectId}`, { replace: true });
-      }
+      // Redirect back to Portfolio Projects list
+      navigate('/projects');
 
       // Clear, confidence-building save notification (Sections 18-22)
       alert.success(
         isEditing
-          ? '✓ Changes saved successfully. You can continue editing this project.'
-          : '✓ Project saved successfully. Please review the images and content before publishing.',
+          ? '✓ Changes saved successfully.'
+          : '✓ Project created and saved successfully.',
         'Project Saved'
       );
     } catch (err: any) {

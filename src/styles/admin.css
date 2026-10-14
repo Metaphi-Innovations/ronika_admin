@@ -1244,9 +1244,27 @@ input:-webkit-autofill:active {
   border-color: var(--admin-border-strong);
 }
 
+.admin-btn.secondary.admin-btn-save {
+  height: var(--admin-btn-save-height, 28px);
+  padding: var(--admin-btn-save-padding, 0 10px);
+  font-size: var(--admin-btn-save-font-size, 11px);
+  font-weight: var(--admin-btn-save-font-weight, 600);
+  border-radius: var(--admin-btn-save-radius, var(--admin-radius, 5px));
+  background-color: #FFFFFF;
+  color: #111111;
+  border: 1px solid var(--admin-border-strong);
+}
+
 .admin-btn.secondary:hover {
   background-color: var(--admin-surface-subtle);
   border-color: var(--admin-border-input);
+}
+
+.admin-btn.secondary.admin-btn-save:hover:not(:disabled) {
+  background-color: var(--admin-surface-subtle);
+  border-color: var(--admin-border-input);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .admin-btn.danger {
