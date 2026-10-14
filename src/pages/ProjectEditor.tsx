@@ -209,7 +209,12 @@ export const ProjectEditor: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    let val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    if (name === 'description' && typeof val === 'string') {
+      if (val.length > 500) {
+        val = val.slice(0, 500);
+      }
+    }
     setFormData((prev) => ({ ...prev, [name]: val }));
     clearError(name as string);
   };
@@ -329,7 +334,11 @@ export const ProjectEditor: React.FC = () => {
       title: () => !trimmedTitle ? 'Please enter a project title.' : null,
       slug: () => !trimmedSlug ? 'Please enter a slug.' : null,
       category: () => !formData.category ? 'Please choose a category for this project.' : null,
-      description: () => !formData.description?.trim() ? 'Please enter a project description.' : null,
+      description: () => {
+        if (!formData.description?.trim()) return 'Please enter a project description.';
+        if (formData.description.length > 500) return 'Project description cannot exceed 500 characters.';
+        return null;
+      },
       heroImage: () => !isEditing && !heroFile && !formData.heroImage?.url ? 'Please add a cover image.' : null
     });
 
@@ -607,14 +616,21 @@ export const ProjectEditor: React.FC = () => {
               <label className="admin-form-label" style={{ margin: 0 }}>
                 Project Description <span className="admin-required-asterisk">*</span>
               </label>
-              <span style={{ fontSize: '11px', color: 'var(--admin-text-muted)' }}>
-                {(formData.description || '').length} characters
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: (formData.description || '').length >= 500 ? 'var(--admin-danger, #ef4444)' : 'var(--admin-text-muted)',
+                  fontWeight: (formData.description || '').length >= 500 ? 600 : 400,
+                }}
+              >
+                {(formData.description || '').length} / 500 characters
               </span>
             </div>
             <textarea
               id="field-description"
               name="description"
               rows={3}
+              maxLength={500}
               value={formData.description || ''}
               onChange={handleChange}
               placeholder="Brief summary of creative direction and deliverables..."

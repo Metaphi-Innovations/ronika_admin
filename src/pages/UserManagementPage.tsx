@@ -452,14 +452,14 @@ export const UserManagementPage: React.FC = () => {
                               target.role === 'super_admin'
                                 ? '#EDE9FE'
                                 : target.role === 'editor'
-                                ? 'var(--admin-surface-subtle)'
-                                : '#E8EAF6',
+                                  ? 'var(--admin-surface-subtle)'
+                                  : '#E8EAF6',
                             color:
                               target.role === 'super_admin'
                                 ? '#6D28D9'
                                 : target.role === 'editor'
-                                ? '#616161'
-                                : '#283593',
+                                  ? '#616161'
+                                  : '#283593',
                             textTransform: 'none',
                           }}
                         >
@@ -514,9 +514,8 @@ export const UserManagementPage: React.FC = () => {
                           {canToggle && (
                             <button
                               onClick={() => setStatusToggleTarget(target)}
-                              className={`admin-btn-icon ${
-                                target.isActive ? 'warning' : 'success'
-                              }`}
+                              className={`admin-btn-icon ${target.isActive ? 'warning' : 'success'
+                                }`}
                               title={target.isActive ? 'Deactivate account' : 'Activate account'}
                               style={{ color: target.isActive ? '#E65100' : '#2E7D32' }}
                               aria-label={`${target.isActive ? 'Deactivate' : 'Activate'} ${target.name}`}

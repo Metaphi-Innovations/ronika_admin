@@ -23,7 +23,7 @@ interface LiveSyncContextType {
 }
 
 const LiveSyncContext = createContext<LiveSyncContextType>({
-  subscribe: () => () => {},
+  subscribe: () => () => { },
 });
 
 export const LiveSyncProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -79,6 +79,15 @@ export const LiveSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (!event.data) return;
           try {
             const data = JSON.parse(event.data);
+
+            // Real-Time Instant Deactivation Event
+            if (data.type === 'user_deactivated' && data.userId) {
+              window.dispatchEvent(
+                new CustomEvent('admin_user_deactivated', { detail: { userId: String(data.userId) } })
+              );
+              return;
+            }
+
             if (data.type === 'content.updated' && data.resource) {
               const res = data.resource as ResourceType;
 

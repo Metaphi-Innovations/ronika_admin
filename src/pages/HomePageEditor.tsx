@@ -516,7 +516,7 @@ export const HomePageEditor: React.FC = () => {
 
       {/* 1. HERO SECTION */}
       <AdminSection
-        title="Hero Section"
+        title="HERO SECTION"
         actions={
           <button
             type="button"
@@ -671,7 +671,7 @@ export const HomePageEditor: React.FC = () => {
 
       {/* 2. FEATURED PROJECTS SHOWCASE */}
       <AdminSection
-        title="Featured Projects"
+        title="FEATURED PROJECTS"
         actions={
           <button
             type="button"
@@ -774,14 +774,6 @@ export const HomePageEditor: React.FC = () => {
                   >
                     <ArrowDown size={14} />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => removeFeatured(idx)}
-                    className="admin-btn-icon danger"
-                    title="Remove from Featured"
-                  >
-                    <Trash2 size={14} />
-                  </button>
                 </div>
               </div>
             );
@@ -821,9 +813,8 @@ export const HomePageEditor: React.FC = () => {
       </AdminSection>
 
       {/* 3. HOME BIO & CLIENT PORTRAIT */}
-      {/* 3. HOME BIO & CLIENT PORTRAIT */}
       <AdminSection
-        title="Biography & Portrait"
+        title="BIOGRAPHY & PORTRAIT"
         actions={
           <button
             type="button"
@@ -965,7 +956,7 @@ export const HomePageEditor: React.FC = () => {
 
       {/* 4. SERVICES SECTION */}
       <AdminSection
-        title="Services Section"
+        title="SERVICES SECTION"
         actions={
           <button
             type="button"
@@ -1010,7 +1001,7 @@ export const HomePageEditor: React.FC = () => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--admin-text-main)' }}>
-                  Service 0{idx + 1}
+                  SERVICE 0{idx + 1}
                 </span>
                 <button
                   type="button"
@@ -1025,7 +1016,7 @@ export const HomePageEditor: React.FC = () => {
               </div>
 
               <div>
-                <label className="admin-form-label" style={{ fontSize: '12px', marginBottom: '4px' }}>Title <span className="admin-required-asterisk">*</span></label>
+                <label className="admin-form-label" style={{ fontSize: '10px', marginBottom: '4px' }}>Title <span className="admin-required-asterisk">*</span></label>
                 <input
                   type="text"
                   id={`field-service-title-${idx}`}
@@ -1042,8 +1033,8 @@ export const HomePageEditor: React.FC = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <label className="admin-form-label" style={{ fontSize: '12px', margin: 0 }}>Description <span className="admin-required-asterisk">*</span></label>
-                  <span style={{ fontSize: '11px', color: (srv.description || '').length >= MAX_SERVICE_DESC_CHARS ? '#E65100' : 'var(--admin-text-muted)' }}>
+                  <label className="admin-form-label" style={{ fontSize: '10px', margin: 0 }}>Description <span className="admin-required-asterisk">*</span></label>
+                  <span style={{ fontSize: '10px', color: (srv.description || '').length >= MAX_SERVICE_DESC_CHARS ? '#E65100' : 'var(--admin-text-muted)' }}>
                     {(srv.description || '').length} / {MAX_SERVICE_DESC_CHARS} characters
                   </span>
                 </div>
@@ -1073,7 +1064,7 @@ export const HomePageEditor: React.FC = () => {
       {/* SECTION E: SOCIAL & CONTACT LINKS (GLOBAL FOOTER CONTENT) */}
       {/* 5. SOCIAL LINKS */}
       <AdminSection
-        title="Social & Contact Links"
+        title="SOCIAL & CONTACT LINKS"
         actions={
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <button

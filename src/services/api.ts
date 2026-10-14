@@ -110,12 +110,21 @@ export function humanizeErrorMessage(rawMsg: string): string {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // Session expired or unauthorized
+    const isDeactivated =
+      error.response?.data?.code === 'ACCOUNT_DEACTIVATED' ||
+      (typeof error.response?.data?.message === 'string' &&
+        error.response.data.message.toLowerCase().includes('deactivated'));
+
+    if (
+      error.response &&
+      (error.response.status === 401 || (error.response.status === 403 && isDeactivated))
+    ) {
+      // Session expired, revoked or account deactivated
       localStorage.removeItem('admin_token');
       localStorage.removeItem('admin_user');
       if (window.location.pathname !== '/login' && window.location.pathname !== '/admin/login') {
-        window.location.href = '/login';
+        const targetUrl = isDeactivated ? '/login?deactivated=true' : '/login';
+        window.location.href = targetUrl;
       }
     }
 

@@ -40,6 +40,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await api.get<AuthResponse>('/auth/me', { timeout: 12000 });
       if (res.data.success && res.data.data?.admin) {
+        if (res.data.data.admin.isActive === false) {
+          // Deactivated user detected on auth check
+          setUser(null);
+          localStorage.removeItem('admin_user');
+          localStorage.removeItem('admin_token');
+          window.location.href = '/login?deactivated=true';
+          return;
+        }
         setUser(res.data.data.admin);
         localStorage.setItem('admin_user', JSON.stringify(res.data.data.admin));
       } else {
@@ -47,10 +55,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('admin_user');
         localStorage.removeItem('admin_token');
       }
-    } catch {
-      const hasCachedUser = !!localStorage.getItem('admin_user');
-      if (!hasCachedUser) {
+    } catch (err: any) {
+      const isDeactivated =
+        err?.response?.data?.code === 'ACCOUNT_DEACTIVATED' ||
+        err?.response?.status === 403 ||
+        (typeof err?.response?.data?.message === 'string' &&
+          err.response.data.message.toLowerCase().includes('deactivated'));
+
+      if (isDeactivated) {
         setUser(null);
+        localStorage.removeItem('admin_user');
+        localStorage.removeItem('admin_token');
+        window.location.href = '/login?deactivated=true';
+        return;
+      }
+
+      const hasCachedUser = !!localStorage.getItem('admin_user');
+      if (!hasCachedUser || err?.response?.status === 401) {
+        setUser(null);
+        localStorage.removeItem('admin_user');
+        localStorage.removeItem('admin_token');
       }
     } finally {
       setLoading(false);
@@ -60,6 +84,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Real-time instantaneous logout listener when Super Admin deactivates this account
+  useEffect(() => {
+    const handleUserDeactivated = (e: Event) => {
+      const customEvt = e as CustomEvent<{ userId: string }>;
+      const targetId = customEvt.detail?.userId;
+
+      const stored = localStorage.getItem('admin_user');
+      let currentStoredId: string | null = null;
+      try {
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          currentStoredId = parsed?.id || parsed?._id;
+        }
+      } catch {
+        // Ignore parse error
+      }
+
+      const currentUserId = user?.id || (user as any)?._id || currentStoredId;
+
+      if (targetId && currentUserId && String(targetId) === String(currentUserId)) {
+        // Immediate on-the-spot session revocation & logout
+        setUser(null);
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+        window.location.href = '/login?deactivated=true';
+      }
+    };
+
+    window.addEventListener('admin_user_deactivated', handleUserDeactivated);
+    return () => {
+      window.removeEventListener('admin_user_deactivated', handleUserDeactivated);
+    };
+  }, [user]);
+
+  // Periodic active-session security heartbeat & tab focus verification
+  useEffect(() => {
+    if (!user) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkAuth();
+      }
+    };
+
+    const interval = setInterval(() => {
+      checkAuth();
+    }, 15000);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, [user]);
 
   const login = async (emailOrCredentials: string | LoginCredentials, password?: string) => {
     setError(null);

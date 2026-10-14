@@ -127,5 +127,12 @@ export function sanitizeRichText(html?: string): string {
     return '';
   }
 
+  // 8. Preserve multiple consecutive spaces across all browsers and UI views without altering layout
+  // Replaces 2 or more consecutive spaces outside HTML tags with alternating space and &nbsp;
+  clean = clean.replace(/(<[^>]*>)|( {2,})/g, (_match, tag, spaces) => {
+    if (tag) return tag;
+    return ' ' + '&nbsp;'.repeat(spaces.length - 1);
+  });
+
   return clean;
 }

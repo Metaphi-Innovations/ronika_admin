@@ -195,7 +195,10 @@ export const ShopProductsPage: React.FC = () => {
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCatName.trim()) return;
+    if (!newCatName.trim()) {
+      alert.warning('Please enter a category name.', 'Missing Category');
+      return;
+    }
     try {
       const res = await createShopCategory({ name: newCatName.trim() });
       if (res.success) {
@@ -320,17 +323,17 @@ export const ShopProductsPage: React.FC = () => {
 
   const handleGalleryFilesUpload = async (productId: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
-    
+
     let product = products.find(p => p._id === productId);
     if (editingProduct && editingProduct._id === productId) product = editingProduct;
     if (galleryModalProduct && galleryModalProduct._id === productId) product = galleryModalProduct;
 
-    const currentAdditional = product 
+    const currentAdditional = product
       ? (product.images?.filter((img: any) => img.url !== product?.mainImage?.url).length || 0)
       : 0;
 
     const remainingSlots = 5 - currentAdditional;
-    
+
     if (remainingSlots <= 0) {
       alert.error('You can add up to 5 additional photos per product.');
       return;
@@ -402,10 +405,10 @@ export const ShopProductsPage: React.FC = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const existingCount = editingProduct 
+    const existingCount = editingProduct
       ? (editingProduct.images?.filter((img: any) => img.url !== editingProduct.mainImage?.url).length || 0)
       : 0;
-    
+
     const remainingSlots = 5 - galleryDrafts.length - existingCount;
     if (remainingSlots <= 0) {
       alert.error('You can add up to 5 additional photos per product.');
@@ -503,15 +506,15 @@ export const ShopProductsPage: React.FC = () => {
       if (editingProduct) {
         // Execute deletions BEFORE update so backend limit check passes
         if (removedGalleryImageIds.length > 0) {
-           for (const imgId of removedGalleryImageIds) {
-              try {
-                 await deleteShopProductImage(editingProduct._id, imgId);
-              } catch (e) {
-                 console.error('Failed to delete deferred gallery image', e);
-              }
-           }
+          for (const imgId of removedGalleryImageIds) {
+            try {
+              await deleteShopProductImage(editingProduct._id, imgId);
+            } catch (e) {
+              console.error('Failed to delete deferred gallery image', e);
+            }
+          }
         }
-        
+
         const res = await updateShopProduct(editingProduct._id, formData);
         if (res.success) {
           handleCloseProdModal();
@@ -528,11 +531,11 @@ export const ShopProductsPage: React.FC = () => {
       }
     } catch (err: any) {
       const isNetworkOrServer = err.message?.toLowerCase().includes('network') || err.message?.toLowerCase().includes('500') || err.message?.toLowerCase().includes('failed to fetch');
-      const msg = err.message?.toLowerCase().includes('slug') 
+      const msg = err.message?.toLowerCase().includes('slug')
         ? 'This slug is already in use. Please choose another one.'
-        : isNetworkOrServer 
-        ? "We couldn't save your changes. Please try again."
-        : "Something went wrong while saving. Please try again.";
+        : isNetworkOrServer
+          ? "We couldn't save your changes. Please try again."
+          : "Something went wrong while saving. Please try again.";
       alert.error(msg);
     } finally {
       setSubmitting(false);
@@ -591,49 +594,45 @@ export const ShopProductsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Save Button Above Header Settings */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-        <button
-          type="button"
-          onClick={handleSaveSettings}
-          disabled={savingSettings || !settings}
-          className="admin-btn primary admin-btn-save"
-        >
-          <Save size={13} />
-          <span>{savingSettings ? 'Saving...' : 'Save Shop Header'}</span>
-        </button>
-      </div>
-
       {/* SHOP PAGE HEADER SETTINGS */}
-      <div className="admin-card" style={{ marginBottom: '20px', padding: '16px 20px' }}>
-        <h3 style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--admin-text-main)', marginBottom: '12px' }}>
-          SHOP PAGE HEADER SETTINGS
-        </h3>
-        <div>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 300px', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <RichTextEditor
-                    label="Title"
-                    value={settings?.shopHeaderTitle || ''}
-                    maxChars={50}
-                    onChange={(val) => setSettings(settings ? { ...settings, shopHeaderTitle: val } : null)}
-                  />
-                </div>
-              </div>
-              <div style={{ flex: '2 1 400px', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <RichTextEditor
-                    label="Subtitle"
-                    value={settings?.shopHeaderSubtitle || ''}
-                    maxChars={100}
-                    onChange={(val) => setSettings(settings ? { ...settings, shopHeaderSubtitle: val } : null)}
-                  />
-                </div>
-              </div>
+      <AdminSection
+        title="SHOP PAGE HEADER"
+        style={{ marginBottom: '20px' }}
+        actions={
+          <button
+            type="button"
+            onClick={handleSaveSettings}
+            disabled={savingSettings || !settings}
+            className="admin-btn primary admin-btn-save"
+          >
+            <Save size={13} />
+            <span>{savingSettings ? 'Saving...' : 'Save Shop Header'}</span>
+          </button>
+        }
+      >
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 300px', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <RichTextEditor
+                label="Title"
+                value={settings?.shopHeaderTitle || ''}
+                maxChars={50}
+                onChange={(val) => setSettings(settings ? { ...settings, shopHeaderTitle: val } : null)}
+              />
             </div>
           </div>
-      </div>
+          <div style={{ flex: '2 1 400px', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <RichTextEditor
+                label="Subtitle"
+                value={settings?.shopHeaderSubtitle || ''}
+                maxChars={100}
+                onChange={(val) => setSettings(settings ? { ...settings, shopHeaderSubtitle: val } : null)}
+              />
+            </div>
+          </div>
+        </div>
+      </AdminSection>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginBottom: '1.25rem' }}>
         <button onClick={() => setShowCatModal(true)} className="admin-btn secondary">
@@ -883,7 +882,7 @@ export const ShopProductsPage: React.FC = () => {
             zIndex: 1000,
           }}
         >
-          <div className="admin-card" style={{ width: '380px', padding: '1.25rem' }}>
+          <div className="admin-card" style={{ width: 'min(94vw, 380px)', padding: '1.25rem', maxHeight: '90dvh', overflowY: 'auto' }}>
             <h3 style={{ fontSize: '14.5px', fontWeight: 600, marginBottom: '0.875rem' }}>
               CREATE SHOP CATEGORY
             </h3>
@@ -1330,35 +1329,35 @@ export const ShopProductsPage: React.FC = () => {
                               alt=""
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRemovedGalleryImageIds(prev => [...prev, img._id]);
-                                  setEditingProduct(prev => prev ? { ...prev, images: prev.images.filter(i => i._id !== img._id) } : prev);
-                                }}
-                                style={{
-                                  position: 'absolute',
-                                  top: '2px',
-                                  right: '2px',
-                                  background: 'rgba(211, 47, 47, 0.9)',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: '50%',
-                                  width: '16px',
-                                  height: '16px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  cursor: 'pointer',
-                                  padding: 0,
-                                }}
-                                title="Remove photo"
-                              >
-                                <X size={9} />
-                              </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRemovedGalleryImageIds(prev => [...prev, img._id]);
+                                setEditingProduct(prev => prev ? { ...prev, images: prev.images.filter(i => i._id !== img._id) } : prev);
+                              }}
+                              style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: '2px',
+                                background: 'rgba(211, 47, 47, 0.9)',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '16px',
+                                height: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                padding: 0,
+                              }}
+                              title="Remove photo"
+                            >
+                              <X size={9} />
+                            </button>
                           </div>
                         ))}
-                        
+
                         {/* New Drafts */}
                         {galleryDrafts.map((draft) => (
                           <div
@@ -1679,30 +1678,30 @@ export const ShopProductsPage: React.FC = () => {
                       </div>
                     ) : null}
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteGalleryImage(galleryModalProduct._id, img._id || '')}
-                        style={{
-                          position: 'absolute',
-                          top: '4px',
-                          right: '4px',
-                          background: 'rgba(211, 47, 47, 0.9)',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: '22px',
-                          height: '22px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          padding: 0,
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                        }}
-                        title="Delete photo"
-                      >
-                        <Trash2 size={11} />
-                      </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteGalleryImage(galleryModalProduct._id, img._id || '')}
+                      style={{
+                        position: 'absolute',
+                        top: '4px',
+                        right: '4px',
+                        background: 'rgba(211, 47, 47, 0.9)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '22px',
+                        height: '22px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                      }}
+                      title="Delete photo"
+                    >
+                      <Trash2 size={11} />
+                    </button>
                   </div>
                 ))}
               </div>

@@ -179,9 +179,9 @@ export const GalleryPageAdmin: React.FC = () => {
           const l = key === 'all'
             ? img.layoutContexts?.['all']?.lg || img.layouts?.lg
             : img.layoutContexts?.[catName]?.lg ||
-              (targetCatObj ? img.layoutContexts?.[String(targetCatObj._id)]?.lg : undefined) ||
-              img.layoutContexts?.['all']?.lg ||
-              img.layouts?.lg;
+            (targetCatObj ? img.layoutContexts?.[String(targetCatObj._id)]?.lg : undefined) ||
+            img.layoutContexts?.['all']?.lg ||
+            img.layouts?.lg;
           return {
             y: typeof l?.y === 'number' ? l.y : 9999,
             x: typeof l?.x === 'number' ? l.x : 9999,
@@ -240,15 +240,15 @@ export const GalleryPageAdmin: React.FC = () => {
           key === 'all'
             ? dImg.layoutContexts?.['all']?.lg || dImg.layouts?.lg
             : dImg.layoutContexts?.[catName]?.lg ||
-                (targetCatObj ? dImg.layoutContexts?.[String(targetCatObj._id)]?.lg : undefined) ||
-                dImg.layouts?.lg
+            (targetCatObj ? dImg.layoutContexts?.[String(targetCatObj._id)]?.lg : undefined) ||
+            dImg.layouts?.lg
         );
         const sLayout = normalizeLayoutItem(
           key === 'all'
             ? sImg.layoutContexts?.['all']?.lg || sImg.layouts?.lg
             : sImg.layoutContexts?.[catName]?.lg ||
-                (targetCatObj ? sImg.layoutContexts?.[String(targetCatObj._id)]?.lg : undefined) ||
-                sImg.layouts?.lg
+            (targetCatObj ? sImg.layoutContexts?.[String(targetCatObj._id)]?.lg : undefined) ||
+            sImg.layouts?.lg
         );
 
         if (dLayout && sLayout) {
@@ -320,7 +320,7 @@ export const GalleryPageAdmin: React.FC = () => {
     return () => {
       // Discard unpersisted drafts if navigating away
       if (stagedDraftImageIdsRef.current.length > 0) {
-        discardDraftImages(stagedDraftImageIdsRef.current).catch(() => {});
+        discardDraftImages(stagedDraftImageIdsRef.current).catch(() => { });
       }
     };
   }, []);
@@ -344,7 +344,7 @@ export const GalleryPageAdmin: React.FC = () => {
               return [...otherImages, ...normalizedCatImages];
             });
           }
-        }).catch(() => {});
+        }).catch(() => { });
       }
     }
   });
@@ -631,11 +631,11 @@ export const GalleryPageAdmin: React.FC = () => {
           if (stagedDraftImageIds.includes(delId)) {
             try {
               await discardDraftImages([delId]);
-            } catch (e) {}
+            } catch (e) { }
           } else {
             try {
               await deleteGalleryImage(delId);
-            } catch (e) {}
+            } catch (e) { }
           }
         }
 
@@ -805,8 +805,8 @@ export const GalleryPageAdmin: React.FC = () => {
           typeof updatedImage.category === 'object' && updatedImage.category
             ? updatedImage.category._id
             : typeof updatedImage.category === 'string'
-            ? updatedImage.category
-            : editCategoryId;
+              ? updatedImage.category
+              : editCategoryId;
         const matchedCat = categories.find((c) => String(c._id) === String(catId) || c.name === String(catId));
         updatedImage = { ...updatedImage, category: matchedCat ? matchedCat.name : (null as any) };
 
@@ -912,9 +912,10 @@ export const GalleryPageAdmin: React.FC = () => {
             }}
           >
             <span
+              className="admin-section-title"
               style={{
                 fontSize: '12px',
-                fontWeight: 600,
+                fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
                 color: 'var(--admin-text-main, #111)',
@@ -926,7 +927,7 @@ export const GalleryPageAdmin: React.FC = () => {
 
           <div style={{ padding: '16px' }}>
             <RichTextEditor
-              label=""
+              label="Gallery Title"
               value={galleryHeader}
               onChange={setGalleryHeader}
               maxChars={MAX_GALLERY_INTRO_CHARS}
@@ -1111,69 +1112,69 @@ export const GalleryPageAdmin: React.FC = () => {
             <MediaGridEditor
               items={editorItems}
               headerContent={galleryGridHeader}
-            onChange={(updatedItems) => {
-              const currentDraft = getActiveDraft(activeKey);
-              const updatedDraft = [...currentDraft];
-              let hasChanges = false;
+              onChange={(updatedItems) => {
+                const currentDraft = getActiveDraft(activeKey);
+                const updatedDraft = [...currentDraft];
+                let hasChanges = false;
 
-              updatedItems.forEach((u) => {
-                const imgIndex = updatedDraft.findIndex((i) => String(i._id) === String(u.id));
-                if (imgIndex !== -1) {
-                  const img = updatedDraft[imgIndex];
-                  const existingLayouts =
-                    activeKey === 'all'
-                      ? img.layoutContexts?.['all'] || img.layouts
-                      : img.layoutContexts?.[activeCatName] ||
+                updatedItems.forEach((u) => {
+                  const imgIndex = updatedDraft.findIndex((i) => String(i._id) === String(u.id));
+                  if (imgIndex !== -1) {
+                    const img = updatedDraft[imgIndex];
+                    const existingLayouts =
+                      activeKey === 'all'
+                        ? img.layoutContexts?.['all'] || img.layouts
+                        : img.layoutContexts?.[activeCatName] ||
                         (activeCatId ? img.layoutContexts?.[activeCatId] : undefined);
 
-                  const oldNorm = normalizeLayoutItem(existingLayouts?.lg);
-                  const newNorm = normalizeLayoutItem(u.layouts?.lg);
+                    const oldNorm = normalizeLayoutItem(existingLayouts?.lg);
+                    const newNorm = normalizeLayoutItem(u.layouts?.lg);
 
-                  if (
-                    !oldNorm ||
-                    !newNorm ||
-                    oldNorm.x !== newNorm.x ||
-                    oldNorm.y !== newNorm.y ||
-                    oldNorm.w !== newNorm.w ||
-                    oldNorm.h !== newNorm.h
-                  ) {
-                    updatedDraft[imgIndex] = {
-                      ...img,
-                      layoutContexts: {
-                        ...(img.layoutContexts || {}),
-                        [activeKey]: u.layouts as any,
-                        ...(activeCatName ? { [activeCatName]: u.layouts as any } : {}),
-                        ...(activeCatId ? { [activeCatId]: u.layouts as any } : {})
-                      } as Record<string, any>,
-                      ...(activeKey === 'all' ? { layouts: u.layouts } : {}),
-                    };
-                    hasChanges = true;
+                    if (
+                      !oldNorm ||
+                      !newNorm ||
+                      oldNorm.x !== newNorm.x ||
+                      oldNorm.y !== newNorm.y ||
+                      oldNorm.w !== newNorm.w ||
+                      oldNorm.h !== newNorm.h
+                    ) {
+                      updatedDraft[imgIndex] = {
+                        ...img,
+                        layoutContexts: {
+                          ...(img.layoutContexts || {}),
+                          [activeKey]: u.layouts as any,
+                          ...(activeCatName ? { [activeCatName]: u.layouts as any } : {}),
+                          ...(activeCatId ? { [activeCatId]: u.layouts as any } : {})
+                        } as Record<string, any>,
+                        ...(activeKey === 'all' ? { layouts: u.layouts } : {}),
+                      };
+                      hasChanges = true;
+                    }
                   }
-                }
-              });
+                });
 
-              if (hasChanges) {
-                setCategoryDrafts((prev) => ({
-                  ...prev,
-                  [activeKey]: updatedDraft,
-                }));
-              }
-            }}
-            onDelete={(id) => {
-              const target = currentDisplayImages.find((img) => img._id === id);
-              if (target) {
-                setDeleteImageTarget({ id: target._id, title: target.title });
-              }
-            }}
-            onEdit={(id) => {
-              const target = currentDisplayImages.find((img) => img._id === id);
-              if (target) {
-                openEditModal(target);
-              }
-            }}
-          />
-        );
-      })()}
+                if (hasChanges) {
+                  setCategoryDrafts((prev) => ({
+                    ...prev,
+                    [activeKey]: updatedDraft,
+                  }));
+                }
+              }}
+              onDelete={(id) => {
+                const target = currentDisplayImages.find((img) => img._id === id);
+                if (target) {
+                  setDeleteImageTarget({ id: target._id, title: target.title });
+                }
+              }}
+              onEdit={(id) => {
+                const target = currentDisplayImages.find((img) => img._id === id);
+                if (target) {
+                  openEditModal(target);
+                }
+              }}
+            />
+          );
+        })()}
       </div>
 
       {/* ========================================================================= */}
@@ -1290,7 +1291,7 @@ export const GalleryPageAdmin: React.FC = () => {
         >
           <div
             className="admin-card"
-            style={{ width: '520px', padding: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}
+            style={{ width: 'min(94vw, 520px)', padding: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}
           >
             <div
               style={{
@@ -1517,9 +1518,8 @@ export const GalleryPageAdmin: React.FC = () => {
                 >
                   {uploading
                     ? 'Adding Artworks...'
-                    : `Add ${stagedFiles.length > 0 ? `${stagedFiles.length} ` : ''}Artwork${
-                        stagedFiles.length > 1 ? 's' : ''
-                      }`}
+                    : `Add ${stagedFiles.length > 0 ? `${stagedFiles.length} ` : ''}Artwork${stagedFiles.length > 1 ? 's' : ''
+                    }`}
                 </button>
               </div>
             </form>
@@ -1542,7 +1542,7 @@ export const GalleryPageAdmin: React.FC = () => {
             zIndex: 1000,
           }}
         >
-          <div className="admin-card" style={{ width: '420px', padding: '1.25rem' }}>
+          <div className="admin-card" style={{ width: 'min(94vw, 420px)', padding: '1.25rem', maxHeight: '90dvh', overflowY: 'auto' }}>
             <h3 style={{ fontSize: '14.5px', fontWeight: 600, marginBottom: '0.875rem' }}>
               EDIT ARTWORK INFORMATION
             </h3>

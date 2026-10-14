@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   ArrowRight,
@@ -17,12 +17,18 @@ const getLivePortfolioUrl = (): string => {
 };
 
 export const LoginPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(() => {
     return localStorage.getItem('admin_remember_me') === 'true';
   });
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    if (searchParams.get('deactivated') === 'true') {
+      return 'Your account has been deactivated. Please contact Owner.';
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
