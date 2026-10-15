@@ -9,6 +9,16 @@ export const RGL_MARGIN: [number, number] = [10, 10];
 export const DEFAULT_ITEM_W = 2;
 export const DEFAULT_ITEM_H = 1;
 
+/**
+ * Computes proportional row height for admin editors to prevent aspect ratio distortion
+ */
+export function getAdminGridRowHeight(canvasWidth: number, cols: number = RGL_COLS): number {
+  const marginX = RGL_MARGIN[0];
+  const safeWidth = Math.max(320, canvasWidth || 1200);
+  const colWidth = (safeWidth - (cols - 1) * marginX) / cols;
+  return Math.max(50, Math.min(180, Math.round(colWidth * 1.5)));
+}
+
 export interface NormalizedLayoutItem {
   x: number;
   y: number;

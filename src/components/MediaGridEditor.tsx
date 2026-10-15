@@ -44,14 +44,14 @@ interface MediaGridEditorProps {
 
 import {
   RGL_COLS,
-  RGL_ROW_HEIGHT,
   RGL_MARGIN,
   DEFAULT_ITEM_W,
   DEFAULT_ITEM_H,
   normalizeLayoutItem,
   findNextAvailableSlot,
   compactLayout,
-  computeCanonicalLayout
+  computeCanonicalLayout,
+  getAdminGridRowHeight
 } from '../utils/gridLayout';
 
 export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({ 
@@ -59,6 +59,11 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({
 }) => {
   const { width, ref } = useWidth();
   const [dragLayout, setDragLayout] = useState<{ itemsRef: GridMediaItem[]; layout: any[] } | null>(null);
+
+  // Maintain comfortable minimum grid canvas on mobile to prevent coordinate distortion
+  const isMobileEditor = width > 0 && width < 680;
+  const effectiveWidth = isMobileEditor ? 680 : width;
+  const effectiveRowHeight = useMemo(() => getAdminGridRowHeight(effectiveWidth), [effectiveWidth]);
 
   // Synchronously compute canonical compacted layout from incoming items
   const synchronousLayout = useMemo(() => {
@@ -73,10 +78,9 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({
     return synchronousLayout;
   }, [dragLayout, items, synchronousLayout]);
 
-  // Only sync to parent if an item was missing a layout (e.g. brand new upload)
+  // Sync canonical layout to parent when layouts differ or missing
   useEffect(() => {
-    const hasMissing = items.some((item) => !normalizeLayoutItem(item.layouts?.lg));
-    if (!hasMissing || !onChange) return;
+    if (!onChange) return;
 
     let hasChanges = false;
     const updatedItems = items.map((item) => {
@@ -183,27 +187,36 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({
         backgroundColor: '#f9f9f9',
         border: '1px dashed #ccc',
         borderRadius: '4px',
-        overflow: 'hidden',
-        minHeight: '200px'
+        overflowX: isMobileEditor ? 'auto' : 'hidden',
+        overflowY: 'hidden',
+        WebkitOverflowScrolling: 'touch',
+        minHeight: '200px',
+        width: '100%'
       }}>
+        {isMobileEditor && (
+          <div style={{ padding: '6px 12px', fontSize: '11px', color: 'var(--admin-text-muted)', background: '#F5F5F3', borderBottom: '1px solid #E0E0E0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>↔ Swipe horizontally to arrange desktop layout comfortably</span>
+          </div>
+        )}
         {width > 0 && (
-        <ReactGridLayout
-          className="layout"
-          layout={currentLayout}
-          cols={RGL_COLS}
-          width={width}
-          rowHeight={RGL_ROW_HEIGHT}
-          margin={RGL_MARGIN}
-          gridConfig={{ cols: RGL_COLS, rowHeight: RGL_ROW_HEIGHT, margin: RGL_MARGIN }}
-          onDragStop={handleDragStop}
-          onResizeStop={handleResizeStop}
-          isDraggable={true}
-          isResizable={true}
-          resizeHandles={['se']}
-          useCSSTransforms={true}
-          preventCollision={false}
-          compactType="vertical"
-        >
+        <div style={{ minWidth: isMobileEditor ? '680px' : '100%' }}>
+          <ReactGridLayout
+            className="layout"
+            layout={currentLayout}
+            cols={RGL_COLS}
+            width={effectiveWidth}
+            rowHeight={effectiveRowHeight}
+            margin={RGL_MARGIN}
+            gridConfig={{ cols: RGL_COLS, rowHeight: effectiveRowHeight, margin: RGL_MARGIN }}
+            onDragStop={handleDragStop}
+            onResizeStop={handleResizeStop}
+            isDraggable={true}
+            isResizable={true}
+            resizeHandles={['se']}
+            useCSSTransforms={true}
+            preventCollision={false}
+            compactType="vertical"
+          >
           {items.map((item) => {
             return (
               <div
@@ -304,6 +317,7 @@ export const MediaGridEditor: React.FC<MediaGridEditorProps> = ({
             );
           })}
         </ReactGridLayout>
+        </div>
         )}
       </div>
     </div>

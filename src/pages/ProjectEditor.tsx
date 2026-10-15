@@ -39,6 +39,7 @@ import { InlineError } from '../components/InlineError';
 import {
   findNextAvailableSlot,
   normalizeLayoutItem,
+  computeCanonicalLayout,
   DEFAULT_ITEM_W,
   DEFAULT_ITEM_H,
   RGL_COLS
@@ -318,13 +319,51 @@ export const ProjectEditor: React.FC = () => {
     e.target.value = '';
   };
 
-  const removePendingGalleryItem = (id: string) => {
-    setPendingGallery((prev) => {
-      const item = prev.find((p) => p.id === id);
-      if (item) URL.revokeObjectURL(item.previewUrl);
-      return prev.filter((p) => p.id !== id);
+  const recompactGalleryState = (
+    remainingImages: any[],
+    remainingPending: PendingGalleryItem[]
+  ) => {
+    const allItems = [
+      ...remainingImages.map((img) => ({ id: String(img._id), layouts: img.layouts })),
+      ...remainingPending.map((p) => ({ id: String(p.id), layouts: p.layouts })),
+    ];
+    const compactedGrid = computeCanonicalLayout(allItems);
+    const compactedMap = new Map(compactedGrid.map((c: any) => [String(c.i), c]));
+
+    const recompactedImages = remainingImages.map((img) => {
+      const c = compactedMap.get(String(img._id));
+      if (!c) return img;
+      return {
+        ...img,
+        layouts: {
+          ...(img.layouts || {}),
+          lg: { x: c.x, y: c.y, w: c.w, h: c.h, v: 2 },
+        },
+      };
     });
+
+    const recompactedPending = remainingPending.map((p) => {
+      const c = compactedMap.get(String(p.id));
+      if (!c) return p;
+      return {
+        ...p,
+        layouts: {
+          ...(p.layouts || {}),
+          lg: { x: c.x, y: c.y, w: c.w, h: c.h, v: 2 },
+        },
+      };
+    });
+
+    setFormData((prev) => ({ ...prev, images: recompactedImages }));
+    setPendingGallery(recompactedPending);
+  };
+
+  const removePendingGalleryItem = (id: string) => {
+    const item = pendingGallery.find((p) => p.id === id);
+    if (item) URL.revokeObjectURL(item.previewUrl);
+    const updatedPending = pendingGallery.filter((p) => p.id !== id);
     setGalleryFiles((prev) => prev.filter((_, idx) => pendingGallery[idx]?.id !== id));
+    recompactGalleryState(formData.images || [], updatedPending);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -902,13 +941,17 @@ export const ProjectEditor: React.FC = () => {
                     removePendingGalleryItem(imgId);
                     return;
                   }
-                  const confirmed = await alert.confirm({ title: 'Remove Image?', message: 'Are you sure you want to remove this image from the project gallery? This cannot be undone.', confirmLabel: 'Remove', isDanger: true }); 
-                  if (!confirmed || !id) return; 
-                  
-                  // Draft & Save: defer deletion until save
-                  setFormData(prev => ({ ...prev, images: (prev.images || []).filter(img => img._id !== imgId) }));
-                  setRemovedImageIds(prev => [...prev, imgId]);
-                  // alert.success('Image queued for removal.', 'Removed'); 
+                  const confirmed = await alert.confirm({
+                    title: 'Remove Image?',
+                    message: 'Are you sure you want to remove this image from the project gallery? This cannot be undone.',
+                    confirmLabel: 'Remove',
+                    isDanger: true,
+                  });
+                  if (!confirmed) return;
+
+                  const remainingImages = (formData.images || []).filter((img) => img._id !== imgId);
+                  setRemovedImageIds((prev) => [...prev, imgId]);
+                  recompactGalleryState(remainingImages, pendingGallery);
                 }}
               />
             </>

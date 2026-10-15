@@ -50,6 +50,8 @@ import { getImageUrl } from '../utils/imageUrl';
 import {
   findNextAvailableSlot,
   normalizeLayoutItem,
+  computeCanonicalLayout,
+  compactLayout,
   DEFAULT_ITEM_W,
   DEFAULT_ITEM_H,
   RGL_COLS,
@@ -787,12 +789,54 @@ export const GalleryPageAdmin: React.FC = () => {
       [activeKey]: [...(prev[activeKey] || []), targetId],
     }));
 
-    // Remove from active view draft strictly
+    // Remove from active view draft and immediately recompact remaining items
     setCategoryDrafts((prev) => {
       const currentDraft = getActiveDraft(activeKey);
+      const remaining = currentDraft.filter((img) => img._id !== targetId);
+
+      const remainingEditorItems = remaining.map((img) => {
+        let resolvedLayout = undefined;
+        if (activeKey === 'all') {
+          resolvedLayout = img.layoutContexts?.['all'] || img.layouts;
+        } else {
+          resolvedLayout =
+            img.layoutContexts?.[activeCatName] ||
+            (activeCatId ? img.layoutContexts?.[activeCatId] : undefined) ||
+            img.layoutContexts?.['all'] ||
+            img.layouts;
+        }
+        return {
+          id: img._id,
+          layouts: resolvedLayout,
+        };
+      });
+
+      const compactedGrid = computeCanonicalLayout(remainingEditorItems);
+      const compactedMap = new Map(compactedGrid.map((c: any) => [String(c.i), c]));
+
+      const recompactedRemaining = remaining.map((img) => {
+        const c = compactedMap.get(String(img._id));
+        if (!c) return img;
+        const newLg = { x: c.x, y: c.y, w: c.w, h: c.h, v: 2 };
+        const updatedContexts = {
+          ...(img.layoutContexts || {}),
+          [activeKey]: { lg: newLg },
+          ...(activeCatName ? { [activeCatName]: { lg: newLg } } : {}),
+          ...(activeCatId ? { [activeCatId]: { lg: newLg } } : {}),
+        };
+        if (activeKey === 'all') {
+          updatedContexts['all'] = { lg: newLg };
+        }
+        return {
+          ...img,
+          layoutContexts: updatedContexts,
+          ...(activeKey === 'all' ? { layouts: { ...img.layouts, lg: newLg } } : {}),
+        };
+      });
+
       return {
         ...prev,
-        [activeKey]: currentDraft.filter((img) => img._id !== targetId),
+        [activeKey]: recompactedRemaining,
       };
     });
 
