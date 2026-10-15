@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   MessageSquare,
   Mail,
@@ -37,7 +38,30 @@ export const MessagesPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<IEnquiry | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [replyMenuOpen, setReplyMenuOpen] = useState(false);
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [activeMenu, setActiveMenu] = useState<{
+    enquiry: IEnquiry;
+    rect: DOMRect;
+  } | null>(null);
+
+  // Close active dropdown on scroll, resize, or Escape key
+  useEffect(() => {
+    if (!activeMenu) return;
+
+    const handleScrollOrResize = () => setActiveMenu(null);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveMenu(null);
+    };
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeMenu]);
 
   const handleCopy = async (text: string, label: string) => {
     try {
@@ -200,9 +224,12 @@ export const MessagesPage: React.FC = () => {
                 {filteredEnquiries.map((enquiry, index) => (
                   <tr
                     key={enquiry._id}
+                    onClick={() => handleOpenView(enquiry)}
                     style={{
                       backgroundColor: enquiry.isRead ? 'transparent' : 'rgba(230, 81, 0, 0.03)',
+                      cursor: 'pointer',
                     }}
+                    title="Click to view message details"
                   >
                     <td>
                       <span
@@ -320,104 +347,36 @@ export const MessagesPage: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <div
                         style={{
                           display: 'flex',
                           justifyContent: 'flex-end',
-                          position: 'relative',
+                          alignItems: 'center',
                         }}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOpenDropdownId(openDropdownId === enquiry._id ? null : enquiry._id);
+                            if (activeMenu?.enquiry._id === enquiry._id) {
+                              setActiveMenu(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setActiveMenu({ enquiry, rect });
+                            }
                           }}
                           className="admin-btn-icon"
                           title="Actions"
+                          aria-label="Actions"
+                          style={{
+                            backgroundColor: activeMenu?.enquiry._id === enquiry._id ? 'var(--admin-surface-subtle, #f0f0ee)' : undefined,
+                            borderColor: activeMenu?.enquiry._id === enquiry._id ? 'var(--admin-text-main, #111)' : undefined,
+                          }}
                         >
                           <MoreVertical size={16} />
                         </button>
-                        
-                        {openDropdownId === enquiry._id && (
-                          <>
-                            <div 
-                              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenDropdownId(null);
-                              }}
-                            />
-                            <div
-                              style={{
-                                position: 'absolute',
-                                top: '100%',
-                                right: 0,
-                                marginTop: '4px',
-                                background: '#FFFFFF',
-                                border: '1px solid var(--admin-border)',
-                                borderRadius: '6px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                zIndex: 100,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                overflow: 'hidden',
-                                minWidth: '160px'
-                              }}
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenDropdownId(null);
-                                  handleOpenView(enquiry);
-                                }}
-                                style={{
-                                  background: 'none', border: 'none', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--admin-text-main)', textAlign: 'left', width: '100%'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9F9F9'}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                              >
-                                <Eye size={14} /> View Details
-                              </button>
-                              
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenDropdownId(null);
-                                  handleToggleRead(enquiry);
-                                }}
-                                style={{
-                                  background: 'none', border: 'none', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--admin-text-main)', textAlign: 'left', width: '100%',
-                                  borderTop: '1px solid var(--admin-border)'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9F9F9'}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                              >
-                                {enquiry.isRead ? (
-                                  <><Mail size={14} /> Mark as Unread</>
-                                ) : (
-                                  <><MailOpen size={14} /> Mark as Read</>
-                                )}
-                              </button>
-                              
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenDropdownId(null);
-                                  setDeleteTarget(enquiry);
-                                }}
-                                style={{
-                                  background: 'none', border: 'none', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--admin-danger)', textAlign: 'left', width: '100%',
-                                  borderTop: '1px solid var(--admin-border)'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FEF2F2'}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                              >
-                                <Trash2 size={14} /> Delete
-                              </button>
-                            </div>
-                          </>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -427,6 +386,149 @@ export const MessagesPage: React.FC = () => {
           </div>
         )}
       </AdminSection>
+
+      {/* Floating 3-Dot Actions Portal Menu */}
+      {activeMenu &&
+        createPortal(
+          <>
+            {/* Transparent backdrop for instant outside-click dismiss */}
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 9998,
+                background: 'transparent',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveMenu(null);
+              }}
+            />
+
+            {/* Floating Dropdown Card */}
+            <div
+              style={{
+                position: 'fixed',
+                right: Math.max(12, window.innerWidth - activeMenu.rect.right),
+                ...(window.innerHeight - activeMenu.rect.bottom < 165
+                  ? { bottom: window.innerHeight - activeMenu.rect.top + 6 }
+                  : { top: activeMenu.rect.bottom + 6 }),
+                background: '#FFFFFF',
+                border: '1px solid var(--admin-border, #E0E0E0)',
+                borderRadius: '8px',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08)',
+                zIndex: 9999,
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: '170px',
+                overflow: 'hidden',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Option 1: View Details */}
+              <button
+                type="button"
+                onClick={() => {
+                  const target = activeMenu.enquiry;
+                  setActiveMenu(null);
+                  handleOpenView(target);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '9px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: 'var(--admin-text-main, #111111)',
+                  textAlign: 'left',
+                  width: '100%',
+                  transition: 'background-color 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F5F5F3')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <Eye size={15} style={{ color: 'var(--admin-text-muted)' }} />
+                <span>View Details</span>
+              </button>
+
+              {/* Option 2: Mark as Read / Mark as Unread */}
+              <button
+                type="button"
+                onClick={() => {
+                  const target = activeMenu.enquiry;
+                  setActiveMenu(null);
+                  handleToggleRead(target);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  borderTop: '1px solid var(--admin-border, #ECECEE)',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '9px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: 'var(--admin-text-main, #111111)',
+                  textAlign: 'left',
+                  width: '100%',
+                  transition: 'background-color 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F5F5F3')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                {activeMenu.enquiry.isRead ? (
+                  <>
+                    <Mail size={15} style={{ color: '#E65100' }} />
+                    <span>Mark as Unread</span>
+                  </>
+                ) : (
+                  <>
+                    <MailOpen size={15} style={{ color: '#2E7D32' }} />
+                    <span>Mark as Read</span>
+                  </>
+                )}
+              </button>
+
+              {/* Option 3: Delete */}
+              <button
+                type="button"
+                onClick={() => {
+                  const target = activeMenu.enquiry;
+                  setActiveMenu(null);
+                  setDeleteTarget(target);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  borderTop: '1px solid var(--admin-border, #ECECEE)',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '9px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: 'var(--admin-danger, #DC2626)',
+                  textAlign: 'left',
+                  width: '100%',
+                  transition: 'background-color 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FEF2F2')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <Trash2 size={15} style={{ color: 'var(--admin-danger, #DC2626)' }} />
+                <span>Delete</span>
+              </button>
+            </div>
+          </>,
+          document.body
+        )}
 
       {/* View Message Modal */}
       {selectedEnquiry && (
