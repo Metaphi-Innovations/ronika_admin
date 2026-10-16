@@ -83,6 +83,40 @@ export function findNextAvailableSlot(
   }
 }
 
+export function findBottomSlot(
+  existingItems: { x: number; y: number; w: number; h: number }[],
+  itemW: number = DEFAULT_ITEM_W,
+  itemH: number = DEFAULT_ITEM_H,
+  cols: number = RGL_COLS
+): { x: number; y: number } {
+  const validItems = existingItems.filter(item => 
+    typeof item.x === 'number' && typeof item.y === 'number' && 
+    typeof item.w === 'number' && typeof item.h === 'number' &&
+    !isNaN(item.x) && !isNaN(item.y) && !isNaN(item.w) && !isNaN(item.h)
+  );
+
+  if (validItems.length === 0) {
+    return { x: 0, y: 0 };
+  }
+
+  const maxBottomY = validItems.reduce((max, r) => Math.max(max, r.y + r.h), 0);
+
+  const lastRowY = Math.max(0, maxBottomY - itemH);
+  for (let x = 0; x <= cols - itemW; x++) {
+    const collides = validItems.some(item => {
+      const overlapX = x < (item.x + item.w) && (x + itemW) > item.x;
+      const overlapY = lastRowY < (item.y + item.h) && (lastRowY + itemH) > item.y;
+      return overlapX && overlapY;
+    });
+
+    if (!collides) {
+      return { x, y: lastRowY };
+    }
+  }
+
+  return { x: 0, y: maxBottomY };
+}
+
 /**
  * Standard vertical compaction algorithm matching React Grid Layout compactType="vertical"
  */

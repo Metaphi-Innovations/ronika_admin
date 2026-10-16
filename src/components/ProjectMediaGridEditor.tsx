@@ -36,6 +36,7 @@ import {
   RGL_MARGIN,
   DEFAULT_ITEM_W,
   DEFAULT_ITEM_H,
+  findBottomSlot,
   normalizeLayoutItem,
   findNextAvailableSlot,
   compactLayout,
@@ -54,51 +55,75 @@ export const ProjectMediaGridEditor: React.FC<ProjectMediaGridEditorProps> = ({
   const effectiveWidth = isMobileEditor ? 680 : width;
   const effectiveRowHeight = useMemo(() => getAdminGridRowHeight(effectiveWidth), [effectiveWidth]);
 
-  // Synchronously compute canonical compacted layout from incoming items
-  const synchronousLayout = useMemo(() => {
-    return computeCanonicalLayout(items);
-  }, [items]);
-
-  // Use active drag override if it matches current items instance; otherwise use synchronousLayout
+  // Compute layout: preserve exact valid coordinates; only newly added items lacking coordinates get assigned a slot at the bottom
   const currentLayout = useMemo(() => {
     if (dragLayout && dragLayout.itemsRef === items) {
       return dragLayout.layout;
     }
-    return synchronousLayout;
-  }, [dragLayout, items, synchronousLayout]);
 
-  // Sync canonical layout to parent when layouts differ or missing
+    const existingRects: { x: number; y: number; w: number; h: number }[] = [];
+    const elements: any[] = [];
+
+    items.forEach((item) => {
+      const norm = normalizeLayoutItem(item.layouts?.lg);
+      const itemId = String(item.id);
+
+      if (norm) {
+        existingRects.push(norm);
+        elements.push({
+          i: itemId,
+          x: norm.x,
+          y: norm.y,
+          w: norm.w,
+          h: norm.h,
+          minW: 1,
+          minH: 1,
+        });
+      } else {
+        const slot = findBottomSlot(existingRects, DEFAULT_ITEM_W, DEFAULT_ITEM_H, RGL_COLS);
+        const newLayout = {
+          x: slot.x,
+          y: slot.y,
+          w: DEFAULT_ITEM_W,
+          h: DEFAULT_ITEM_H,
+        };
+        existingRects.push(newLayout);
+        elements.push({
+          i: itemId,
+          ...newLayout,
+          minW: 1,
+          minH: 1,
+        });
+      }
+    });
+
+    return elements;
+  }, [dragLayout, items]);
+
+  // Only sync to parent if an item was missing a layout (e.g. brand new upload)
   useEffect(() => {
-    if (!onChange) return;
+    const hasMissing = items.some((item) => !normalizeLayoutItem(item.layouts?.lg));
+    if (!hasMissing || !onChange) return;
 
     let hasChanges = false;
     const updatedItems = items.map((item) => {
-      const l = synchronousLayout.find((c: any) => c.i === String(item.id));
+      if (normalizeLayoutItem(item.layouts?.lg)) return item;
+      const l = currentLayout.find((c: any) => c.i === String(item.id));
       if (!l) return item;
-      const currentLg = item.layouts?.lg;
-      const isDiff =
-        !currentLg ||
-        currentLg.x !== l.x ||
-        currentLg.y !== l.y ||
-        currentLg.w !== l.w ||
-        currentLg.h !== l.h;
-      if (isDiff) {
-        hasChanges = true;
-        return {
-          ...item,
-          layouts: {
-            ...item.layouts,
-            lg: { x: l.x, y: l.y, w: l.w, h: l.h, v: 2 },
-          },
-        };
-      }
-      return item;
+      hasChanges = true;
+      return {
+        ...item,
+        layouts: {
+          ...item.layouts,
+          lg: { x: l.x, y: l.y, w: l.w, h: l.h, v: 2 },
+        },
+      };
     });
 
     if (hasChanges) {
       onChange(updatedItems);
     }
-  }, [items, synchronousLayout, onChange]);
+  }, [items, currentLayout, onChange]);
 
   const handleDragStop = (layout: any[]) => {
     setDragLayout({ itemsRef: items, layout });
