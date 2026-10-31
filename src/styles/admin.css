@@ -993,7 +993,7 @@ input:-webkit-autofill:active {
 /* Universal Responsive Grid System for Admin Forms & Editors */
 .admin-split-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) 1fr;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   gap: 1.25rem;
   align-items: start;
   width: 100%;
@@ -1001,7 +1001,7 @@ input:-webkit-autofill:active {
 
 .admin-split-grid-reverse {
   display: grid;
-  grid-template-columns: 1fr minmax(240px, 280px);
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
   gap: 1.25rem;
   align-items: start;
   width: 100%;
